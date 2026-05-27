@@ -191,8 +191,35 @@ fun ProfileCard(
                                     )
                                 }
                                 if (showText) {
+                                    val errText = if (isError) {
+                                        val rawMsg = pingState.errorMessage ?: ""
+                                        val isRussian = I18n.strings.label_error == "Ошибка"
+                                        if (isRussian) {
+                                            when (rawMsg) {
+                                                "Timeout" -> "Таймаут"
+                                                "DNS Fail" -> "DNS сбой"
+                                                "Config Err" -> "Ошибка конф."
+                                                "Core err" -> "Core ERR"
+                                                "TLS Failed" -> "TLS Fail"
+                                                "Unreachable" -> "Недоступен"
+                                                "Refused" -> "Отказ"
+                                                "Failed" -> "Ошибка"
+                                                "" -> "Ошибка"
+                                                else -> rawMsg
+                                            }
+                                        } else {
+                                            when (rawMsg) {
+                                                "Core err" -> "Core ERR"
+                                                "TLS Failed" -> "TLS Fail"
+                                                "" -> "Error"
+                                                else -> rawMsg
+                                            }
+                                        }
+                                    } else {
+                                        "$latency ms"
+                                    }
                                     Text(
-                                        text = if (isError) I18n.strings.label_error else "$latency ms",
+                                        text = errText,
                                         fontFamily = GeologicaRegular,
                                         fontSize = 12.sp,
                                         color = textColor

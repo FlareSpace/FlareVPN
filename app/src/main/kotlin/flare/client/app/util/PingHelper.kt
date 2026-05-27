@@ -197,17 +197,84 @@ object PingHelper {
 
         val boxService = Libbox.newCommandServer(handler, platform)
         val clashPort = findAvailablePort()
+        val excludedIndices = HashSet<Int>()
         try {
-            val batchConfig = buildBatchConfig(profiles, testUrl, clashPort)
-            if (batchConfig == null) {
-                profiles.forEach { onResult(it.id, -1L, "Config Err") }
-                return
+            var serviceStarted = false
+            var retryCount = 0
+            val maxRetries = 15
+            var batchResult = buildBatchConfig(profiles, testUrl, clashPort, excludedIndices, onResult)
+
+            while (!serviceStarted && retryCount < maxRetries) {
+                if (batchResult == null || excludedIndices.size >= profiles.size) {
+                    break
+                }
+                val batchConfig = batchResult.first
+                val outboundIndexToProfileIndex = batchResult.second
+
+                try {
+                    boxService.startOrReloadService(
+                        batchConfig.toString().replace("\\/", "/"),
+                        OverrideOptions()
+                    )
+                    serviceStarted = true
+                } catch (e: Exception) {
+                    val errMsg = e.message ?: ""
+                    Log.e(TAG, "Batch ping core start failed (retry $retryCount): $errMsg")
+
+                    var foundCulprit = false
+
+                    
+                    val outboundPattern = Pattern.compile("outbound(?:s)?\\[(\\d+)\\]")
+                    val outboundMatcher = outboundPattern.matcher(errMsg)
+                    while (outboundMatcher.find()) {
+                        val outboundIdx = outboundMatcher.group(1)?.toIntOrNull()
+                        if (outboundIdx != null) {
+                            val profileIdx = outboundIndexToProfileIndex[outboundIdx]
+                            if (profileIdx != null && profileIdx in profiles.indices) {
+                                if (!excludedIndices.contains(profileIdx)) {
+                                    excludedIndices.add(profileIdx)
+                                    onResult(profiles[profileIdx].id, -1L, "Core err")
+                                    foundCulprit = true
+                                }
+                            }
+                        }
+                    }
+
+                    
+                    if (!foundCulprit) {
+                        val indexPattern = Pattern.compile("(?:proxy-|\\b[a-zA-Z0-9_-]+-)(\\d+)\\b")
+                        val tagMatcher = indexPattern.matcher(errMsg)
+                        while (tagMatcher.find()) {
+                            val profileIndex = tagMatcher.group(1)?.toIntOrNull()
+                            if (profileIndex != null && profileIndex in profiles.indices) {
+                                if (!excludedIndices.contains(profileIndex)) {
+                                    excludedIndices.add(profileIndex)
+                                    onResult(profiles[profileIndex].id, -1L, "Core err")
+                                    foundCulprit = true
+                                }
+                            }
+                        }
+                    }
+
+                    if (!foundCulprit) {
+                        
+                        profiles.forEachIndexed { idx, prof ->
+                            if (!excludedIndices.contains(idx)) {
+                                excludedIndices.add(idx)
+                                onResult(prof.id, -1L, "Core err")
+                            }
+                        }
+                        break
+                    }
+
+                    retryCount++
+                    batchResult = buildBatchConfig(profiles, testUrl, clashPort, excludedIndices, onResult)
+                }
             }
 
-            boxService.startOrReloadService(
-                batchConfig.toString().replace("\\/", "/"),
-                OverrideOptions()
-            )
+            if (!serviceStarted) {
+                return
+            }
 
             var ready = false
             val healthStart = System.currentTimeMillis()
@@ -232,6 +299,7 @@ object PingHelper {
             val semaphore = Semaphore(PROXY_PING_PARALLELISM)
             coroutineScope {
                 profiles.forEachIndexed { index, profile ->
+                    if (excludedIndices.contains(index)) return@forEachIndexed
                     launch(Dispatchers.IO) {
                         semaphore.withPermit {
                             var rtt = -1L
@@ -245,14 +313,12 @@ object PingHelper {
                                     .build()
                                 okHttpClient.newCall(request).execute().use { response ->
                                     if (response.isSuccessful) {
-                                        val body = response.body?.string()
-                                        if (body != null) {
-                                            val json = JSONObject(body)
-                                            rtt = json.optLong("delay", -1L)
-                                            if (rtt == -1L) errMsg = "Timeout"
-                                        }
+                                        val body = response.body.string()
+                                        val json = JSONObject(body)
+                                        rtt = json.optLong("delay", -1L)
+                                        if (rtt == -1L) errMsg = "Timeout"
                                     } else {
-                                        val body = response.body?.string() ?: ""
+                                        val body = response.body.string()
                                         errMsg = try {
                                             val msg = JSONObject(body).optString("message", "")
                                             when {
@@ -285,7 +351,11 @@ object PingHelper {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Batch ping failed (core start error, batch=$batchIndex): ${e.message}", e)
-            profiles.forEach { onResult(it.id, -1L, "Core err") }
+            profiles.forEachIndexed { idx, prof ->
+                if (!excludedIndices.contains(idx)) {
+                    onResult(prof.id, -1L, "Core err")
+                }
+            }
         } finally {
             try {
                 boxService.closeService()
@@ -294,65 +364,86 @@ object PingHelper {
         }
     }
 
-    private fun buildBatchConfig(profiles: List<ProfileEntity>, testUrl: String, clashPort: Int): JSONObject? {
+    private suspend fun buildBatchConfig(
+        profiles: List<ProfileEntity>,
+        testUrl: String,
+        clashPort: Int,
+        excludedIndices: MutableSet<Int>,
+        onResult: suspend (Long, Long, String?) -> Unit
+    ): Pair<JSONObject, Map<Int, Int>>? {
         return try {
             val outbounds = JSONArray()
             val proxyTags = ArrayList<String>()
+            val outboundIndexToProfileIndex = HashMap<Int, Int>()
 
             profiles.forEachIndexed { index, profile ->
-                val converted = V2RayConfigConverter.convertIfNeeded(profile.configJson)
-                val profileJson = JSONObject(converted)
-                val profileOutbounds = profileJson.optJSONArray("outbounds") ?: JSONArray()
-                var mainProxyTag = ""
-                for (i in 0 until profileOutbounds.length()) {
-                    val ob = profileOutbounds.optJSONObject(i) ?: continue
-                    val t = ob.optString("type")
-                    if (t != "direct" && t != "block" && t != "dns" && t.isNotBlank()) {
-                        mainProxyTag = ob.optString("tag")
-                        break
+                if (excludedIndices.contains(index)) return@forEachIndexed
+                try {
+                    val converted = V2RayConfigConverter.convertIfNeeded(profile.configJson)
+                    val profileJson = JSONObject(converted)
+                    val profileOutbounds = profileJson.optJSONArray("outbounds") ?: JSONArray()
+                    var mainProxyTag = ""
+                    for (i in 0 until profileOutbounds.length()) {
+                        val ob = profileOutbounds.optJSONObject(i) ?: continue
+                        val t = ob.optString("type")
+                        if (t != "direct" && t != "block" && t != "dns" && t.isNotBlank()) {
+                            mainProxyTag = ob.optString("tag")
+                            break
+                        }
                     }
-                }
-                if (mainProxyTag.isBlank()) return@forEachIndexed
-
-                val mainTagMapped = "proxy-$index"
-                proxyTags.add(mainTagMapped)
-
-                for (i in 0 until profileOutbounds.length()) {
-                    val ob = profileOutbounds.optJSONObject(i) ?: continue
-                    val t = ob.optString("type")
-                    if (t == "direct" || t == "block" || t == "dns") continue
-                    val oldTag = ob.optString("tag")
-                    if (oldTag.isNotBlank()) {
-                        ob.put("tag", if (oldTag == mainProxyTag) mainTagMapped else "$oldTag-$index")
+                    if (mainProxyTag.isBlank()) {
+                        excludedIndices.add(index)
+                        onResult(profile.id, -1L, "Config Err")
+                        return@forEachIndexed
                     }
-                    if (ob.has("outbounds")) {
-                        val obList = ob.optJSONArray("outbounds")
-                        if (obList != null) {
-                            val newList = JSONArray()
-                            for (j in 0 until obList.length()) {
-                                val entry = obList.optString(j)
-                                newList.put(if (entry == mainProxyTag) mainTagMapped else "$entry-$index")
+
+                    val mainTagMapped = "proxy-$index"
+                    proxyTags.add(mainTagMapped)
+
+                    for (i in 0 until profileOutbounds.length()) {
+                        val ob = profileOutbounds.optJSONObject(i) ?: continue
+                        val t = ob.optString("type")
+                        if (t == "direct" || t == "block" || t == "dns") continue
+                        val oldTag = ob.optString("tag")
+                        if (oldTag.isNotBlank()) {
+                            ob.put("tag", if (oldTag == mainProxyTag) mainTagMapped else "$oldTag-$index")
+                        }
+                        if (ob.has("outbounds")) {
+                            val obList = ob.optJSONArray("outbounds")
+                            if (obList != null) {
+                                val newList = JSONArray()
+                                for (j in 0 until obList.length()) {
+                                    val entry = obList.optString(j)
+                                    newList.put(if (entry == mainProxyTag) mainTagMapped else "$entry-$index")
+                                }
+                                ob.put("outbounds", newList)
                             }
-                            ob.put("outbounds", newList)
                         }
-                    }
-                    if (ob.has("detour")) {
-                        val detourName = ob.optString("detour")
-                        if (detourName.isNotBlank() && detourName != "direct" && detourName != "block") {
-                            ob.put("detour", if (detourName == mainProxyTag) mainTagMapped else "$detourName-$index")
+                        if (ob.has("detour")) {
+                            val detourName = ob.optString("detour")
+                            if (detourName.isNotBlank() && detourName != "direct" && detourName != "block") {
+                                ob.put("detour", if (detourName == mainProxyTag) mainTagMapped else "$detourName-$index")
+                            }
                         }
-                    }
 
-                    val type = ob.optString("type")
-                    if (type != "hysteria" && type != "hysteria2") {
-                        ob.optJSONObject("tls")?.let { tls ->
-                            tls.put("utls", JSONObject().apply {
-                                put("enabled", true)
-                                put("fingerprint", "chrome")
-                            })
+                        val type = ob.optString("type")
+                        if (type != "hysteria" && type != "hysteria2") {
+                            ob.optJSONObject("tls")?.let { tls ->
+                                tls.put("utls", JSONObject().apply {
+                                    put("enabled", true)
+                                    put("fingerprint", "chrome")
+                                })
+                            }
                         }
+
+                        val outboundIdx = outbounds.length()
+                        outboundIndexToProfileIndex[outboundIdx] = index
+
+                        outbounds.put(ob)
                     }
-                    outbounds.put(ob)
+                } catch (e: Exception) {
+                    excludedIndices.add(index)
+                    onResult(profile.id, -1L, "Config Err")
                 }
             }
 
@@ -366,7 +457,7 @@ object PingHelper {
                 put("interval", "10m")
             })
 
-            JSONObject().apply {
+            val config = JSONObject().apply {
                 put("experimental", JSONObject().apply {
                     put("clash_api", JSONObject().apply {
                         put("external_controller", "127.0.0.1:$clashPort")
@@ -409,6 +500,7 @@ object PingHelper {
                     put("final", "direct")
                 })
             }
+            config to outboundIndexToProfileIndex
         } catch (e: Exception) {
             null
         }
