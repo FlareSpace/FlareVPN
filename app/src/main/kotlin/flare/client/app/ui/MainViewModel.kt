@@ -76,7 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var healthCheckJob: kotlinx.coroutines.Job? = null
     private var recoveryJob: kotlinx.coroutines.Job? = null
 
-    enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
+    enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, DISCONNECTING }
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
@@ -727,18 +727,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 putExtra(FlareVpnService.EXTRA_CONFIG, configWithSettings)
                 putExtra(FlareVpnService.EXTRA_PROFILE_NAME, profile.name)
             }
-            if (settings.isStatusNotificationEnabled) {
-                androidx.core.content.ContextCompat.startForegroundService(app, intent)
-            } else {
-                app.startService(intent)
-            }
+            app.startService(intent)
         }
     }
 
     private fun stopVpn(cancelRecovery: Boolean = false) {
         if (cancelRecovery) recoveryJob?.cancel()
         stopTimer()
-        _connectionState.value = ConnectionState.DISCONNECTED
+        _connectionState.value = ConnectionState.DISCONNECTING
         handleDisconnection()
         val app = getApplication<Application>()
         app.startService(Intent(app, FlareVpnService::class.java).apply { action = FlareVpnService.ACTION_STOP })
@@ -1224,6 +1220,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ensureInitialized()
             val settings = SettingsManager(app)
             if (!settings.isUpdateCheckEnabled) return@launch
+
+            
+            val startupDelay = (15L + (Math.random() * 45).toLong()) * 1000L
+            delay(startupDelay)
+
+            if (isActive) {
+                flare.client.app.util.VersionManager.checkUpdates(app)
+                settings.lastUpdateCheckTime = System.currentTimeMillis()
+            }
+
+            
             while (isActive) {
                 val intervalMs = when (settings.updateCheckFrequency) {
                     "daily" -> 24 * 3600 * 1000L
@@ -1231,19 +1238,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     "monthly" -> 30 * 24 * 3600 * 1000L
                     else -> 24 * 3600 * 1000L
                 }
-                val lastCheck = settings.lastUpdateCheckTime
-                val now = System.currentTimeMillis()
-
-                val delayTime = if (lastCheck == 0L) {
-                    
-                    (1L + (Math.random() * 59).toLong()) * 1000L
-                } else {
-                    (lastCheck + intervalMs) - now
-                }
-
-                if (delayTime > 0) {
-                    delay(delayTime)
-                }
+                delay(intervalMs)
 
                 if (isActive) {
                     flare.client.app.util.VersionManager.checkUpdates(app)

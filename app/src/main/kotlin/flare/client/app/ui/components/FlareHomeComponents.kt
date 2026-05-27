@@ -46,8 +46,6 @@ import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.geometry.Size
 
 
@@ -66,20 +64,17 @@ private fun createNoiseBitmap(width: Int = 128, height: Int = 128, opacity: Floa
     return bitmap
 }
 
-private val basePositions = listOf(
-    Offset(0.2f, 0.2f),
+private val meshBasePositions = listOf(
+    Offset(0.1f, 0.2f),
     Offset(0.8f, 0.8f),
     Offset(0.9f, 0.1f),
-    Offset(0.1f, 0.9f),
-    Offset(0.5f, 0.4f)
+    Offset(0.2f, 0.9f),
+    Offset(0.5f, 0.4f),
+    Offset(0.1f, 0.8f),
+    Offset(0.7f, 0.3f)
 )
 
-private val radiuses = listOf(400f, 500f, 350f, 400f, 600f)
-
-private class OffscreenBuffer(
-    var bitmap: androidx.compose.ui.graphics.ImageBitmap? = null,
-    var canvas: androidx.compose.ui.graphics.Canvas? = null
-)
+private val meshRadiuses = listOf(800f, 750f, 700f, 800f, 700f, 700f, 600f)
 
 @Composable
 fun FlareHomeBackground(
@@ -88,8 +83,11 @@ fun FlareHomeBackground(
     animationSpeed: Float = 1.0f,
     modifier: Modifier = Modifier
 ) {
+    val themeColors = FlareTheme.colors
+    val isDark = themeColors.isDark
+
     if (!isGradientEnabled) {
-        Box(modifier = modifier.fillMaxSize().background(FlareTheme.colors.bgDark))
+        Box(modifier = modifier.fillMaxSize().background(themeColors.bgDark))
         return
     }
 
@@ -102,26 +100,34 @@ fun FlareHomeBackground(
                 withFrameNanos { frameTime ->
                     val deltaSeconds = (frameTime - lastTime) / 1_000_000_000f
                     lastTime = frameTime
-                    time += deltaSeconds * animationSpeed * (2 * Math.PI.toFloat() / 4.0f)
+                    time += deltaSeconds * animationSpeed * 0.4f 
                 }
             }
         }
     }
 
-    val themeColors = FlareTheme.colors
-    val isDark = themeColors.isDark
-
     val density = LocalDensity.current
-    val brushes = remember(themeColors, density) {
+    
+    
+    val extraColor1Start = if (isDark) Color(0x0AFF3D00) else Color(0x12FF3D00) 
+    val extraColor1End = Color(0x00FF3D00)
+    val extraColor2Start = if (isDark) Color(0x0A7C4DFF) else Color(0x127C4DFF) 
+    val extraColor2End = Color(0x007C4DFF)
+
+    val brushes = remember(themeColors, density, isDark) {
+        val darkAlphaMult = if (isDark) 0.35f else 1.0f 
+        
         val colorsList = listOf(
-            themeColors.gradientBlueStart to themeColors.gradientBlueEnd,
-            themeColors.gradientPurpleStart to themeColors.gradientPurpleEnd,
-            themeColors.gradientMagentaStart to themeColors.gradientMagentaEnd,
-            themeColors.gradientCyanStart to themeColors.gradientCyanEnd,
-            themeColors.gradientWhiteStart to themeColors.gradientWhiteEnd
+            themeColors.gradientBlueStart.let { it.copy(alpha = it.alpha * darkAlphaMult) } to themeColors.gradientBlueEnd,
+            themeColors.gradientPurpleStart.let { it.copy(alpha = it.alpha * darkAlphaMult * 0.8f) } to themeColors.gradientPurpleEnd,
+            themeColors.gradientMagentaStart.let { it.copy(alpha = it.alpha * darkAlphaMult) } to themeColors.gradientMagentaEnd,
+            themeColors.gradientCyanStart.let { it.copy(alpha = it.alpha * darkAlphaMult * 1.5f) } to themeColors.gradientCyanEnd, 
+            extraColor1Start to extraColor1End,
+            extraColor2Start to extraColor2End,
+            themeColors.gradientWhiteStart.let { it.copy(alpha = it.alpha * (if (isDark) 0.05f else 0.4f)) } to themeColors.gradientWhiteEnd
         )
         colorsList.mapIndexed { i, (start, end) ->
-            val radiusPx = radiuses[i] * density.density
+            val radiusPx = meshRadiuses[i] * density.density
             Brush.radialGradient(
                 colors = listOf(start, end),
                 center = Offset.Zero,
@@ -130,9 +136,8 @@ fun FlareHomeBackground(
         }
     }
 
-    
     val noiseBitmap = remember {
-        createNoiseBitmap(opacity = 0.015f).asImageBitmap()
+        createNoiseBitmap(opacity = if (isDark) 0.03f else 0.02f).asImageBitmap()
     }
     val noiseBrush = remember(noiseBitmap) {
         ShaderBrush(
@@ -144,132 +149,54 @@ fun FlareHomeBackground(
         )
     }
 
-    val canvasDrawScope = remember { CanvasDrawScope() }
-    val offscreenBuffer = remember { OffscreenBuffer() }
-    val scaleFactor = 0.25f
-
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(FlareTheme.colors.gradientBase)
-    ) {
-        Spacer(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawBehind {
-                    val width = size.width
-                    val height = size.height
-                    if (width <= 0f || height <= 0f) return@drawBehind
+            .background(themeColors.gradientBase)
+            .graphicsLayer() 
+            .drawBehind {
+                val width = size.width
+                val height = size.height
+                if (width <= 0f || height <= 0f) return@drawBehind
 
-                    if (isAnimationEnabled) {
-                        val drawWidth = (width * scaleFactor).toInt().coerceAtLeast(1)
-                        val drawHeight = (height * scaleFactor).toInt().coerceAtLeast(1)
+                val blendMode = BlendMode.SrcOver
 
-                        val buffer = offscreenBuffer
-                        val bitmap = if (buffer.bitmap?.let { it.width == drawWidth && it.height == drawHeight } == true) {
-                            buffer.bitmap!!
-                        } else {
-                            val newBitmap = android.graphics.Bitmap.createBitmap(
-                                drawWidth,
-                                drawHeight,
-                                android.graphics.Bitmap.Config.ARGB_8888
-                            ).asImageBitmap()
-                            buffer.bitmap = newBitmap
-                            buffer.canvas = androidx.compose.ui.graphics.Canvas(newBitmap)
-                            newBitmap
-                        }
-                        val canvas = buffer.canvas!!
+                brushes.forEachIndexed { i, brush ->
+                    val phase = i * 1.5f
+                    val speedX = 0.8f + (i * 0.12f)
+                    val speedY = 0.6f + (i * 0.15f)
 
-                        canvasDrawScope.draw(
-                            density = this,
-                            layoutDirection = layoutDirection,
-                            canvas = canvas,
-                            size = Size(drawWidth.toFloat(), drawHeight.toFloat())
-                        ) {
-                            
-                            drawRect(
-                                color = Color.Transparent,
-                                blendMode = BlendMode.Clear
-                            )
+                    val offsetX = if (isAnimationEnabled) {
+                        (sin(time * speedX + phase) * 0.35f + cos(time * 0.6f * speedX) * 0.15f)
+                    } else 0f
+                    
+                    val offsetY = if (isAnimationEnabled) {
+                        (cos(time * speedY + phase) * 0.35f + sin(time * 0.5f * speedY) * 0.15f)
+                    } else 0f
 
-                            withTransform({
-                                scale(scaleFactor, scaleFactor, pivot = Offset.Zero)
-                            }) {
+                    val base = meshBasePositions[i]
+                    val center = Offset(
+                        (base.x + offsetX) * width,
+                        (base.y + offsetY) * height
+                    )
 
-                                
-                                brushes.forEachIndexed { i, brush ->
-                                    if (i < basePositions.size) {
-                                        val phase = i * 1.2f
-                                        val speedX = 1.0f + (i * 0.15f)
-                                        val speedY = 0.7f + (i * 0.2f)
+                    val radiusPx = meshRadiuses[i] * density.density
 
-                                        val offsetX = (sin(time * speedX + phase) * 0.25f + cos(time * 0.5f * speedX) * 0.08f)
-                                        val offsetY = (cos(time * speedY + phase) * 0.25f + sin(time * 0.4f * speedY) * 0.08f)
-
-                                        val base = basePositions[i]
-                                        val center = Offset(
-                                            (base.x + offsetX) * width,
-                                            (base.y + offsetY) * height
-                                        )
-
-                                        val radiusPx = radiuses[i] * density.density
-
-                                        withTransform({
-                                            translate(center.x, center.y)
-                                        }) {
-                                            drawCircle(
-                                                brush = brush,
-                                                center = Offset.Zero,
-                                                radius = radiusPx,
-                                                blendMode = if (isDark) BlendMode.Screen else BlendMode.SrcOver
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        
-                        drawImage(
-                            image = bitmap,
-                            dstSize = IntSize(width.toInt(), height.toInt()),
-                            filterQuality = FilterQuality.Medium 
+                    withTransform({
+                        translate(center.x, center.y)
+                    }) {
+                        drawCircle(
+                            brush = brush,
+                            center = Offset.Zero,
+                            radius = radiusPx,
+                            blendMode = blendMode
                         )
-
-                        
-                        drawRect(brush = noiseBrush)
-                    } else {
-                        
-                        drawRect(color = themeColors.gradientBase)
-
-                        brushes.forEachIndexed { i, brush ->
-                            if (i < basePositions.size) {
-                                val base = basePositions[i]
-                                val center = Offset(
-                                    base.x * width,
-                                    base.y * height
-                                )
-                                val radiusPx = radiuses[i] * density.density
-
-                                withTransform({
-                                    translate(center.x, center.y)
-                                }) {
-                                    drawCircle(
-                                        brush = brush,
-                                        center = Offset.Zero,
-                                        radius = radiusPx,
-                                        blendMode = if (isDark) BlendMode.Screen else BlendMode.SrcOver
-                                    )
-                                }
-                            }
-                        }
-
-                        
-                        drawRect(brush = noiseBrush)
                     }
                 }
-        )
-    }
+
+                drawRect(brush = noiseBrush)
+            }
+    )
 }
 
 

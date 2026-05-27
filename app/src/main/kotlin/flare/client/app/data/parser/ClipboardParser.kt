@@ -520,6 +520,10 @@ object ClipboardParser {
     private fun buildVlessOutbound(parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
         put("protocol", "vless")
         put("tag", "proxy")
+        val pe = params["packetEncoding"] ?: params["packet_encoding"]
+        if (pe != null) {
+            put("packet_encoding", pe)
+        }
         put("settings", JSONObject().apply {
             put("vnext", JSONArray().put(JSONObject().apply {
                 put("address", parsed.host)

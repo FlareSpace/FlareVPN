@@ -9,6 +9,10 @@ import flare.client.app.R
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import android.app.PendingIntent
+import android.content.Intent
+import android.net.Uri
+
 
 enum class NotificationType {
     SUCCESS, ERROR, WARNING
@@ -41,7 +45,14 @@ object AppNotificationManager {
         _notifications.tryEmit(NotificationData(type, text, durationSec, actionText, onAction, iconRes))
     }
 
-    fun showSystemNotification(context: Context, title: String, text: String, isHighPriority: Boolean = false) {
+    fun showSystemNotification(
+        context: Context, 
+        title: String, 
+        text: String, 
+        isHighPriority: Boolean = false,
+        actionText: String? = null,
+        downloadUrl: String? = null
+    ) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
         val channelId = if (isHighPriority) "adaptive_tunnel_updates" else BEST_PROFILE_CHANNEL
@@ -72,6 +83,17 @@ object AppNotificationManager {
                 if (isHighPriority) {
                     setPriority(NotificationCompat.PRIORITY_HIGH)
                     setVibrate(longArrayOf(0, 250))
+                }
+                if (downloadUrl != null && actionText != null) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                    val pendingIntent = PendingIntent.getActivity(
+                        context,
+                        0,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    setContentIntent(pendingIntent)
+                    addAction(R.drawable.ic_vpn_key, actionText, pendingIntent)
                 }
             }
             .build()

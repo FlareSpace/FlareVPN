@@ -1514,7 +1514,7 @@ fun Modifier.flareGlass(
             val fgColor = if (isDark)
                 android.graphics.Color.argb(160, 32, 34, 40)
             else
-                android.graphics.Color.argb(70, 255, 255, 255)
+                android.graphics.Color.argb(135, 255, 255, 255)
                 
             val a = android.graphics.Color.alpha(fgColor) / 255f
             val r = android.graphics.Color.red(fgColor) / 255f * a

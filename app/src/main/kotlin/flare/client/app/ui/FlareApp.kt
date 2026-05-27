@@ -267,19 +267,11 @@ private fun SettingsDetailContainer(
         }
     }
     Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        FlareHomeBackground(
-            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == route),
-            animationSpeed = settingsViewModel.composeGradientSpeed,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            content = content
-        )
-    }
+        modifier = Modifier
+            .fillMaxSize()
+            .background(FlareTheme.colors.gradientBase),
+        content = content
+    )
 }
 
 @Composable

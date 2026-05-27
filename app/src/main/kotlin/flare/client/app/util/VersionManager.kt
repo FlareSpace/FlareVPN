@@ -12,6 +12,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import java.util.concurrent.TimeUnit
+import android.content.Intent
+import android.net.Uri
+
 
 object VersionManager {
     private const val TAG = "VersionManager"
@@ -49,17 +52,32 @@ object VersionManager {
 
                     if (isNewer(latestVersion, currentVersion)) {
                         val message = I18n.strings.update_available_title.format(latestVersion)
+                        val downloadUrl = "https://github.com/gitwelk/FlareVPN/releases/download/$latestTag/Flare-$latestTag.apk"
+                        val appContext = context.applicationContext
                         
                         AppNotificationManager.showNotification(
-                            NotificationType.WARNING,
-                            message,
-                            30
+                            type = NotificationType.WARNING,
+                            text = message,
+                            durationSec = 30,
+                            actionText = I18n.strings.btn_download,
+                            onAction = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    appContext.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to open download URL: $downloadUrl", e)
+                                }
+                            }
                         )
 
                         AppNotificationManager.showSystemNotification(
-                            context,
-                            I18n.strings.notif_update_title,
-                            message
+                            context = context,
+                            title = I18n.strings.notif_update_title,
+                            text = message,
+                            actionText = I18n.strings.btn_download,
+                            downloadUrl = downloadUrl
                         )
                     }
                 }

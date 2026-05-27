@@ -54,13 +54,6 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
     ) {
-        FlareHomeBackground(
-            isGradientEnabled = isGradientEnabled,
-            isAnimationEnabled = isAnimationEnabled,
-            animationSpeed = gradientSpeed,
-            modifier = Modifier.fillMaxSize()
-        )
-        
         Box(
             modifier = Modifier
                 .fillMaxSize()

@@ -12,6 +12,7 @@ interface FlareStrings {
     val btn_apply: String
     val btn_cancel: String
     val btn_clipboard: String
+    val btn_download: String
     val btn_connect: String
     val btn_disconnect: String
     val btn_finish: String
@@ -322,6 +323,7 @@ interface FlareStrings {
     val simple_editor_enable_tls: String
     val simple_editor_fingerprint: String
     val simple_editor_flow: String
+    val simple_editor_packet_encoding: String
     val simple_editor_method: String
     val simple_editor_obfs: String
     val simple_editor_obfs_pass: String
@@ -389,6 +391,8 @@ interface FlareStrings {
     val viaproxy_desc: String
     val vpn_active: String
     val vpn_disconnect: String
+    val vpn_stopping: String
+    val vpn_starting: String
     val vpn_error_permission_denied: String
     val vpn_error_permission_required: String
     val vpn_error_tunnel_creation: String
@@ -472,6 +476,7 @@ object RuFlareStrings : FlareStrings {
     override val btn_apply: String = "Применить"
     override val btn_cancel: String = "Отмена"
     override val btn_clipboard: String = "Буфер обмена"
+    override val btn_download: String = "Скачать"
     override val btn_connect: String = "Подключить"
     override val btn_disconnect: String = "Отключить"
     override val btn_finish: String = "Завершить"
@@ -783,6 +788,7 @@ object RuFlareStrings : FlareStrings {
     override val simple_editor_enable_tls: String = "Включить TLS"
     override val simple_editor_fingerprint: String = "Fingerprint"
     override val simple_editor_flow: String = "Flow"
+    override val simple_editor_packet_encoding: String = "Packet Encoding"
     override val simple_editor_method: String = "Метод шифрования"
     override val simple_editor_obfs: String = "Obfs"
     override val simple_editor_obfs_pass: String = "Obfs Пароль"
@@ -849,6 +855,8 @@ object RuFlareStrings : FlareStrings {
     override val viaproxy_desc: String = "Проверяет время полного прохождения HTTP запроса через прокси, тестирует реальную задержку, самый точный метод."
     override val vpn_active: String = "VPN активен"
     override val vpn_disconnect: String = "Отключить"
+    override val vpn_stopping: String = "Остановка служб"
+    override val vpn_starting: String = "Запуск служб"
     override val vpn_error_permission_denied: String = "Разрешение VPN отклонено"
     override val vpn_error_permission_required: String = "Требуется разрешение на VPN. Пожалуйста, откройте приложение и подтвердите его."
     override val vpn_error_tunnel_creation: String = "Не удалось создать туннель"
@@ -946,6 +954,7 @@ object EnFlareStrings : FlareStrings {
     override val btn_apply: String = "Apply"
     override val btn_cancel: String = "Cancel"
     override val btn_clipboard: String = "Clipboard"
+    override val btn_download: String = "Download"
     override val btn_connect: String = "Connect"
     override val btn_disconnect: String = "Disconnect"
     override val btn_finish: String = "Finish"
@@ -1256,6 +1265,7 @@ object EnFlareStrings : FlareStrings {
     override val simple_editor_enable_tls: String = "Enable TLS"
     override val simple_editor_fingerprint: String = "Fingerprint"
     override val simple_editor_flow: String = "Flow"
+    override val simple_editor_packet_encoding: String = "Packet Encoding"
     override val simple_editor_method: String = "Encryption method"
     override val simple_editor_obfs: String = "Obfs"
     override val simple_editor_obfs_pass: String = "Obfs Password"
@@ -1323,6 +1333,8 @@ object EnFlareStrings : FlareStrings {
     override val viaproxy_desc: String = "Checks HTTP request time through proxy, tests real latency, most accurate method."
     override val vpn_active: String = "VPN active"
     override val vpn_disconnect: String = "Disconnect"
+    override val vpn_stopping: String = "Stopping services"
+    override val vpn_starting: String = "Starting services"
     override val vpn_error_permission_denied: String = "VPN permission denied"
     override val vpn_error_permission_required: String = "VPN permission required. Please open the app and confirm."
     override val vpn_error_tunnel_creation: String = "Failed to create tunnel"

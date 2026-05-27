@@ -480,8 +480,18 @@ object V2RayConfigConverter {
         sbOb.put("server", vnext.optString("address"))
         sbOb.put("server_port", vnext.optInt("port"))
         sbOb.put("uuid", user.optString("id"))
-        sbOb.put("flow", user.optString("flow", ""))
-        sbOb.put("packet_encoding", "xudp")
+        var flow = user.optString("flow", "")
+        var pe = if (xrayOb.has("packet_encoding")) {
+            xrayOb.optString("packet_encoding", "")
+        } else {
+            "xudp"
+        }
+        if (flow == "xtls-rprx-vision-udp443") {
+            flow = "xtls-rprx-vision"
+            pe = "xudp"
+        }
+        sbOb.put("flow", flow)
+        sbOb.put("packet_encoding", pe)
         xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
     }
 
@@ -983,24 +993,31 @@ object V2RayConfigConverter {
     }
 
     private fun fixSingBox(obj: JSONObject): String {
-        val route = obj.optJSONObject("route")
-        if (route != null && route.has("rule_set")) {
-            val ruleSets = route.optJSONArray("rule_set")
-            if (!obj.has("rule_set")) {
-                obj.put("rule_set", ruleSets)
-                Log.d("V2RayConfigConverter", "Moved rule_set from route to root")
+        val route = obj.optJSONObject("route") ?: JSONObject().also { obj.put("route", it) }
+        
+        if (obj.has("rule_set")) {
+            val ruleSets = obj.optJSONArray("rule_set")
+            if (!route.has("rule_set")) {
+                route.put("rule_set", ruleSets)
+                Log.d("V2RayConfigConverter", "Moved rule_set from root to route")
             }
-            route.remove("rule_set")
+            obj.remove("rule_set")
         }
 
-        if (route != null && route.has("rule-set")) {
+        if (obj.has("rule-set")) {
+            val ruleSets = obj.optJSONArray("rule-set")
+            if (!route.has("rule_set")) {
+                route.put("rule_set", ruleSets)
+                Log.d("V2RayConfigConverter", "Moved rule-set from root to route as rule_set")
+            }
+            obj.remove("rule-set")
+        }
+
+        if (route.has("rule-set")) {
             val ruleSets = route.optJSONArray("rule-set")
-            if (!obj.has("rule-set") && !obj.has("rule_set")) {
-                obj.put("rule_set", ruleSets)
-                Log.d(
-                        "V2RayConfigConverter",
-                        "Moved rule-set (dash) from route to root as rule_set"
-                )
+            if (!route.has("rule_set")) {
+                route.put("rule_set", ruleSets)
+                Log.d("V2RayConfigConverter", "Renamed rule-set to rule_set inside route")
             }
             route.remove("rule-set")
         }
@@ -1052,6 +1069,14 @@ object V2RayConfigConverter {
             val proxyDomains = JSONArray()
             for (i in 0 until outbounds.length()) {
                 val ob = outbounds.optJSONObject(i) ?: continue
+                val type = ob.optString("type", "")
+                if (type == "vless") {
+                    val flow = ob.optString("flow", "")
+                    if (flow == "xtls-rprx-vision-udp443") {
+                        ob.put("flow", "xtls-rprx-vision")
+                        ob.put("packet_encoding", "xudp")
+                    }
+                }
                 val server = ob.optString("server", "")
                 if (server.isNotEmpty() && !server[0].isDigit() && !dnsRulesStr.contains(server)) {
                     proxyDomains.put(server)
@@ -1147,7 +1172,7 @@ object V2RayConfigConverter {
             val routeStr = route.toString()
             if (routeStr.contains("geosite-ru") || routeStr.contains("geoip-ru")) {
                 val ruleSets =
-                        obj.optJSONArray("rule_set") ?: JSONArray().also { obj.put("rule_set", it) }
+                        route.optJSONArray("rule_set") ?: JSONArray().also { route.put("rule_set", it) }
                 val tags = mutableSetOf<String>()
                 for (i in 0 until ruleSets.length()) {
                     ruleSets.optJSONObject(i)?.optString("tag")?.let { tags.add(it) }

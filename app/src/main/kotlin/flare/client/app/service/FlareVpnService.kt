@@ -26,6 +26,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.runBlocking
 
 class FlareVpnService : VpnService() {
 
@@ -56,13 +57,20 @@ class FlareVpnService : VpnService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null || intent.action == null) {
             Log.w(TAG, "onStartCommand: intent or action is null, stopping service (startId=$startId)")
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf(startId)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIF_ID)
+            stopSelf()
             return START_NOT_STICKY
         }
         val action = intent.action
         val configJson = intent.getStringExtra(EXTRA_CONFIG)
         val name = intent.getStringExtra(EXTRA_PROFILE_NAME) ?: "Flare Profile"
+
+        if (action == ACTION_START) {
+            android.widget.Toast.makeText(this, I18n.strings.vpn_starting, android.widget.Toast.LENGTH_SHORT).show()
+        } else if (action == ACTION_STOP) {
+            android.widget.Toast.makeText(this, I18n.strings.vpn_stopping, android.widget.Toast.LENGTH_SHORT).show()
+        }
 
         serviceScope.launch {
             commandMutex.withLock {
@@ -71,7 +79,7 @@ class FlareVpnService : VpnService() {
                         val vpnIntent = VpnService.prepare(this@FlareVpnService)
                         if (vpnIntent != null) {
                             broadcastState(false, error = true, permissionRequired = true)
-                            stopSelf(startId)
+                            stopSelf()
                             return@withLock
                         }
 
@@ -87,28 +95,31 @@ class FlareVpnService : VpnService() {
         return START_STICKY
     }
 
+    override fun onRevoke() {
+        Log.i(TAG, "onRevoke called")
+        super.onRevoke()
+        serviceScope.launch {
+            commandMutex.withLock {
+                stopVpnInternal()
+            }
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
-        serviceScope.launch {
+        runBlocking {
             commandMutex.withLock {
                 stopVpnInternal()
                 SingBoxManager.destroy()
             }
-            serviceScope.cancel()
         }
+        serviceScope.cancel()
     }
 
     private suspend fun startVpnInternal(configJson: String, startId: Int) {
         val notification = buildNotification()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                    NOTIF_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
-        } else {
-            startForeground(NOTIF_ID, notification)
-        }
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(NOTIF_ID, notification)
 
         try {
             GeoFileManager.ensureGeoFiles(this)
@@ -191,10 +202,11 @@ class FlareVpnService : VpnService() {
         Log.i(TAG, "stopVpnInternal: begin (startId=$startId)")
         statsJob?.cancel()
         broadcastState(false)
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(NOTIF_ID)
         SingBoxManager.stop()
         Log.i(TAG, "stopVpnInternal: engine stopped")
-        if (startId != -1) stopSelf(startId)
+        stopSelf()
     }
 
     private suspend fun stopVpnOnError(
@@ -205,9 +217,10 @@ class FlareVpnService : VpnService() {
         Log.i(TAG, "stopVpnOnError: startId=$startId, error=$errorMessage, permission=$permissionRequired")
         statsJob?.cancel()
         broadcastState(false, error = true, permissionRequired = permissionRequired, errorMessage = errorMessage)
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(NOTIF_ID)
         SingBoxManager.stop()
-        stopSelf(startId)
+        stopSelf()
     }
 
     private fun broadcastState(connected: Boolean, error: Boolean = false, permissionRequired: Boolean = false, errorMessage: String? = null) {

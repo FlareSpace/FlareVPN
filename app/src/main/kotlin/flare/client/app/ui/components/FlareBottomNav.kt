@@ -8,6 +8,8 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -80,7 +82,7 @@ fun Modifier.bottomNavSoftShadow(
                     14.dp.toPx(),
                     0f,
                     4.dp.toPx(),
-                    android.graphics.Color.argb(18, 0, 0, 0)
+                    android.graphics.Color.argb(32, 0, 0, 0)
                 )
             }
             nativeCanvas.drawRoundRect(
@@ -100,7 +102,7 @@ fun Modifier.bottomNavSoftShadow(
                     8.dp.toPx(),
                     0f,
                     6.dp.toPx(),
-                    android.graphics.Color.argb(12, 0, 0, 0)
+                    android.graphics.Color.argb(22, 0, 0, 0)
                 )
             }
             nativeCanvas.drawRoundRect(
@@ -244,11 +246,28 @@ fun FlareBottomNav(
                             }
                         } else {
                             it.background(
-                                color = if (isDarkTheme) Color(0xA0202228) else Color(0x46FFFFFF),
+                                color = if (isDarkTheme) Color(0xA0202228) else Color(0x87FFFFFF),
                                 shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
                             )
                         }
                     }
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.verticalGradient(
+                            colors = if (isDarkTheme) {
+                                listOf(
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.White.copy(alpha = 0.05f)
+                                )
+                            } else {
+                                listOf(
+                                    Color.White.copy(alpha = 0.65f),
+                                    Color.Black.copy(alpha = 0.08f)
+                                )
+                            }
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp)
+                    )
             )
 
             
