@@ -45,12 +45,11 @@ In version 1.1.0, the ability to create your own personal VPN servers was added.
 - [x] **Profile Management:** Improved interaction with single profiles (e.g., adding a delete button and other management features).
 - [x] **JSON Converter:** Potential improvements to the Xray to Sing-box JSON converter.
 
-### ⚠️ Warning
-Flare is currently in **Beta**. You may encounter bugs or instability. 
-To report an issue, please contact us in our Telegram chat.
-
 ### 📢 Telegram Channel
 **[@FlareApp](https://t.me/FlareApp)** - Official Flare VPN news and updates.
+
+### 🧪 Join the test Flare 1.2.0
+We created a channel with beta versions of Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
 
@@ -88,12 +87,11 @@ Flare поддерживает широкий спектр современны�
 - [x] **Улучшение работы с профилями:** Более удобное взаимодействие с одиночными профилями (кнопка удаления и другие функции управления).
 - [x] **Конвертер JSON:** Возможное улучшение конвертера JSON из формата Xray в Sing-box.
 
-### ⚠️ Предупреждение
-На данный момент Flare находится в стадии **Бета-тестирования** и может работать нестабильно. 
-Чтобы сообщить об ошибке, вы можете обратиться в чат нашего Telegram-канала.
-
 ### 📢 Telegram-канал
 **[@FlareApp](https://t.me/FlareApp)** — официальный Telegram-канал проекта Flare VPN.
+
+###  🧪 Присоединяйтесь к тестированию Flare 1.2.0
+Мы создали канал с бета-версиями Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
 

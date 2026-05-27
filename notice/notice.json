@@ -1,0 +1,19 @@
+{
+  "id": 285,
+  "show": false,
+  "min_version_code": 1,
+  "max_version_code": 99999,
+  "title": {
+    "ru": "stub",
+    "en": "stub"
+  },
+  "text": {
+    "ru": "stub",
+    "en": "stub"
+  },
+  "action_text": {
+    "ru": "Понятно",
+    "en": "Got it"
+  },
+  "action_url": ""
+}
