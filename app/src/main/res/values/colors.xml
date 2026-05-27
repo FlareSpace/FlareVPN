@@ -7,7 +7,7 @@
     <color name="bg_notification_bar">#F0F2F5</color>
 
     <color name="accent">#5B8CFF</color>
-    <color name="accent_end">#A066FF</color>
+    <color name="accent_end">#5B8CFF</color>
 
     <color name="text_primary">#1A1C1E</color>
     <color name="text_secondary">#707991</color>
@@ -31,15 +31,15 @@
     <color name="btn_connect_body_end">#D1D5DB</color>
     <color name="btn_connect_icon_tint">#707991</color>
     <color name="gradient_base">#E8EBF0</color>
-    <color name="gradient_blue_start">#605B8CFF</color>
+    <color name="gradient_blue_start">#355B8CFF</color>
     <color name="gradient_blue_end">#005B8CFF</color>
-    <color name="gradient_purple_start">#60A066FF</color>
+    <color name="gradient_purple_start">#35A066FF</color>
     <color name="gradient_purple_end">#00A066FF</color>
-    <color name="gradient_magenta_start">#50FF4081</color>
+    <color name="gradient_magenta_start">#25FF4081</color>
     <color name="gradient_magenta_end">#00FF4081</color>
-    <color name="gradient_cyan_start">#5000E5FF</color>
+    <color name="gradient_cyan_start">#2500E5FF</color>
     <color name="gradient_cyan_end">#0000E5FF</color>
-    <color name="gradient_white_start">#CCFFFFFF</color>
+    <color name="gradient_white_start">#80FFFFFF</color>
     <color name="gradient_white_end">#00FFFFFF</color>
     
     <color name="dialog_glass_fill">#4DFFFFFF</color>
@@ -53,4 +53,7 @@
     <color name="slider_thumb_stroke">#00000000</color>
     <color name="glass_input_bg">#1A000000</color>
     <color name="traffic_progress">#FF5722</color>
+
+    <color name="info_bg">#1A000000</color>
+    <color name="info_stroke">#26000000</color>
 </resources>

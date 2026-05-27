@@ -2,13 +2,14 @@ package flare.client.app.data.dao
 
 import androidx.room.*
 import flare.client.app.data.model.ProfileEntity
+import flare.client.app.data.model.ProfileSummary
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProfileDao {
 
-    @Query("SELECT * FROM profiles ORDER BY id ASC")
-    fun getAllProfiles(): Flow<List<ProfileEntity>>
+    @Query("SELECT id, name, uri, serverDescription, subscriptionId, isSelected, protocol FROM profiles ORDER BY id ASC")
+    fun getAllProfiles(): Flow<List<ProfileSummary>>
 
     @Query("SELECT * FROM profiles WHERE subscriptionId IS NULL ORDER BY id ASC")
     fun getStandaloneProfiles(): Flow<List<ProfileEntity>>
@@ -31,11 +32,17 @@ interface ProfileDao {
     @Query("SELECT * FROM profiles WHERE isSelected = 1 LIMIT 1")
     suspend fun getSelectedProfile(): ProfileEntity?
 
+    @Query("SELECT * FROM profiles WHERE id = :id LIMIT 1")
+    suspend fun getProfileById(id: Long): ProfileEntity?
+
+    @Query("SELECT * FROM profiles WHERE id IN (:ids)")
+    suspend fun getProfilesByIds(ids: List<Long>): List<ProfileEntity>
+
     @Query("UPDATE profiles SET configJson = :configJson WHERE id = :id")
     suspend fun updateConfigJson(id: Long, configJson: String)
 
-    @Query("UPDATE profiles SET name = :name, configJson = :configJson WHERE id = :id")
-    suspend fun updateProfile(id: Long, name: String, configJson: String)
+    @Query("UPDATE profiles SET name = :name, configJson = :configJson, protocol = :protocol, serverDescription = :serverDescription WHERE id = :id")
+    suspend fun updateProfile(id: Long, name: String, configJson: String, protocol: String?, serverDescription: String?)
 
     @Update
     suspend fun updateProfileFull(profile: ProfileEntity)

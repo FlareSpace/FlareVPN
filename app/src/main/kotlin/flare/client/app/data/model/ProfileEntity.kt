@@ -24,5 +24,6 @@ data class ProfileEntity(
     val configJson: String,
     val serverDescription: String? = null,
     val subscriptionId: Long? = null,
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val protocol: String? = null
 )

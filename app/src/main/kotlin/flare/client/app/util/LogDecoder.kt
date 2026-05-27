@@ -1,5 +1,7 @@
 package flare.client.app.util
 
+import flare.client.app.ui.i18n.I18n
+
 import android.content.Context
 import flare.client.app.R
 
@@ -23,7 +25,7 @@ object LogDecoder {
         val decodedMessage = when {
             message.contains("Создание туннеля", ignoreCase = true) || 
             message.contains("Creating tunnel", ignoreCase = true) -> {
-                context.getString(R.string.log_decoding_tunnel_creation)
+                I18n.strings.log_decoding_tunnel_creation
             }
             
             (message.contains("MTU", ignoreCase = true) && message.contains("STACK", ignoreCase = true)) -> {
@@ -31,12 +33,12 @@ object LogDecoder {
                 val stackMatch = Regex("STACK\\s+(\\w+)").find(message)
                 val mtu = mtuMatch?.groupValues?.get(1) ?: "unknown"
                 val stack = stackMatch?.groupValues?.get(1) ?: "unknown"
-                context.getString(R.string.log_decoding_mtu_stack, mtu, stack)
+                I18n.strings.log_decoding_mtu_stack.format(mtu, stack)
             }
 
             message.contains("Фрагментация включена", ignoreCase = true) || 
             message.contains("Fragmentation enabled", ignoreCase = true) -> {
-                context.getString(R.string.log_decoding_fragmentation)
+                I18n.strings.log_decoding_fragmentation
             }
 
             else -> message

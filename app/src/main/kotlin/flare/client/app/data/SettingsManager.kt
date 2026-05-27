@@ -15,7 +15,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString("frag_packet_type", value).apply()
 
     var fragmentInterval: String
-        get() = prefs.getString("frag_interval", "10") ?: "10"
+        get() = prefs.getString("frag_interval", "350") ?: "350"
         set(value) = prefs.edit().putString("frag_interval", value).apply()
 
     var pingType: String
@@ -70,6 +70,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("sub_auto_update_interval", "3600") ?: "3600"
         set(value) = prefs.edit().putString("sub_auto_update_interval", value).apply()
 
+    var subUserAgent: String
+        get() = prefs.getString("sub_user_agent", "Happ/3.21.1") ?: "Happ/3.21.1"
+        set(value) = prefs.edit().putString("sub_user_agent", value).apply()
+
     var lastSubUpdateTime: Long
         get() = prefs.getLong("last_sub_update_time", 0L)
         set(value) = prefs.edit().putLong("last_sub_update_time", value).apply()
@@ -110,12 +114,16 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("bg_gradient_animation_enabled", value).apply()
 
     var gradientAnimationSpeed: Float
-        get() = prefs.getFloat("bg_gradient_animation_speed", 1.0f)
+        get() = prefs.getFloat("bg_gradient_animation_speed", 0.6f)
         set(value) = prefs.edit().putFloat("bg_gradient_animation_speed", value).apply()
 
     var isStatusNotificationEnabled: Boolean
         get() = prefs.getBoolean("status_notification_enabled", true)
         set(value) = prefs.edit().putBoolean("status_notification_enabled", value).apply()
+
+    var isNotificationSpeedEnabled: Boolean
+        get() = prefs.getBoolean("notification_speed_enabled", true)
+        set(value) = prefs.edit().putBoolean("notification_speed_enabled", value).apply()
 
     var pendingNavScreen: String
         get() = prefs.getString("pending_nav_screen", "") ?: ""
@@ -146,11 +154,11 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("onboarding_completed", value).apply()
 
     var isUpdateCheckEnabled: Boolean
-        get() = prefs.getBoolean("update_check_enabled", false)
+        get() = prefs.getBoolean("update_check_enabled", true)
         set(value) = prefs.edit().putBoolean("update_check_enabled", value).apply()
 
     var updateCheckFrequency: String
-        get() = prefs.getString("update_check_frequency", "daily") ?: "daily"
+        get() = prefs.getString("update_check_frequency", "weekly") ?: "weekly"
         set(value) = prefs.edit().putString("update_check_frequency", value).apply()
 
     var lastUpdateCheckTime: Long
@@ -171,7 +179,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putString("app_language", value).apply()
 
     var isHwidEnabled: Boolean
-        get() = prefs.getBoolean("hwid_enabled", false)
+        get() = prefs.getBoolean("hwid_enabled", true)
         set(value) = prefs.edit().putBoolean("hwid_enabled", value).apply()
 
     var isCoreLogEnabled: Boolean
@@ -185,4 +193,130 @@ class SettingsManager(context: Context) {
     var coreLogLevel: String
         get() = prefs.getString("core_log_level", "warn") ?: "warn"
         set(value) = prefs.edit().putString("core_log_level", value).apply()
+    var isRoutingMainEnabled: Boolean
+        get() = prefs.getBoolean("routing_main_enabled", false)
+        set(value) = prefs.edit().putBoolean("routing_main_enabled", value).apply()
+
+    var routingMainMode: String
+        get() = prefs.getString("routing_main_mode", "direct") ?: "direct"
+        set(value) = prefs.edit().putString("routing_main_mode", value).apply()
+
+    var lastRoutingUpdateMain: Long
+        get() = prefs.getLong("last_routing_update_main", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_main", value).apply()
+
+    
+    var isRoutingMediaEnabled: Boolean
+        get() = prefs.getBoolean("routing_media_enabled", false)
+        set(value) = prefs.edit().putBoolean("routing_media_enabled", value).apply()
+
+    var routingMediaMode: String
+        get() = prefs.getString("routing_media_mode", "direct") ?: "direct"
+        set(value) = prefs.edit().putString("routing_media_mode", value).apply()
+
+    
+    var isRoutingSocialEnabled: Boolean
+        get() = prefs.getBoolean("routing_social_enabled", false)
+        set(value) = prefs.edit().putBoolean("routing_social_enabled", value).apply()
+
+    var routingSocialMode: String
+        get() = prefs.getString("routing_social_mode", "direct") ?: "direct"
+        set(value) = prefs.edit().putString("routing_social_mode", value).apply()
+
+    
+    var isRoutingAdsEnabled: Boolean
+        get() = prefs.getBoolean("routing_ads_enabled", false)
+        set(value) = prefs.edit().putBoolean("routing_ads_enabled", value).apply()
+
+    var routingAdsMode: String
+        get() = prefs.getString("routing_ads_mode", "block") ?: "block"
+        set(value) = prefs.edit().putString("routing_ads_mode", value).apply()
+
+    
+    var isRoutingCnEnabled: Boolean
+        get() = prefs.getBoolean("routing_cn_enabled", false)
+        set(value) = prefs.edit().putBoolean("routing_cn_enabled", value).apply()
+
+    var routingCnMode: String
+        get() = prefs.getString("routing_cn_mode", "direct") ?: "direct"
+        set(value) = prefs.edit().putString("routing_cn_mode", value).apply()
+
+    var lastRoutingUpdateMedia: Long
+        get() = prefs.getLong("last_routing_update_media", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_media", value).apply()
+
+    var lastRoutingUpdateSocial: Long
+        get() = prefs.getLong("last_routing_update_social", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_social", value).apply()
+
+    var lastRoutingUpdateAds: Long
+        get() = prefs.getLong("last_routing_update_ads", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_ads", value).apply()
+
+    var isRoutingGlobalEnabled: Boolean
+        get() = prefs.getBoolean("is_routing_global_enabled", false)
+        set(value) = prefs.edit().putBoolean("is_routing_global_enabled", value).apply()
+
+    var routingGlobalMode: String
+        get() = prefs.getString("routing_global_mode", "proxy") ?: "proxy"
+        set(value) = prefs.edit().putString("routing_global_mode", value).apply()
+
+    var lastRoutingUpdateGlobal: Long
+        get() = prefs.getLong("last_routing_update_global", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_global", value).apply()
+
+    var lastRoutingUpdateCn: Long
+        get() = prefs.getLong("last_routing_update_cn", 0L)
+        set(value) = prefs.edit().putLong("last_routing_update_cn", value).apply()
+
+    var lastReadNoticeId: Int
+        get() = prefs.getInt("last_read_notice_id", 0)
+        set(value) = prefs.edit().putInt("last_read_notice_id", value).apply()
+
+    var needsToShowNotice: Boolean
+        get() = prefs.getBoolean("needs_to_show_notice", false)
+        set(value) = prefs.edit().putBoolean("needs_to_show_notice", value).apply()
+
+    var noticeId: Int
+        get() = prefs.getInt("notice_id", 0)
+        set(value) = prefs.edit().putInt("notice_id", value).apply()
+
+    var noticeTitleRu: String
+        get() = prefs.getString("notice_title_ru", "") ?: ""
+        set(value) = prefs.edit().putString("notice_title_ru", value).apply()
+
+    var noticeTitleEn: String
+        get() = prefs.getString("notice_title_en", "") ?: ""
+        set(value) = prefs.edit().putString("notice_title_en", value).apply()
+
+    var noticeTextRu: String
+        get() = prefs.getString("notice_text_ru", "") ?: ""
+        set(value) = prefs.edit().putString("notice_text_ru", value).apply()
+
+    var noticeTextEn: String
+        get() = prefs.getString("notice_text_en", "") ?: ""
+        set(value) = prefs.edit().putString("notice_text_en", value).apply()
+
+    var noticeActionTextRu: String
+        get() = prefs.getString("notice_action_text_ru", "") ?: ""
+        set(value) = prefs.edit().putString("notice_action_text_ru", value).apply()
+
+    var noticeActionTextEn: String
+        get() = prefs.getString("notice_action_text_en", "") ?: ""
+        set(value) = prefs.edit().putString("notice_action_text_en", value).apply()
+
+    var noticeActionUrl: String
+        get() = prefs.getString("notice_action_url", "") ?: ""
+        set(value) = prefs.edit().putString("notice_action_url", value).apply()
+
+    var isResetChainOnDisconnect: Boolean
+        get() = prefs.getBoolean("reset_chain_on_disconnect", false)
+        set(value) = prefs.edit().putBoolean("reset_chain_on_disconnect", value).apply()
+
+    var chainedProfileIdsString: String
+        get() = prefs.getString("chained_profile_ids", "") ?: ""
+        set(value) = prefs.edit().putString("chained_profile_ids", value).apply()
 }
+
+
+

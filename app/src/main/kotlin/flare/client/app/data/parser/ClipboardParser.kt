@@ -1,5 +1,7 @@
 package flare.client.app.data.parser
 
+import flare.client.app.ui.i18n.I18n
+
 import android.content.Context
 import android.util.Base64
 import flare.client.app.R
@@ -27,23 +29,48 @@ object ClipboardParser {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    private val singleSchemes = setOf("vless", "vmess", "ss", "trojan", "shadowsocks")
+    private val singleSchemes = setOf("vless", "vmess", "ss", "trojan", "shadowsocks", "hysteria", "hy", "hysteria2", "hy2", "wireguard", "wg")
 
     sealed class ParseResult {
         data class SingleProfile(val profile: ProfileEntity) : ParseResult()
+        data class MultipleProfiles(val profiles: List<ProfileEntity>) : ParseResult()
         data class Subscription(val subscription: SubscriptionEntity, val profiles: List<ProfileEntity>) : ParseResult()
         data class Error(val message: String) : ParseResult()
     }
 
-    suspend fun parse(context: Context, text: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null): ParseResult {
+    suspend fun parse(context: Context, text: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null): ParseResult {
         val trimmed = text.trim()
+
+        val multiLinks = extractSingleProxyLinks(trimmed)
+        if (multiLinks.size > 1) {
+            val profiles = multiLinks.mapNotNull { link ->
+                try {
+                    buildProfileFromUri(context, link, subscriptionId = null)
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            return if (profiles.isNotEmpty()) {
+                ParseResult.MultipleProfiles(profiles)
+            } else {
+                ParseResult.Error(I18n.strings.error_invalid_format)
+            }
+        }
+
         return when {
             trimmed.startsWith("{") && trimmed.endsWith("}") -> parseFullJson(context, trimmed)
-            singleSchemes.any { trimmed.startsWith("$it://") } -> parseSingleProxy(context, trimmed)
-            trimmed.startsWith("http://") -> ParseResult.Error(context.getString(R.string.error_subscription_https_required))
-            trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion)
-            else -> ParseResult.Error(context.getString(R.string.error_invalid_format))
+            singleSchemes.any { trimmed.startsWith("$it://", ignoreCase = true) } -> parseSingleProxy(context, trimmed)
+            trimmed.startsWith("http://") -> ParseResult.Error(I18n.strings.error_subscription_https_required)
+            trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion, userAgent)
+            else -> ParseResult.Error(I18n.strings.error_invalid_format)
         }
+    }
+
+    private fun extractSingleProxyLinks(text: String): List<String> {
+        return text
+            .lines()
+            .map { it.trim() }
+            .filter { line -> line.isNotEmpty() && singleSchemes.any { scheme -> line.startsWith("$scheme://", ignoreCase = true) } }
     }
 
     private fun parseSingleProxy(context: Context, uri: String): ParseResult {
@@ -51,7 +78,7 @@ object ClipboardParser {
             val profile = buildProfileFromUri(context, uri, subscriptionId = null)
             ParseResult.SingleProfile(profile)
         } catch (e: Exception) {
-            ParseResult.Error(context.getString(R.string.error_parsing, e.message ?: ""))
+            ParseResult.Error(I18n.strings.error_parsing.format(e.message ?: ""))
         }
     }
 
@@ -60,15 +87,27 @@ object ClipboardParser {
             val json = JSONObject(text)
             val name = extractNameFromJson(context, json)
             val configJson = V2RayConfigConverter.convertIfNeeded(text)
-            ParseResult.SingleProfile(ProfileEntity(name = name, uri = "internal://json", configJson = configJson, subscriptionId = null))
+            val protocol = try {
+                val outbounds = JSONObject(configJson).optJSONArray("outbounds")
+                outbounds?.optJSONObject(0)?.optString("type")
+            } catch (_: Exception) { null }
+            val desc = ProfileParsingHelper.parseTransportAndSecurityFromJson(configJson)
+            ParseResult.SingleProfile(ProfileEntity(name = name, uri = "internal://json", configJson = configJson, serverDescription = desc, subscriptionId = null, protocol = protocol))
         } catch (e: Exception) {
-            ParseResult.Error(context.getString(R.string.error_json, e.message ?: ""))
+            ParseResult.Error(I18n.strings.error_json.format(e.message ?: ""))
         }
     }
 
-    private suspend fun parseSubscriptionUrl(context: Context, url: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null): ParseResult {
+    private suspend fun parseSubscriptionUrl(context: Context, url: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null): ParseResult {
         return try {
+            val ua = when (userAgent) {
+                null -> "Happ/3.21.1"
+                "custom" -> "Flare/1.2.0"
+                else -> userAgent
+            }
             var finalUrl = url
+            
+            
             if (hwid != null) {
                 val base = if (url.contains("#")) url.substringBefore("#") else url
                 val fragment = if (url.contains("#")) "#" + url.substringAfter("#") else ""
@@ -79,10 +118,10 @@ object ClipboardParser {
                 finalUrl = currentUrl + fragment
             }
 
-            val userAgent = "Happ/3.15.2"
             val requestBuilder = Request.Builder()
                 .url(finalUrl)
-                .header("User-Agent", userAgent)
+                .header("User-Agent", ua)
+            
             
             if (androidVersion != null) {
                 requestBuilder.header("x-ver-os", androidVersion)
@@ -98,12 +137,37 @@ object ClipboardParser {
             val response = try {
                 httpClient.newCall(request).await()
             } catch (e: Exception) {
-                return ParseResult.Error(context.getString(R.string.error_subscription, e.message ?: ""))
+                return ParseResult.Error(I18n.strings.error_subscription.format(e.message ?: ""))
             }
-            val body = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                val code = response.code
+                response.close()
+                return ParseResult.Error(I18n.strings.error_subscription.format("HTTP $code"))
+            }
+
+            val body = response.body.string()
             val profileTitle = response.header("profile-title")
             val contentDisposition = response.header("content-disposition")
-            val name = extractSubscriptionName(url, profileTitle, contentDisposition)
+
+            val proxyLines = decodeSubscriptionBody(body)
+            var bodyProfileTitle: String? = null
+            val profileTitleRegex = Regex("""^(?:#|//|;)?\s*profile-title\s*[:=]\s*(.+)$""", RegexOption.IGNORE_CASE)
+            val filteredProxyLines = proxyLines.filter { line ->
+                val trimmedLine = line.trim()
+                val match = profileTitleRegex.find(trimmedLine)
+                if (match != null) {
+                    if (bodyProfileTitle == null) {
+                        bodyProfileTitle = match.groupValues[1].trim()
+                    }
+                    false
+                } else {
+                    true
+                }
+            }
+
+            val finalProfileTitle = profileTitle ?: bodyProfileTitle
+            val name = extractSubscriptionName(url, finalProfileTitle, contentDisposition)
             val userInfo = response.header("subscription-userinfo")
             val descParts = mutableListOf<String>()
 
@@ -137,10 +201,9 @@ object ClipboardParser {
                     }
                 }
             }
-            val proxyLines = decodeSubscriptionBody(body)
-            val profiles = proxyLines.mapIndexedNotNull { _, line -> try { buildProfileFromUri(context, line.trim(), 0L) } catch (_: Exception) { null } }
+            val profiles = filteredProxyLines.mapIndexedNotNull { _, line -> try { buildProfileFromUri(context, line.trim(), 0L) } catch (_: Exception) { null } }
             response.close()
-            if (profiles.isEmpty()) return ParseResult.Error(context.getString(R.string.error_subscription_empty))
+            if (profiles.isEmpty()) return ParseResult.Error(I18n.strings.error_subscription_empty)
             ParseResult.Subscription(
                 SubscriptionEntity(
                     name = name,
@@ -156,7 +219,7 @@ object ClipboardParser {
                 profiles
             )
         } catch (e: Exception) {
-            ParseResult.Error(context.getString(R.string.error_subscription, e.message ?: ""))
+            ParseResult.Error(I18n.strings.error_subscription.format(e.message ?: ""))
         }
     }
 
@@ -221,7 +284,7 @@ object ClipboardParser {
                 it.optString("tag").takeIf { tag -> tag.isNotBlank() && tag != "proxy" }
                     ?: it.optString("server").takeIf { srv -> srv.isNotBlank() }
             }
-            ?: context.getString(R.string.label_imported_profile)
+            ?: I18n.strings.label_imported_profile
     }
 
     private fun decodeSubscriptionBody(body: String): List<String> {
@@ -302,11 +365,17 @@ object ClipboardParser {
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
             val json = JSONObject(trimmed)
             val name = extractNameFromJson(context, json)
-            return ProfileEntity(name = name, uri = "internal://json", configJson = V2RayConfigConverter.convertIfNeeded(trimmed), subscriptionId = subscriptionId)
+            val configJson = V2RayConfigConverter.convertIfNeeded(trimmed)
+            val protocol = try {
+                val outbounds = JSONObject(configJson).optJSONArray("outbounds")
+                outbounds?.optJSONObject(0)?.optString("type")
+            } catch (_: Exception) { null }
+            val desc = ProfileParsingHelper.parseTransportAndSecurityFromJson(configJson)
+            return ProfileEntity(name = name, uri = "internal://json", configJson = configJson, serverDescription = desc, subscriptionId = subscriptionId, protocol = protocol)
         }
 
         val parsed = URI(uri)
-        val scheme = parsed.scheme
+        val scheme = parsed.scheme?.lowercase() ?: ""
         val displayName = extractDisplayName(uri)
         val params = parseQuery(parsed.rawQuery)
 
@@ -321,19 +390,33 @@ object ClipboardParser {
         val xrayOutbound = when (scheme) {
             "vless" -> buildVlessOutbound(parsed, params)
             "vmess" -> buildVmessOutbound(uri)
-            "ss", "shadowsocks" -> buildShadowsocksOutbound(parsed)
+            "ss", "shadowsocks" -> buildShadowsocksOutbound(uri)
             "trojan" -> buildTrojanOutbound(parsed, params)
+            "hysteria", "hy" -> buildHysteriaOutbound(parsed, params)
+            "hysteria2", "hy2" -> buildHysteria2Outbound(parsed, params)
+            "wireguard", "wg" -> null
             else -> throw IllegalArgumentException("Protocol $scheme not supported")
         }
-        val sbOutbounds = V2RayConfigConverter.convertOutboundsPublic(JSONArray().put(xrayOutbound))
-        val proxyOutbound = sbOutbounds.optJSONObject(0)
-            ?: throw IllegalArgumentException("Failed to convert outbound for $scheme")
+        val proxyOutbounds = if (scheme == "wireguard" || scheme == "wg") {
+            listOf(buildWireGuardOutbound(uri, parsed, params))
+        } else {
+            val sbOutbounds = V2RayConfigConverter.convertOutboundsPublic(JSONArray().put(xrayOutbound))
+            val list = mutableListOf<JSONObject>()
+            for (i in 0 until sbOutbounds.length()) {
+                sbOutbounds.optJSONObject(i)?.let { list.add(it) }
+            }
+            if (list.isEmpty()) {
+                throw IllegalArgumentException("Failed to convert outbound for $scheme")
+            }
+            list
+        }
 
-        val configJson = buildMinimalSingBoxConfig(proxyOutbound, proxyServer)
-        return ProfileEntity(name = displayName, uri = uri, configJson = configJson, subscriptionId = subscriptionId)
+        val protocol = if (scheme == "wg" || scheme == "wireguard") "wireguard" else scheme
+        val configJson = buildMinimalSingBoxConfig(proxyOutbounds, proxyServer)
+        return ProfileEntity(name = displayName, uri = uri, configJson = configJson, subscriptionId = subscriptionId, protocol = protocol)
     }
 
-    private fun buildMinimalSingBoxConfig(proxyOutbound: JSONObject, proxyServer: String): String {
+    private fun buildMinimalSingBoxConfig(proxyOutbounds: List<JSONObject>, proxyServer: String): String {
         val sb = JSONObject()
 
         sb.put("log", JSONObject().apply {
@@ -364,7 +447,7 @@ object ClipboardParser {
             })
             put("rules", JSONArray().apply {
                 put(JSONObject().apply {
-                    put("outbound", JSONArray().put("any"))
+                    put("outbound", JSONArray().put("direct"))
                     put("server", "dns-direct")
                 })
                 if (proxyDomains.length() > 0) {
@@ -395,7 +478,7 @@ object ClipboardParser {
         })
 
         sb.put("outbounds", JSONArray().apply {
-            put(proxyOutbound)
+            proxyOutbounds.forEach { put(it) }
             put(JSONObject().apply { put("type", "direct"); put("tag", "direct") })
             put(JSONObject().apply { put("type", "block"); put("tag", "block") })
         })
@@ -412,8 +495,8 @@ object ClipboardParser {
                 if (proxyDomains.length() > 0) {
                     put(JSONObject().apply { put("domain", proxyDomains); put("outbound", "direct") })
                 }
-                put(JSONObject().apply { put("rule_set", "geosite-ru"); put("outbound", "direct") })
-                put(JSONObject().apply { put("rule_set", "geoip-ru"); put("outbound", "direct") })
+                put(JSONObject().apply { put("rule_set", JSONArray().put("geosite-ru")); put("outbound", "direct") })
+                put(JSONObject().apply { put("rule_set", JSONArray().put("geoip-ru")); put("outbound", "direct") })
             })
             put("rule_set", JSONArray().apply {
                 put(JSONObject().apply {
@@ -479,18 +562,160 @@ object ClipboardParser {
         }
     }
 
-    private fun buildShadowsocksOutbound(parsed: URI): JSONObject = JSONObject().apply {
-        put("protocol", "shadowsocks")
-        put("tag", "proxy")
-        val userInfo = try { String(Base64.decode(parsed.userInfo ?: "", Base64.DEFAULT)) } catch (_: Exception) { parsed.userInfo ?: ":" }
-        put("settings", JSONObject().apply {
-            put("servers", JSONArray().put(JSONObject().apply {
-                put("address", parsed.host)
-                put("port", if (parsed.port > 0) parsed.port else 8388)
-                put("method", userInfo.substringBefore(":"))
-                put("password", userInfo.substringAfter(":"))
-            }))
-        })
+    private fun buildShadowsocksOutbound(uri: String): JSONObject {
+        val clean = uri.trim()
+        val schemePrefix = if (clean.startsWith("shadowsocks://", ignoreCase = true)) {
+            "shadowsocks://"
+        } else {
+            "ss://"
+        }
+        
+        
+        val mainPart = clean.substring(schemePrefix.length).substringBefore("#")
+        val urlPart = mainPart.substringBefore("?")
+        val queryPart = if (mainPart.contains("?")) mainPart.substringAfter("?") else ""
+        
+        
+        var decodedMain = ""
+        try {
+            val normalizedB64 = urlPart.replace("-", "+").replace("_", "/")
+            val padded = when (normalizedB64.length % 4) {
+                2 -> "$normalizedB64=="
+                3 -> "$normalizedB64="
+                else -> normalizedB64
+            }
+            val decodedBytes = Base64.decode(padded, Base64.DEFAULT)
+            decodedMain = String(decodedBytes, Charsets.UTF_8)
+        } catch (_: Exception) {}
+        
+        var method = ""
+        var password = ""
+        var host = ""
+        var port = 8388
+        
+        if (decodedMain.contains("@") && decodedMain.contains(":")) {
+            val methodPassword = decodedMain.substringBeforeLast("@")
+            val hostPort = decodedMain.substringAfterLast("@")
+            
+            method = methodPassword.substringBefore(":")
+            password = methodPassword.substringAfter(":")
+            
+            if (hostPort.contains(":")) {
+                host = hostPort.substringBeforeLast(":")
+                port = hostPort.substringAfterLast(":").toIntOrNull() ?: 8388
+            } else {
+                host = hostPort
+            }
+        } else {
+            
+            
+            if (urlPart.contains("@")) {
+                val authority = urlPart.substringBeforeLast("@")
+                val hostPort = urlPart.substringAfterLast("@")
+                
+                val decodedAuth = if (!authority.contains(":")) {
+                    try {
+                        val normalizedB64 = authority.replace("-", "+").replace("_", "/")
+                        val padded = when (normalizedB64.length % 4) {
+                            2 -> "$normalizedB64=="
+                            3 -> "$normalizedB64="
+                            else -> normalizedB64
+                        }
+                        String(Base64.decode(padded, Base64.DEFAULT), Charsets.UTF_8)
+                    } catch (_: Exception) {
+                        authority
+                    }
+                } else {
+                    authority
+                }
+                
+                method = decodedAuth.substringBefore(":")
+                password = decodedAuth.substringAfter(":")
+                
+                if (hostPort.contains(":")) {
+                    host = hostPort.substringBeforeLast(":")
+                    port = hostPort.substringAfterLast(":").toIntOrNull() ?: 8388
+                } else {
+                    host = hostPort
+                }
+            } else {
+                
+                try {
+                    val parsed = URI(uri)
+                    host = parsed.host ?: ""
+                    port = if (parsed.port > 0) parsed.port else 8388
+                    val userInfo = try { String(Base64.decode(parsed.userInfo ?: "", Base64.DEFAULT)) } catch (_: Exception) { parsed.userInfo ?: ":" }
+                    method = userInfo.substringBefore(":")
+                    password = userInfo.substringAfter(":")
+                } catch (_: Exception) {}
+            }
+        }
+        
+        if (host.isEmpty()) {
+            throw IllegalArgumentException("Invalid Shadowsocks URI: host is empty")
+        }
+        
+        val outbound = JSONObject().apply {
+            put("protocol", "shadowsocks")
+            put("tag", "proxy")
+            put("settings", JSONObject().apply {
+                put("servers", JSONArray().put(JSONObject().apply {
+                    put("address", host)
+                    put("port", port)
+                    put("method", method)
+                    put("password", password)
+                }))
+            })
+        }
+        
+        val params = parseQuery(queryPart)
+        if (params.isNotEmpty()) {
+            val processedParams = params.toMutableMap()
+            val pluginVal = params["plugin"] ?: ""
+            val hasPlugin = pluginVal.isNotEmpty() || params.containsKey("plugin-opts") || params.containsKey("plugin_opts")
+            if (hasPlugin) {
+                val pluginName = if (pluginVal.isNotEmpty()) pluginVal.substringBefore(";") else "v2ray-plugin"
+                val optionsStr = if (pluginVal.contains(";")) {
+                    pluginVal.substringAfter(";")
+                } else {
+                    params["plugin-opts"] ?: params["plugin_opts"] ?: ""
+                }
+                
+                outbound.put("plugin", pluginName)
+                outbound.put("plugin_opts", optionsStr)
+                
+                val optsMap = optionsStr.split(";").associate { opt ->
+                    val parts = opt.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        parts[0].trim() to parts[1].trim()
+                    } else {
+                        opt.trim() to "true"
+                    }
+                }
+                
+                if (optsMap["mode"] == "websocket" || optsMap.containsKey("websocket") || optsMap.containsKey("mode=websocket")) {
+                    processedParams["type"] = "ws"
+                }
+                optsMap["path"]?.let { processedParams["path"] = it }
+                if (optsMap.containsKey("tls")) {
+                    processedParams["security"] = "tls"
+                }
+                optsMap["host"]?.let {
+                    processedParams["host"] = it
+                    if (!optsMap.containsKey("sni")) {
+                        processedParams["sni"] = it
+                    }
+                }
+                optsMap["sni"]?.let {
+                    processedParams["sni"] = it
+                }
+                if (optsMap.containsKey("skipCertVerify") || optsMap.containsKey("skip-cert-verify")) {
+                    processedParams["allowInsecure"] = "1"
+                }
+            }
+            outbound.put("streamSettings", buildStreamSettings(host, processedParams))
+        }
+        return outbound
     }
 
     private fun buildTrojanOutbound(parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
@@ -506,12 +731,134 @@ object ClipboardParser {
         put("streamSettings", buildStreamSettings(parsed.host, params))
     }
 
+    private fun buildHysteriaOutbound(parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
+        val authString = parsed.userInfo?.takeIf { it.isNotBlank() }
+            ?: firstNonBlankParam(params, "auth", "auth_str", "auth-str", "password")
+            ?: ""
+        val upMbps = firstNonBlankParam(params, "upmbps", "up-mbps", "up")?.toIntOrNull()
+        val downMbps = firstNonBlankParam(params, "downmbps", "down-mbps", "down")?.toIntOrNull()
+        val obfs = firstNonBlankParam(params, "obfs")
+        val sni = firstNonBlankParam(params, "sni", "peer") ?: parsed.host ?: ""
+        val insecure = parseFlexibleBoolean(
+            firstNonBlankParam(params, "insecure", "allowInsecure", "skip-cert-verify")
+        ) ?: false
+        val alpn = firstNonBlankParam(params, "alpn")
+
+        put("protocol", "hysteria")
+        put("tag", "proxy")
+        put("settings", JSONObject().apply {
+            put("servers", JSONArray().put(JSONObject().apply {
+                put("address", parsed.host)
+                put("port", if (parsed.port > 0) parsed.port else 443)
+                put("password", authString)
+            }))
+            if (upMbps != null && upMbps > 0) put("up_mbps", upMbps)
+            if (downMbps != null && downMbps > 0) put("down_mbps", downMbps)
+            if (!obfs.isNullOrBlank()) {
+                put("obfs", obfs)
+            }
+        })
+        put("streamSettings", JSONObject().apply {
+            put("security", "tls")
+            put("tlsSettings", JSONObject().apply {
+                put("serverName", sni)
+                put("allowInsecure", insecure)
+                if (!alpn.isNullOrBlank()) put("alpn", alpn)
+            })
+        })
+    }
+
+    private fun buildHysteria2Outbound(parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
+        val password = parsed.userInfo?.takeIf { it.isNotBlank() }
+            ?: firstNonBlankParam(params, "password", "auth")
+            ?: ""
+        val upMbps = firstNonBlankParam(params, "upmbps", "up-mbps", "up")?.toIntOrNull()
+        val downMbps = firstNonBlankParam(params, "downmbps", "down-mbps", "down")?.toIntOrNull()
+        val obfsType = firstNonBlankParam(params, "obfs", "obfs-type")
+        val obfsPassword = firstNonBlankParam(params, "obfs-password", "obfspassword")
+        val sni = firstNonBlankParam(params, "sni", "peer") ?: parsed.host ?: ""
+        val insecure = parseFlexibleBoolean(
+            firstNonBlankParam(params, "insecure", "allowInsecure", "skip-cert-verify")
+        ) ?: false
+        val alpn = firstNonBlankParam(params, "alpn")
+        val pin = firstNonBlankParam(params, "pin")
+
+        put("protocol", "hysteria2")
+        put("tag", "proxy")
+        put("settings", JSONObject().apply {
+            put("servers", JSONArray().put(JSONObject().apply {
+                put("address", parsed.host)
+                put("port", if (parsed.port > 0) parsed.port else 443)
+                put("password", password)
+            }))
+            if (upMbps != null && upMbps > 0) put("up_mbps", upMbps)
+            if (downMbps != null && downMbps > 0) put("down_mbps", downMbps)
+            if (!obfsType.isNullOrBlank()) {
+                put("obfs", JSONObject().apply {
+                    put("type", obfsType)
+                    if (!obfsPassword.isNullOrBlank()) put("password", obfsPassword)
+                })
+            }
+        })
+        put("streamSettings", JSONObject().apply {
+            put("security", "tls")
+            put("tlsSettings", JSONObject().apply {
+                put("serverName", sni)
+                put("allowInsecure", insecure)
+                if (!alpn.isNullOrBlank()) put("alpn", alpn)
+                if (!pin.isNullOrBlank()) put("pin", pin)
+            })
+        })
+    }
+
+    private fun buildWireGuardOutbound(rawUri: String, parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
+        val privateKey = extractWireGuardPrivateKey(rawUri, parsed, params)
+            ?: throw IllegalArgumentException("WireGuard private key is missing")
+        val peerPublicKey = firstNonBlankParam(
+            params,
+            "publickey",
+            "public-key",
+            "peer_public_key",
+            "peer-public-key"
+        ) ?: throw IllegalArgumentException("WireGuard peer public key is missing")
+        val localAddresses = parseWireGuardLocalAddresses(params)
+        val server = parsed.host ?: firstNonBlankParam(params, "server", "host")
+        if (server.isNullOrBlank()) {
+            throw IllegalArgumentException("WireGuard endpoint host is missing")
+        }
+
+        put("type", "wireguard")
+        put("tag", "proxy")
+        put("server", server)
+        put("server_port", if (parsed.port > 0) parsed.port else (firstNonBlankParam(params, "port")?.toIntOrNull() ?: 51820))
+        put("local_address", localAddresses)
+        put("private_key", privateKey)
+        put("peer_public_key", peerPublicKey)
+
+        firstNonBlankParam(params, "presharedkey", "pre_shared_key", "pre-shared-key")?.let {
+            put("pre_shared_key", it)
+        }
+
+        parseWireGuardReserved(params)?.let { put("reserved", it) }
+        firstNonBlankParam(params, "mtu")?.toIntOrNull()?.takeIf { it > 0 }?.let { put("mtu", it) }
+        firstNonBlankParam(params, "workers")?.toIntOrNull()?.takeIf { it > 0 }?.let { put("workers", it) }
+    }
+
     private fun buildStreamSettings(host: String, params: Map<String, String>): JSONObject = JSONObject().apply {
         val security = params["security"] ?: "none"
         put("security", security)
-        put("network", params["type"] ?: "tcp")
+        val networkType = params["type"] ?: "tcp"
+        put("network", networkType)
         if (security == "tls") {
-            put("tlsSettings", JSONObject().apply { put("serverName", params["sni"] ?: host) })
+            put("tlsSettings", JSONObject().apply {
+                put("serverName", params["sni"] ?: host)
+                val ins = parseFlexibleBoolean(firstNonBlankParam(params, "insecure", "allowInsecure", "skip-cert-verify", "allowinsecure")) ?: false
+                put("allowInsecure", ins)
+                val pinVal = params["pin"]
+                if (!pinVal.isNullOrBlank()) {
+                    put("pin", pinVal)
+                }
+            })
         } else if (security == "reality") {
             put("realitySettings", JSONObject().apply {
                 put("serverName", params["sni"] ?: host)
@@ -520,9 +867,65 @@ object ClipboardParser {
                 put("fingerprint", params["fp"] ?: "chrome")
             })
         }
-        when (params["type"]) {
-            "ws" -> put("wsSettings", JSONObject().apply { put("path", params["path"] ?: "/"); put("headers", JSONObject().apply { put("Host", params["host"] ?: "") }) })
-            "grpc" -> put("grpcSettings", JSONObject().apply { put("serviceName", params["serviceName"] ?: "") })
+        when (networkType) {
+            "tcp" -> {
+                val tcpHostVal = params["host"] ?: ""
+                val tcpPathVal = params["path"] ?: ""
+                if (tcpHostVal.isNotEmpty() || tcpPathVal.isNotEmpty()) {
+                    put("tcpSettings", JSONObject().apply {
+                        put("header", JSONObject().apply {
+                            put("type", "http")
+                            put("request", JSONObject().apply {
+                                put("version", "1.1")
+                                put("method", "GET")
+                                put("path", JSONArray().put(if (tcpPathVal.isNotEmpty()) tcpPathVal else "/"))
+                                put("headers", JSONObject().apply {
+                                    put("Host", JSONArray().put(tcpHostVal))
+                                })
+                            })
+                        })
+                    })
+                }
+            }
+            "kcp" -> {
+                put("kcpSettings", JSONObject().apply {
+                    put("seed", params["seed"] ?: params["kcpSeed"] ?: "")
+                    put("mtu", params["mtu"]?.toIntOrNull() ?: 1350)
+                    put("tti", params["tti"]?.toIntOrNull() ?: 50)
+                })
+            }
+            "ws" -> {
+                put("wsSettings", JSONObject().apply {
+                    put("path", params["path"] ?: "/")
+                    put("headers", JSONObject().apply {
+                        put("Host", params["host"] ?: "")
+                    })
+                })
+            }
+            "httpupgrade", "httpUpgrade" -> {
+                put("httpUpgradeSettings", JSONObject().apply {
+                    put("path", params["path"] ?: "/")
+                    put("host", params["host"] ?: "")
+                })
+            }
+            "h2", "http" -> {
+                put("httpSettings", JSONObject().apply {
+                    put("path", params["path"] ?: "/")
+                    put("host", params["host"] ?: "")
+                })
+            }
+            "quic" -> {
+                put("quicSettings", JSONObject().apply {
+                    put("security", params["quicSecurity"] ?: params["security"] ?: "none")
+                    put("key", params["key"] ?: params["quicKey"] ?: "")
+                })
+            }
+            "grpc" -> {
+                put("grpcSettings", JSONObject().apply {
+                    put("serviceName", params["serviceName"] ?: "")
+                    put("authority", params["authority"] ?: params["grpcAuthority"] ?: "")
+                })
+            }
         }
     }
 
@@ -531,8 +934,67 @@ object ClipboardParser {
         if (!fragment.isNullOrBlank()) URLDecoder.decode(fragment, "UTF-8") else uri.substringBefore("?").take(40)
     } catch (_: Exception) { uri.substringBefore("?").take(40) }
 
+    private fun firstNonBlankParam(params: Map<String, String>, vararg keys: String): String? {
+        for (key in keys) {
+            val value = params[key]
+            if (!value.isNullOrBlank()) return value
+        }
+        return null
+    }
+
+    private fun parseWireGuardLocalAddresses(params: Map<String, String>): JSONArray {
+        val addressRaw = firstNonBlankParam(params, "address", "local_address", "local-address")
+            ?: "10.7.0.2/32"
+        val addresses = addressRaw
+            .split(",", ";")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        return JSONArray().apply {
+            addresses.forEach { put(it) }
+        }
+    }
+
+    private fun parseWireGuardReserved(params: Map<String, String>): JSONArray? {
+        val reservedRaw = firstNonBlankParam(params, "reserved") ?: return null
+        val bytes = reservedRaw
+            .split(",", ";")
+            .mapNotNull { it.trim().toIntOrNull() }
+            .filter { it in 0..255 }
+        if (bytes.size != 3) return null
+        return JSONArray().apply { bytes.forEach { put(it) } }
+    }
+
+    private fun extractWireGuardPrivateKey(rawUri: String, parsed: URI, params: Map<String, String>): String? {
+        val fromQuery = firstNonBlankParam(params, "privatekey", "private_key", "private-key", "secretkey", "secret_key")
+        if (!fromQuery.isNullOrBlank()) return fromQuery
+        val parsedInfo = parsed.userInfo
+        if (!parsedInfo.isNullOrBlank()) return parsedInfo
+
+        val prefix = "${parsed.scheme}://"
+        if (!rawUri.startsWith(prefix)) return null
+        val authorityPart = rawUri.removePrefix(prefix).substringBefore("/")
+        val rawUserInfo = authorityPart.substringBefore("@", "")
+        return if (rawUserInfo.isBlank()) null else URLDecoder.decode(rawUserInfo, "UTF-8")
+    }
+
+    private fun parseFlexibleBoolean(value: String?): Boolean? {
+        val normalized = value?.trim()?.lowercase() ?: return null
+        return when (normalized) {
+            "1", "true", "yes", "on" -> true
+            "0", "false", "no", "off" -> false
+            else -> null
+        }
+    }
+
     private fun parseQuery(query: String?): Map<String, String> = query?.split("&")?.associate {
         val parts = it.split("=", limit = 2)
-        URLDecoder.decode(parts[0], "UTF-8") to URLDecoder.decode(parts.getOrElse(1) { "" }, "UTF-8")
+        val key = URLDecoder.decode(parts[0], "UTF-8")
+        val valueRaw = parts.getOrElse(1) { "" }
+        val decodedValue = try {
+            URLDecoder.decode(valueRaw.replace("+", "%2B"), "UTF-8")
+        } catch (_: Exception) {
+            URLDecoder.decode(valueRaw, "UTF-8")
+        }
+        key to decodedValue
     } ?: emptyMap()
 }

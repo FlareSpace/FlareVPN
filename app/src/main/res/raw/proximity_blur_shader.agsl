@@ -1,0 +1,59 @@
+uniform shader img;
+uniform float barBottom;
+uniform float blurZoneHeight;
+
+// Multi-sample blur with variable radius
+// Uses 13-tap pattern: center + 4 cardinal + 4 diagonal + 4 mid-cardinal
+half4 applyBlur(float2 coord, float radius) {
+    float r1 = radius;
+    float r2 = radius * 0.7071; // sqrt(2)/2 — diagonal at 45 deg
+    float r3 = radius * 0.5;
+
+    half4 c = img.eval(coord) * 4.0;
+
+    c += img.eval(coord + float2( r1,  0.0)) * 2.0;
+    c += img.eval(coord + float2(-r1,  0.0)) * 2.0;
+    c += img.eval(coord + float2( 0.0,  r1)) * 2.0;
+    c += img.eval(coord + float2( 0.0, -r1)) * 2.0;
+
+    c += img.eval(coord + float2( r2,  r2)) * 1.0;
+    c += img.eval(coord + float2(-r2,  r2)) * 1.0;
+    c += img.eval(coord + float2( r2, -r2)) * 1.0;
+    c += img.eval(coord + float2(-r2, -r2)) * 1.0;
+
+    c += img.eval(coord + float2( r3,  0.0)) * 1.0;
+    c += img.eval(coord + float2(-r3,  0.0)) * 1.0;
+    c += img.eval(coord + float2( 0.0,  r3)) * 1.0;
+    c += img.eval(coord + float2( 0.0, -r3)) * 1.0;
+
+    // total weight = 4 + 4*2 + 4*1 + 4*1 = 4+8+4+4 = 20
+    return c / 20.0;
+}
+
+half4 main(float2 fragCoord) {
+    float y = fragCoord.y;
+
+    // Above the bar — hidden behind the glass panel, render transparent
+    if (y < barBottom) {
+        return half4(0.0);
+    }
+
+    // Below the blur zone — original pixel, no effect
+    if (y >= barBottom + blurZoneHeight) {
+        return img.eval(fragCoord);
+    }
+
+    // Inside the blur zone [barBottom, barBottom + blurZoneHeight]
+    // t goes from 0.0 (at bar edge) to 1.0 (at zone end)
+    float t = (y - barBottom) / blurZoneHeight;
+
+    // Non-linear falloff: aggressive near the bar, smooth tail
+    // pow(1-t, 1.8) gives fast blur drop near border, gentle at distance
+    float blurRadius = pow(1.0 - t, 1.8) * 30.0;
+
+    if (blurRadius < 0.5) {
+        return img.eval(fragCoord);
+    }
+
+    return applyBlur(fragCoord, blurRadius);
+}

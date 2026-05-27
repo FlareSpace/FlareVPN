@@ -1,5 +1,7 @@
 package flare.client.app.service
 
+import flare.client.app.ui.i18n.I18n
+
 import android.app.*
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -50,7 +52,15 @@ class AppMonitorService : Service() {
         val db = AppDatabase.getInstance(this)
         repository = ProfileRepository(db.profileDao(), db.subscriptionDao())
         
-        startForeground(NOTIF_ID, buildNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIF_ID,
+                buildNotification(),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIF_ID, buildNotification())
+        }
         startMonitoring()
     }
 
@@ -61,7 +71,7 @@ class AppMonitorService : Service() {
                 manager.createNotificationChannel(
                     NotificationChannel(
                         NOTIF_CHANNEL,
-                        getString(R.string.app_monitor_active),
+                        I18n.strings.app_monitor_active,
                         NotificationManager.IMPORTANCE_LOW
                     )
                 )
@@ -72,8 +82,8 @@ class AppMonitorService : Service() {
         val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, NOTIF_CHANNEL)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(getString(R.string.app_monitor_active))
+            .setContentTitle(I18n.strings.app_name)
+            .setContentText(I18n.strings.app_monitor_active)
             .setSmallIcon(R.drawable.ic_vpn_key)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -169,9 +179,11 @@ class AppMonitorService : Service() {
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .cancel(VPN_PERMISSION_NOTIF_ID)
 
+        val chainedConfig = SingBoxManager.prepareConfigWithChaining(this, profile.configJson, settings)
+
         val intent = Intent(this, FlareVpnService::class.java).apply {
             action = FlareVpnService.ACTION_START
-            putExtra(FlareVpnService.EXTRA_CONFIG, profile.configJson)
+            putExtra(FlareVpnService.EXTRA_CONFIG, chainedConfig)
             putExtra(FlareVpnService.EXTRA_PROFILE_NAME, profile.name)
         }
         
@@ -193,7 +205,7 @@ class AppMonitorService : Service() {
             manager.createNotificationChannel(
                 NotificationChannel(
                     VPN_PERMISSION_CHANNEL,
-                    getString(R.string.trigger_vpn_permission_channel),
+                    I18n.strings.trigger_vpn_permission_channel,
                     NotificationManager.IMPORTANCE_HIGH
                 )
             )
@@ -211,8 +223,8 @@ class AppMonitorService : Service() {
 
         val notification = NotificationCompat.Builder(this, VPN_PERMISSION_CHANNEL)
             .setSmallIcon(R.drawable.ic_vpn_key)
-            .setContentTitle(getString(R.string.trigger_vpn_permission_title))
-            .setContentText(getString(R.string.trigger_vpn_permission_text))
+            .setContentTitle(I18n.strings.trigger_vpn_permission_title)
+            .setContentText(I18n.strings.trigger_vpn_permission_text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(contentIntent)

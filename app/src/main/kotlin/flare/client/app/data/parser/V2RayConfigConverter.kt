@@ -80,7 +80,7 @@ object V2RayConfigConverter {
         val directDomains = JSONArray()
 
         val xrayBalancers = xrayRouting?.optJSONArray("balancers")
-        val balancerTags = mutableSetOf<String>()
+        val balancerTags = mutableMapOf<String, String>()
         var firstBalancerTag = ""
         if (xrayBalancers != null) {
             for (i in 0 until xrayBalancers.length()) {
@@ -103,9 +103,17 @@ object V2RayConfigConverter {
                     }
                 }
                 if (matchedOutbounds.isNotEmpty()) {
+                    var finalBTag = bTag
+                    for (k in 0 until sbOutbounds.length()) {
+                        val ob = sbOutbounds.optJSONObject(k)
+                        if (ob?.optString("tag") == finalBTag) {
+                            finalBTag = "${bTag}-urltest"
+                            break
+                        }
+                    }
                     val urltestOb = JSONObject().apply {
                         put("type", "urltest")
-                        put("tag", bTag)
+                        put("tag", finalBTag)
                         put("outbounds", JSONArray().apply {
                             matchedOutbounds.forEach { put(it) }
                         })
@@ -114,9 +122,9 @@ object V2RayConfigConverter {
                         put("tolerance", 50)
                     }
                     sbOutbounds.put(urltestOb)
-                    balancerTags.add(bTag)
+                    balancerTags[bTag] = finalBTag
                     if (firstBalancerTag.isEmpty()) {
-                        firstBalancerTag = bTag
+                        firstBalancerTag = finalBTag
                     }
                 }
             }
@@ -127,8 +135,8 @@ object V2RayConfigConverter {
                 val xRule = xrayRules.optJSONObject(i) ?: continue
                 val outboundTag = xRule.optString("outboundTag", xRule.optString("outbound", ""))
                 val balancerTag = xRule.optString("balancerTag", "")
-                val actualOutTag = if (balancerTag.isNotEmpty() && balancerTags.contains(balancerTag)) {
-                    balancerTag
+                val actualOutTag = if (balancerTag.isNotEmpty() && balancerTags.containsKey(balancerTag)) {
+                    balancerTags[balancerTag] ?: balancerTag
                 } else if (balancerTag.isNotEmpty()) {
                     balancerTag
                 } else {
@@ -274,11 +282,11 @@ object V2RayConfigConverter {
                     else         -> ""
                 }
                 val first = extractAddr(servers.opt(0))
-                if (first.isNotEmpty()) primaryDns = first
+                if (first.isNotEmpty()) primaryDns = first.replace("+local://", "://")
                 for (i in 1 until servers.length()) {
                     val addr = extractAddr(servers.opt(i))
-                    if (addr.isNotEmpty() && !addr.startsWith("localhost") && !addr.startsWith("https://")) {
-                        directDns = addr
+                    if (addr.isNotEmpty() && !addr.startsWith("localhost") && !addr.replace("+local://", "://").startsWith("https://")) {
+                        directDns = addr.replace("+local://", "://")
                         break
                     }
                 }
@@ -318,7 +326,7 @@ object V2RayConfigConverter {
                             JSONArray().apply {
                                 put(
                                         JSONObject().apply {
-                                            put("outbound", JSONArray().put("any"))
+                                            put("outbound", JSONArray().put("direct"))
                                             put("server", "dns-direct")
                                         }
                                 )
@@ -419,6 +427,7 @@ object V2RayConfigConverter {
 
     private fun convertOutbounds(xrayOutbounds: JSONArray): JSONArray {
         val sbOutbounds = JSONArray()
+        val extraOutbounds = mutableListOf<JSONObject>()
         for (i in 0 until xrayOutbounds.length()) {
             val xrayOb = xrayOutbounds.optJSONObject(i) ?: continue
             val protocol = xrayOb.optString("protocol", "").lowercase(Locale.ROOT)
@@ -429,7 +438,9 @@ object V2RayConfigConverter {
                 "vless" -> convertVless(xrayOb, sbOb)
                 "vmess" -> convertVmess(xrayOb, sbOb)
                 "trojan" -> convertTrojan(xrayOb, sbOb)
-                "shadowsocks" -> convertShadowsocks(xrayOb, sbOb)
+                "shadowsocks" -> convertShadowsocks(xrayOb, sbOb, extraOutbounds)
+                "hysteria", "hy" -> convertHysteria(xrayOb, sbOb)
+                "hysteria2", "hy2" -> convertHysteria2(xrayOb, sbOb)
                 "freedom" -> sbOb.put("type", "direct")
                 "blackhole" -> sbOb.put("type", "block")
                 else -> continue
@@ -454,6 +465,9 @@ object V2RayConfigConverter {
                 }
             }
             sbOutbounds.put(sbOb)
+        }
+        for (extra in extraOutbounds) {
+            sbOutbounds.put(extra)
         }
         return sbOutbounds
     }
@@ -495,7 +509,7 @@ object V2RayConfigConverter {
         xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
     }
 
-    private fun convertShadowsocks(xrayOb: JSONObject, sbOb: JSONObject) {
+    private fun convertShadowsocks(xrayOb: JSONObject, sbOb: JSONObject, extraOutbounds: MutableList<JSONObject>) {
         sbOb.put("type", "shadowsocks")
         val server =
                 xrayOb.optJSONObject("settings")?.optJSONArray("servers")?.optJSONObject(0)
@@ -504,6 +518,154 @@ object V2RayConfigConverter {
         sbOb.put("server_port", server.optInt("port"))
         sbOb.put("method", server.optString("method"))
         sbOb.put("password", server.optString("password"))
+
+        if (xrayOb.has("plugin")) {
+            val plugin = xrayOb.optString("plugin")
+            if (plugin == "shadowtls") {
+                val rawOpts = xrayOb.optString("plugin_opts")
+                val optsMap = rawOpts.split(";").associate { opt ->
+                    val parts = opt.split("=", limit = 2)
+                    if (parts.size == 2) {
+                        parts[0].trim().lowercase() to parts[1].trim()
+                    } else {
+                        opt.trim().lowercase() to "true"
+                    }
+                }
+                val tag = sbOb.optString("tag", "proxy")
+                val tlsTag = "$tag-tls"
+
+                val shadowTlsOb = JSONObject().apply {
+                    put("type", "shadowtls")
+                    put("tag", tlsTag)
+                    put("server", server.optString("address"))
+                    put("server_port", server.optInt("port"))
+
+                    val versionStr = optsMap["version"] ?: "3"
+                    val version = versionStr.toIntOrNull() ?: 3
+                    put("version", version)
+
+                    val password = optsMap["password"] ?: ""
+                    if (password.isNotEmpty()) {
+                        put("password", password)
+                    }
+
+                    val sniVal = optsMap["host"] ?: optsMap["sni"] ?: server.optString("address")
+                    put("tls", JSONObject().apply {
+                        put("enabled", true)
+                        put("server_name", sanitizeSni(sniVal))
+                    })
+                }
+                extraOutbounds.add(shadowTlsOb)
+                sbOb.put("detour", tlsTag)
+                return
+            } else {
+                sbOb.put("plugin", plugin)
+                val rawOpts = xrayOb.optString("plugin_opts")
+                val sanitizedOpts = if (rawOpts.contains("sni=")) {
+                    rawOpts.split(";").map { opt ->
+                        if (opt.startsWith("sni=")) {
+                            val value = opt.substringAfter("sni=")
+                            "sni=${sanitizeSni(value)}"
+                        } else {
+                            opt
+                        }
+                    }.joinToString(";")
+                } else {
+                    rawOpts
+                }
+                sbOb.put("plugin_opts", sanitizedOpts)
+                return
+            }
+        }
+
+        val stream = xrayOb.optJSONObject("streamSettings")
+        if (stream != null) {
+            val network = stream.optString("network", "tcp")
+            val security = stream.optString("security", "none")
+            if (network == "ws" || security == "tls") {
+                sbOb.put("plugin", "v2ray-plugin")
+                val opts = mutableListOf<String>()
+                opts.add("mode=websocket")
+
+                val wsSettings = stream.optJSONObject("wsSettings")
+                val path = wsSettings?.optString("path", "/") ?: "/"
+                opts.add("path=$path")
+
+                val tlsSettings = if (security == "tls") stream.optJSONObject("tlsSettings") else null
+                if (tlsSettings != null) {
+                    opts.add("tls")
+                    val serverName = tlsSettings.optString("serverName", "")
+                    if (serverName.isNotEmpty()) {
+                        opts.add("sni=${sanitizeSni(serverName)}")
+                    }
+                    val host = wsSettings?.optJSONObject("headers")?.optString("Host", "") ?: ""
+                    if (host.isNotEmpty()) {
+                        opts.add("host=$host")
+                    }
+                    val insecure = when {
+                        tlsSettings.has("allowInsecure") -> tlsSettings.optBoolean("allowInsecure", false)
+                        tlsSettings.has("insecure") -> tlsSettings.optBoolean("insecure", false)
+                        tlsSettings.has("skipCertVerify") -> tlsSettings.optBoolean("skipCertVerify", false)
+                        else -> false
+                    }
+                    if (insecure) {
+                        opts.add("skipCertVerify")
+                        opts.add("skip-cert-verify")
+                    }
+                } else {
+                    val host = wsSettings?.optJSONObject("headers")?.optString("Host", "") ?: ""
+                    if (host.isNotEmpty()) {
+                        opts.add("host=$host")
+                    }
+                }
+                sbOb.put("plugin_opts", opts.joinToString(";"))
+            }
+        }
+    }
+
+    private fun convertHysteria(xrayOb: JSONObject, sbOb: JSONObject) {
+        sbOb.put("type", "hysteria")
+        val settings = xrayOb.optJSONObject("settings")
+        val server =
+                settings?.optJSONArray("servers")?.optJSONObject(0)
+                        ?: return
+        sbOb.put("server", server.optString("address"))
+        sbOb.put("server_port", server.optInt("port"))
+        val password = server.optString("password", "")
+        if (password.isNotEmpty()) {
+            sbOb.put("auth_str", password)
+        }
+        settings.optInt("up_mbps").takeIf { it > 0 }?.let { sbOb.put("up_mbps", it) }
+        settings.optInt("down_mbps").takeIf { it > 0 }?.let { sbOb.put("down_mbps", it) }
+        val obfs = settings.optString("obfs", "")
+        if (obfs.isNotEmpty()) {
+            sbOb.put("obfs", obfs)
+        }
+        xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
+    }
+
+    private fun convertHysteria2(xrayOb: JSONObject, sbOb: JSONObject) {
+        sbOb.put("type", "hysteria2")
+        val settings = xrayOb.optJSONObject("settings")
+        val server =
+                settings?.optJSONArray("servers")?.optJSONObject(0)
+                        ?: return
+        sbOb.put("server", server.optString("address"))
+        sbOb.put("server_port", server.optInt("port"))
+        sbOb.put("password", server.optString("password"))
+        settings.optInt("up_mbps").takeIf { it > 0 }?.let { sbOb.put("up_mbps", it) }
+        settings.optInt("down_mbps").takeIf { it > 0 }?.let { sbOb.put("down_mbps", it) }
+        settings.optJSONObject("obfs")?.let { obfs ->
+            val obfsType = obfs.optString("type", "")
+            if (obfsType.isNotEmpty()) {
+                sbOb.put("obfs", JSONObject().apply {
+                    put("type", obfsType)
+                    val password = obfs.optString("password", "")
+                    if (password.isNotEmpty()) put("password", password)
+                })
+            }
+        }
+        xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
     }
 
     private fun convertStreamSettings(stream: JSONObject, sbOb: JSONObject) {
@@ -518,15 +680,65 @@ object V2RayConfigConverter {
 
             settings?.let { s ->
                 val sni = s.optString("serverName", "")
-                if (sni.isNotEmpty()) tls.put("server_name", sni)
-                val fp = s.optString("fingerprint", "chrome")
+                if (sni.isNotEmpty()) tls.put("server_name", sanitizeSni(sni))
+                val insecure = when {
+                    s.has("allowInsecure") -> s.optBoolean("allowInsecure", false)
+                    s.has("insecure") -> s.optBoolean("insecure", false)
+                    s.has("skipCertVerify") -> s.optBoolean("skipCertVerify", false)
+                    else -> false
+                }
+                if (insecure) tls.put("insecure", true)
 
-                val utlsObj =
-                        JSONObject().apply {
-                            put("enabled", true)
-                            put("fingerprint", if (fp == "random") "chrome" else fp)
+                val pin = s.optString("pin", "")
+                if (pin.isNotEmpty()) {
+                    val cleanPin = pin.replace("\\s".toRegex(), "")
+                        .substringAfter("sha256/")
+                        .substringAfter("SHA256:")
+                    
+                    val base64Pin = if (cleanPin.length == 64 && cleanPin.all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }) {
+                        try {
+                            val bytes = ByteArray(32)
+                            for (j in 0 until 32) {
+                                bytes[j] = cleanPin.substring(j * 2, j * 2 + 2).toInt(16).toByte()
+                            }
+                            android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        } catch (_: Exception) {
+                            cleanPin
                         }
-                tls.put("utls", utlsObj)
+                    } else {
+                        cleanPin
+                    }
+                    tls.put("certificate_public_key_sha256", JSONArray().put(base64Pin))
+                }
+
+                val alpnRaw = s.opt("alpn")
+                val alpn = JSONArray()
+                when (alpnRaw) {
+                    is JSONArray -> {
+                        for (i in 0 until alpnRaw.length()) {
+                            val value = alpnRaw.optString(i, "")
+                            if (value.isNotEmpty()) alpn.put(value)
+                        }
+                    }
+                    is String -> {
+                        alpnRaw.split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .forEach { alpn.put(it) }
+                    }
+                }
+                if (alpn.length() > 0) tls.put("alpn", alpn)
+
+                val type = sbOb.optString("type")
+                if (type != "hysteria" && type != "hysteria2") {
+                    val fp = s.optString("fingerprint", "chrome")
+                    val utlsObj =
+                            JSONObject().apply {
+                                put("enabled", true)
+                                put("fingerprint", if (fp == "random") "chrome" else fp)
+                            }
+                    tls.put("utls", utlsObj)
+                }
 
                 if (security == "reality") {
                     val realityObj =
@@ -554,6 +766,34 @@ object V2RayConfigConverter {
                         }
                 )
             }
+            "kcp" -> {
+                val kcp = stream.optJSONObject("kcpSettings")
+                sbOb.put(
+                        "transport",
+                        JSONObject().apply {
+                            put("type", "kcp")
+                            val seed = kcp?.optString("seed", "")
+                            if (!seed.isNullOrEmpty()) put("seed", seed)
+                            val mtu = kcp?.optInt("mtu", 0) ?: 0
+                            if (mtu > 0) put("mtu", mtu)
+                            val tti = kcp?.optInt("tti", 0) ?: 0
+                            if (tti > 0) put("tti", tti)
+                        }
+                )
+            }
+            "quic" -> {
+                val quic = stream.optJSONObject("quicSettings")
+                sbOb.put(
+                        "transport",
+                        JSONObject().apply {
+                            put("type", "quic")
+                            val key = quic?.optString("key", "")
+                            if (!key.isNullOrEmpty()) put("key", key)
+                            val security = quic?.optString("security", "none") ?: "none"
+                            put("security", security)
+                        }
+                )
+            }
             "grpc" -> {
                 val grpc = stream.optJSONObject("grpcSettings")
                 sbOb.put(
@@ -564,17 +804,31 @@ object V2RayConfigConverter {
                         }
                 )
             }
-            "httpUpgrade", "h2" -> {
-                val settings =
-                        if (network == "httpUpgrade") stream.optJSONObject("httpUpgradeSettings")
-                        else stream.optJSONObject("httpSettings")
+            "httpUpgrade", "httpupgrade" -> {
+                val settings = stream.optJSONObject("httpUpgradeSettings") ?: stream.optJSONObject("httpupgradeSettings")
+                sbOb.put(
+                        "transport",
+                        JSONObject().apply {
+                            put("type", "httpupgrade")
+                            put("path", settings?.optString("path", "/"))
+                            val host = settings?.optString("host", "") ?: ""
+                            if (host.isNotEmpty()) {
+                                put("host", host)
+                            }
+                        }
+                )
+            }
+            "h2", "http" -> {
+                val settings = stream.optJSONObject("httpSettings")
                 sbOb.put(
                         "transport",
                         JSONObject().apply {
                             put("type", "http")
                             put("path", settings?.optString("path", "/"))
-                            val host = settings?.optString("host", "")
-                            if (!host.isNullOrEmpty()) put("host", JSONArray().put(host))
+                            val host = settings?.optString("host", "") ?: ""
+                            if (host.isNotEmpty()) {
+                                put("host", JSONArray().put(host))
+                            }
                         }
                 )
             }
@@ -765,6 +1019,27 @@ object V2RayConfigConverter {
         }
 
         val dns = obj.optJSONObject("dns") ?: JSONObject().also { obj.put("dns", it) }
+        val dnsServers = dns.optJSONArray("servers")
+        if (dnsServers != null) {
+            for (i in 0 until dnsServers.length()) {
+                when (val server = dnsServers.get(i)) {
+                    is JSONObject -> {
+                        val address = server.optString("address", "")
+                        if (address.contains("+local://")) {
+                            server.put("address", address.replace("+local://", "://"))
+                            if (!server.has("detour")) {
+                                server.put("detour", "direct")
+                            }
+                        }
+                    }
+                    is String -> {
+                        if (server.contains("+local://")) {
+                            dnsServers.put(i, server.replace("+local://", "://"))
+                        }
+                    }
+                }
+            }
+        }
         if (!dns.has("strategy")) {
             dns.put("strategy", "prefer_ipv4")
         }
@@ -905,5 +1180,20 @@ object V2RayConfigConverter {
 
 
         return obj.toString(2).replace("\\/", "/")
+    }
+
+    private fun sanitizeSni(sni: String): String {
+        if (sni.isBlank()) return ""
+        var clean = sni.trim()
+        if (clean.contains("://")) {
+            clean = clean.substringAfter("://")
+        }
+        if (clean.contains("/")) {
+            clean = clean.substringBefore("/")
+        }
+        if (clean.contains(":")) {
+            clean = clean.substringBefore(":")
+        }
+        return clean
     }
 }

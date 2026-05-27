@@ -13,6 +13,8 @@ uniform float4 foreground_color_premultiplied;
 uniform float is_dark_mode;
 uniform float has_inner_shadow;
 uniform float clip_to_glass;
+uniform float has_outline;
+uniform float outline_thickness;
 
 half sdfRect(half2 p, half4 r) {
   r.xy = (p.x > 0.0) ? r.xy : r.zw;
@@ -77,6 +79,11 @@ half4 main(in float2 fragCoord) {
             half shadowBias = 0.6 + 0.4 * max(dot(normal.xy, normalize(half2(0.0, 1.0))), 0.0);
             innerShadow = shadowBias * shadowMask * 0.45;
         }
+
+        if (has_outline > 0.5) {
+            half outlineMask = smoothstep(outline_thickness, 0.0, edgeDist);
+            result.rgb = mix(result.rgb, half3(0.0), outlineMask * 0.15);
+        }
     }
     
     result.rgb += half3(1.0) * (tlHighlight + brHighlight + rimLight);
@@ -86,7 +93,7 @@ half4 main(in float2 fragCoord) {
   }
 
   if (clip_to_glass > 0.5) {
-    return img.eval(uv);
+    return half4(0.0);
   }
 
   half4 bg = img.eval(uv);

@@ -25,10 +25,12 @@ object AnimUtils {
             .translationY(-SLIDE_OFFSET)
             .scaleX(0.95f)
             .scaleY(0.95f)
-            .setDuration(DURATION_OUT)
+            .setDuration(DURATION_IN) 
             .setInterpolator(DecelerateInterpolator(1.5f))
             .withEndAction {
                 fromView.visibility = View.GONE
+                fromView.isClickable = false
+                fromView.isFocusable = false
                 fromView.translationY = 0f
                 fromView.scaleX = 1f
                 fromView.scaleY = 1f
@@ -40,7 +42,7 @@ object AnimUtils {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ValueAnimator.ofFloat(0.1f, MAX_BLUR).apply {
-                duration = DURATION_OUT
+                duration = DURATION_IN 
                 addUpdateListener { animator ->
                     val radius = animator.animatedValue as Float
                     fromView.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP))
@@ -55,12 +57,13 @@ object AnimUtils {
         toView.scaleX = 0.95f
         toView.scaleY = 0.95f
         toView.visibility = View.VISIBLE
+        toView.isClickable = true
+        toView.isFocusable = true
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             toView.setRenderEffect(RenderEffect.createBlurEffect(MAX_BLUR, MAX_BLUR, Shader.TileMode.CLAMP))
             ValueAnimator.ofFloat(MAX_BLUR, 0.1f).apply {
                 duration = DURATION_IN
-                startDelay = 20L
                 addUpdateListener { animator ->
                     val radius = animator.animatedValue as Float
                     if (radius <= 0.5f) {
@@ -79,7 +82,6 @@ object AnimUtils {
             .scaleX(1f)
             .scaleY(1f)
             .setDuration(DURATION_IN)
-            .setStartDelay(20L)
             .setInterpolator(DecelerateInterpolator(2.2f))
             .start()
     }
@@ -99,6 +101,8 @@ object AnimUtils {
         
         targetView.visibility = View.VISIBLE
         targetView.alpha = 1f
+        targetView.isClickable = true
+        targetView.isFocusable = true
         
         val reveal = ViewAnimationUtils.createCircularReveal(targetView, cx, cy, 0f, finalRadius)
         reveal.duration = DURATION_IN + 100L
@@ -123,10 +127,12 @@ object AnimUtils {
             .alpha(0f)
             .scaleX(0.97f)
             .scaleY(0.97f)
-            .setDuration(DURATION_OUT)
+            .setDuration(DURATION_IN)
             .setInterpolator(DecelerateInterpolator())
             .withEndAction {
                 fromView.visibility = View.GONE
+                fromView.isClickable = false
+                fromView.isFocusable = false
                 fromView.scaleX = 1f
                 fromView.scaleY = 1f
             }
@@ -141,10 +147,12 @@ object AnimUtils {
             .translationY(SLIDE_OFFSET * 1.2f)
             .scaleX(0.96f)
             .scaleY(0.96f)
-            .setDuration(DURATION_OUT)
+            .setDuration(DURATION_IN) 
             .setInterpolator(DecelerateInterpolator(1.2f))
             .withEndAction {
                 fromView.visibility = View.GONE
+                fromView.isClickable = false
+                fromView.isFocusable = false
                 fromView.translationY = 0f
                 fromView.alpha = 1f
                 fromView.scaleX = 1f
@@ -157,7 +165,7 @@ object AnimUtils {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ValueAnimator.ofFloat(0.1f, MAX_BLUR).apply {
-                duration = DURATION_OUT
+                duration = DURATION_IN 
                 addUpdateListener { animator ->
                     val radius = animator.animatedValue as Float
                     fromView.setRenderEffect(RenderEffect.createBlurEffect(radius, radius, Shader.TileMode.CLAMP))
@@ -172,12 +180,13 @@ object AnimUtils {
         toView.scaleX = 0.96f
         toView.scaleY = 0.96f
         toView.visibility = View.VISIBLE
+        toView.isClickable = true
+        toView.isFocusable = true
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             toView.setRenderEffect(RenderEffect.createBlurEffect(MAX_BLUR, MAX_BLUR, Shader.TileMode.CLAMP))
             ValueAnimator.ofFloat(MAX_BLUR, 0.1f).apply {
                 duration = DURATION_IN
-                startDelay = 20L
                 addUpdateListener { animator ->
                     val radius = animator.animatedValue as Float
                     if (radius <= 0.5f) {
@@ -196,7 +205,6 @@ object AnimUtils {
             .scaleX(1f)
             .scaleY(1f)
             .setDuration(DURATION_IN)
-            .setStartDelay(20L)
             .setInterpolator(DecelerateInterpolator(2.0f))
             .start()
     }

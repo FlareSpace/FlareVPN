@@ -7,14 +7,14 @@ sealed class DisplayItem {
 
     data class SubscriptionItem(
         val entity: SubscriptionEntity,
-        val profiles: List<ProfileEntity>,
+        val profiles: List<ProfileSummary>,
         val isExpanded: Boolean,
         val isRefreshing: Boolean = false,
         val cornerType: CornerType = CornerType.ALL
     ) : DisplayItem()
 
     data class ProfileItem(
-        val entity: ProfileEntity,
+        val entity: ProfileSummary,
         val isSelected: Boolean,
         val pingState: PingState = PingState.None,
         val cornerType: CornerType = CornerType.NONE

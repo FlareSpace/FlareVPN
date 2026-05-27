@@ -13,7 +13,7 @@ import flare.client.app.data.model.SubscriptionEntity
 
 @Database(
     entities = [ProfileEntity::class, SubscriptionEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,9 +31,18 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "flare_client.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .openHelperFactory(SafeOpenHelperFactory())
+                    .fallbackToDestructiveMigration(true)
                     .build().also { INSTANCE = it }
             }
+
+        fun closeInstance() {
+            synchronized(this) {
+                INSTANCE?.close()
+                INSTANCE = null
+            }
+        }
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -60,6 +69,12 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE subscriptions ADD COLUMN supportUrl TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE subscriptions ADD COLUMN webPageUrl TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE profiles ADD COLUMN protocol TEXT")
             }
         }
     }

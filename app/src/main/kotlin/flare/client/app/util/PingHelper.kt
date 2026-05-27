@@ -28,10 +28,21 @@ import java.net.ServerSocket
 
 object PingHelper {
     private const val TAG = "PingHelper"
+    private const val PROXY_PING_BATCH_SIZE = 150
+    private const val PROXY_PING_PARALLELISM = 24
 
     private val directSemaphore = Semaphore(10)
 
     private val batchMutex = Mutex()
+
+    private val okHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .connectionPool(okhttp3.ConnectionPool(PROXY_PING_PARALLELISM, 5, TimeUnit.SECONDS))
+            .build()
+    }
 
     @Volatile private var libboxSetupDone = false
     private val setupLock = Any()
@@ -75,16 +86,21 @@ object PingHelper {
                 try {
                     if (method == "ICMP") {
                         val startTime = System.nanoTime()
-                        val process = Runtime.getRuntime()
-                            .exec(arrayOf("ping", "-c", "1", "-W", "2", ipAddress))
-                        val output = process.inputStream.bufferedReader().use { it.readText() }
-                        val exitCode = process.waitFor()
-                        if (exitCode == 0) {
-                            val rtt = parseIcmpRtt(output)
-                            val finalRtt = if (rtt != -1L) rtt else (System.nanoTime() - startTime) / 1_000_000
-                            finalRtt to null
-                        } else {
-                            -1L to "Unreachable"
+                        var process: Process? = null
+                        try {
+                            process = Runtime.getRuntime()
+                                .exec(arrayOf("ping", "-c", "1", "-W", "2", ipAddress))
+                            val output = process.inputStream.bufferedReader().use { it.readText() }
+                            val exitCode = process.waitFor()
+                            if (exitCode == 0) {
+                                val rtt = parseIcmpRtt(output)
+                                val finalRtt = if (rtt != -1L) rtt else (System.nanoTime() - startTime) / 1_000_000
+                                finalRtt to null
+                            } else {
+                                -1L to "Unreachable"
+                            }
+                        } finally {
+                            process?.destroy()
                         }
                     } else {
                         val startTime = System.nanoTime()
@@ -124,139 +140,157 @@ object PingHelper {
         context: Context,
         profiles: List<ProfileEntity>,
         testUrl: String,
-        httpMethod: String,
         onResult: suspend (Long, Long, String?) -> Unit
     ) = withContext(Dispatchers.IO) {
         ensureLibboxSetup(context)
 
         batchMutex.withLock {
-            val handler = object : CommandServerHandler {
-                override fun serviceStop() {}
-                override fun serviceReload() {}
-                override fun getSystemProxyStatus() = SystemProxyStatus()
-                override fun setSystemProxyEnabled(enabled: Boolean) {}
-                override fun writeDebugMessage(message: String?) {}
-            }
-
-            val platform = object : PlatformInterface {
-                override fun autoDetectInterfaceControl(fd: Int) {}
-                override fun clearDNSCache() {}
-                override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
-                override fun findConnectionOwner(
-                    p0: Int, p1: String?, p2: Int, p3: String?, p4: Int
-                ): ConnectionOwner? = null
-                override fun getInterfaces(): NetworkInterfaceIterator? = null
-                override fun includeAllNetworks(): Boolean = false
-                override fun localDNSTransport(): LocalDNSTransport? = null
-                override fun openTun(o: TunOptions?): Int = -1
-                override fun readWIFIState(): WIFIState? = null
-                override fun sendNotification(n: Notification?) {}
-                override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
-                override fun systemCertificates(): StringIterator? = null
-                override fun underNetworkExtension(): Boolean = false
-                override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
-                override fun useProcFS(): Boolean = true
-            }
-
-            val boxService = Libbox.newCommandServer(handler, platform)
-            val clashPort = findAvailablePort()
-            try {
-                val batchConfig = buildBatchConfig(profiles, testUrl, clashPort)
-                if (batchConfig == null) {
-                    profiles.forEach { onResult(it.id, -1L, "Config Err") }
-                    return@withLock
+            profiles.chunked(PROXY_PING_BATCH_SIZE).forEachIndexed { batchIndex, chunk ->
+                if (batchIndex > 0) {
+                    delay(20) 
                 }
-
-                boxService.startOrReloadService(
-                    batchConfig.toString().replace("\\/", "/"),
-                    OverrideOptions()
+                runProxyPingChunk(
+                    profiles = chunk,
+                    testUrl = testUrl,
+                    batchIndex = batchIndex,
+                    onResult = onResult
                 )
-                val okHttpClient = OkHttpClient.Builder()
-                    .connectTimeout(15, TimeUnit.SECONDS)
-                    .readTimeout(15, TimeUnit.SECONDS)
-                    .writeTimeout(15, TimeUnit.SECONDS)
-                    .build()
+            }
+        }
+    }
 
-                var ready = false
-                val healthStart = System.currentTimeMillis()
-                while (!ready && System.currentTimeMillis() - healthStart < 5000) {
-                    try {
-                        val checkReq = Request.Builder().url("http://127.0.0.1:$clashPort/").get().build()
-                        okHttpClient.newCall(checkReq).execute().use {
-                            if (it.code != 0) ready = true
-                        }
-                    } catch (e: Exception) {
-                        delay(50)
+    private suspend fun runProxyPingChunk(
+        profiles: List<ProfileEntity>,
+        testUrl: String,
+        batchIndex: Int,
+        onResult: suspend (Long, Long, String?) -> Unit
+    ) {
+        if (profiles.isEmpty()) return
+
+        val handler = object : CommandServerHandler {
+            override fun serviceStop() {}
+            override fun serviceReload() {}
+            override fun getSystemProxyStatus() = SystemProxyStatus()
+            override fun setSystemProxyEnabled(enabled: Boolean) {}
+            override fun writeDebugMessage(message: String?) {}
+        }
+
+        val platform = object : PlatformInterface {
+            override fun autoDetectInterfaceControl(fd: Int) {}
+            override fun clearDNSCache() {}
+            override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+            override fun findConnectionOwner(
+                p0: Int, p1: String?, p2: Int, p3: String?, p4: Int
+            ): ConnectionOwner? = null
+            override fun getInterfaces(): NetworkInterfaceIterator? = null
+            override fun includeAllNetworks(): Boolean = false
+            override fun localDNSTransport(): LocalDNSTransport? = null
+            override fun openTun(o: TunOptions?): Int = -1
+            override fun readWIFIState(): WIFIState? = null
+            override fun sendNotification(n: Notification?) {}
+            override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+            override fun systemCertificates(): StringIterator? = null
+            override fun underNetworkExtension(): Boolean = false
+            override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
+            override fun useProcFS(): Boolean = true
+        }
+
+        val boxService = Libbox.newCommandServer(handler, platform)
+        val clashPort = findAvailablePort()
+        try {
+            val batchConfig = buildBatchConfig(profiles, testUrl, clashPort)
+            if (batchConfig == null) {
+                profiles.forEach { onResult(it.id, -1L, "Config Err") }
+                return
+            }
+
+            boxService.startOrReloadService(
+                batchConfig.toString().replace("\\/", "/"),
+                OverrideOptions()
+            )
+
+            var ready = false
+            val healthStart = System.currentTimeMillis()
+            while (!ready && System.currentTimeMillis() - healthStart < 5000) {
+                try {
+                    val checkReq = Request.Builder()
+                        .url("http://127.0.0.1:$clashPort/")
+                        .header("Connection", "close")
+                        .get()
+                        .build()
+                    okHttpClient.newCall(checkReq).execute().use {
+                        if (it.code != 0) ready = true
                     }
+                } catch (e: Exception) {
+                    delay(50)
                 }
-                if (!ready) {
-                    Log.w(TAG, "Clash API failed to start on port $clashPort in time")
-                }
+            }
+            if (!ready) {
+                Log.w(TAG, "Clash API failed to start on port $clashPort in time (batch=$batchIndex)")
+            }
 
-                val semaphore = Semaphore(25)
-                coroutineScope {
-                    profiles.forEach { profile ->
-                        launch(Dispatchers.IO) {
-                            semaphore.withPermit {
-                                var rtt = -1L
-                                var errMsg: String? = null
-                                try {
-                                    val index = profiles.indexOf(profile)
-                                    val tag = "proxy-$index"
-                                    val url = "http://127.0.0.1:$clashPort/proxies/${java.net.URLEncoder.encode(tag, "UTF-8")}/delay?url=${java.net.URLEncoder.encode(testUrl, "UTF-8")}&timeout=10000"
-                                    val request = Request.Builder()
-                                        .url(url)
-                                        .get()
-                                        .build()
-                                    okHttpClient.newCall(request).execute().use { response ->
-                                        if (response.isSuccessful) {
-                                            val body = response.body?.string()
-                                            if (body != null) {
-                                                val json = JSONObject(body)
-                                                rtt = json.optLong("delay", -1L)
-                                                if (rtt == -1L) errMsg = "Timeout"
+            val semaphore = Semaphore(PROXY_PING_PARALLELISM)
+            coroutineScope {
+                profiles.forEachIndexed { index, profile ->
+                    launch(Dispatchers.IO) {
+                        semaphore.withPermit {
+                            var rtt = -1L
+                            var errMsg: String? = null
+                            try {
+                                val tag = "proxy-$index"
+                                val url = "http://127.0.0.1:$clashPort/proxies/${java.net.URLEncoder.encode(tag, "UTF-8")}/delay?url=${java.net.URLEncoder.encode(testUrl, "UTF-8")}&timeout=4000"
+                                val request = Request.Builder()
+                                    .url(url)
+                                    .get()
+                                    .build()
+                                okHttpClient.newCall(request).execute().use { response ->
+                                    if (response.isSuccessful) {
+                                        val body = response.body?.string()
+                                        if (body != null) {
+                                            val json = JSONObject(body)
+                                            rtt = json.optLong("delay", -1L)
+                                            if (rtt == -1L) errMsg = "Timeout"
+                                        }
+                                    } else {
+                                        val body = response.body?.string() ?: ""
+                                        errMsg = try {
+                                            val msg = JSONObject(body).optString("message", "")
+                                            when {
+                                                msg.contains("timeout", ignoreCase = true) -> "Timeout"
+                                                msg.contains("TLS", ignoreCase = true) -> "TLS Failed"
+                                                msg.contains("unreachable", ignoreCase = true) -> "Unreachable"
+                                                msg.contains("connection refused", ignoreCase = true) -> "Refused"
+                                                msg.contains("error occurred", ignoreCase = true) -> "Failed"
+                                                msg.length > 20 -> msg.substring(0, 17) + ".."
+                                                msg.isNotBlank() -> msg
+                                                else -> "${response.code}"
                                             }
-                                        } else {
-                                            val body = response.body?.string() ?: ""
-                                            errMsg = try {
-                                                val msg = JSONObject(body).optString("message", "")
-                                                when {
-                                                    msg.contains("timeout", ignoreCase = true) -> "Timeout"
-                                                    msg.contains("TLS", ignoreCase = true) -> "TLS Failed"
-                                                    msg.contains("unreachable", ignoreCase = true) -> "Unreachable"
-                                                    msg.contains("connection refused", ignoreCase = true) -> "Refused"
-                                                    msg.contains("error occurred", ignoreCase = true) -> "Failed"
-                                                    msg.length > 20 -> msg.substring(0, 17) + ".."
-                                                    msg.isNotBlank() -> msg
-                                                    else -> "${response.code}"
-                                                }
-                                            } catch (_: Exception) {
-                                                "${response.code}"
-                                            }
+                                        } catch (_: Exception) {
+                                            "${response.code}"
                                         }
                                     }
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "Ping failed for profile ${profile.id}: ${e.message}")
-                                    errMsg = when {
-                                        e is java.net.SocketTimeoutException -> "Timeout"
-                                        e.message?.contains("timeout", ignoreCase = true) == true -> "Timeout"
-                                        else -> "Error"
-                                    }
                                 }
-                                onResult(profile.id, rtt, errMsg)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Ping failed for profile ${profile.id}: ${e.message}")
+                                errMsg = when {
+                                    e is java.net.SocketTimeoutException -> "Timeout"
+                                    e.message?.contains("timeout", ignoreCase = true) == true -> "Timeout"
+                                    else -> "Error"
+                                }
                             }
+                            onResult(profile.id, rtt, errMsg)
                         }
                     }
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Batch ping failed (core start error): ${e.message}", e)
-                profiles.forEach { onResult(it.id, -1L, "Core err") }
-            } finally {
-                try {
-                    boxService.closeService()
-                    boxService.close()
-                } catch (_: Exception) {}
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Batch ping failed (core start error, batch=$batchIndex): ${e.message}", e)
+            profiles.forEach { onResult(it.id, -1L, "Core err") }
+        } finally {
+            try {
+                boxService.closeService()
+                boxService.close()
+            } catch (_: Exception) {}
         }
     }
 
@@ -309,11 +343,14 @@ object PingHelper {
                         }
                     }
 
-                    ob.optJSONObject("tls")?.let { tls ->
-                        tls.put("utls", JSONObject().apply {
-                            put("enabled", true)
-                            put("fingerprint", "chrome")
-                        })
+                    val type = ob.optString("type")
+                    if (type != "hysteria" && type != "hysteria2") {
+                        ob.optJSONObject("tls")?.let { tls ->
+                            tls.put("utls", JSONObject().apply {
+                                put("enabled", true)
+                                put("fingerprint", "chrome")
+                            })
+                        }
                     }
                     outbounds.put(ob)
                 }
@@ -344,6 +381,11 @@ object PingHelper {
                             put("detour", "direct")
                         })
                         put(JSONObject().apply {
+                            put("tag", "dns-cf")
+                            put("address", "1.1.1.1")
+                            put("detour", "direct")
+                        })
+                        put(JSONObject().apply {
                             put("tag", "dns-local")
                             put("address", "local")
                             put("detour", "direct")
@@ -351,7 +393,7 @@ object PingHelper {
                     })
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
-                            put("outbound", JSONArray().put("any"))
+                            put("outbound", JSONArray().put("direct"))
                             put("server", "dns-direct")
                         })
                     })

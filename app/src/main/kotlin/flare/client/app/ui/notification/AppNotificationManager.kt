@@ -19,18 +19,26 @@ data class NotificationData(
     val text: String,
     val durationSec: Int,
     val actionText: String? = null,
-    val onAction: (() -> Unit)? = null
+    val onAction: (() -> Unit)? = null,
+    val iconRes: Int? = null
 )
 
 object AppNotificationManager {
-    private val _notifications = MutableSharedFlow<NotificationData>(extraBufferCapacity = 3)
+    private val _notifications = MutableSharedFlow<NotificationData>(extraBufferCapacity = 10)
     val notifications: SharedFlow<NotificationData> = _notifications.asSharedFlow()
 
     private const val BEST_PROFILE_CHANNEL = "best_profile_updates"
     private const val BEST_PROFILE_NOTIF_ID = 1002
 
-    fun showNotification(type: NotificationType, text: String, durationSec: Int, actionText: String? = null, onAction: (() -> Unit)? = null) {
-        _notifications.tryEmit(NotificationData(type, text, durationSec, actionText, onAction))
+    fun showNotification(
+        type: NotificationType,
+        text: String,
+        durationSec: Int,
+        actionText: String? = null,
+        iconRes: Int? = null,
+        onAction: (() -> Unit)? = null
+    ) {
+        _notifications.tryEmit(NotificationData(type, text, durationSec, actionText, onAction, iconRes))
     }
 
     fun showSystemNotification(context: Context, title: String, text: String, isHighPriority: Boolean = false) {

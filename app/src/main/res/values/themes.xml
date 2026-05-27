@@ -12,11 +12,24 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar" tools:ignore="NewApi">false</item>
+        <item name="android:enforceNavigationBarContrast" tools:ignore="NewApi">false</item>
+        <item name="android:enforceStatusBarContrast" tools:ignore="NewApi">false</item>
         <item name="android:fontFamily">@font/geologica_regular</item>
         <item name="fontFamily">@font/geologica_regular</item>
         <item name="android:listDivider">@drawable/menu_divider</item>
         <item name="materialSwitchStyle">@style/Widget.Flare.MaterialSwitch</item>
+        <item name="android:popupWindowStyle">@style/Widget.Flare.PopupWindow</item>
     </style>
+
+    <style name="Widget.Flare.PopupWindow" parent="@android:style/Widget.PopupWindow">
+        <item name="android:popupAnimationStyle">@style/Animation.Flare.PopupNone</item>
+    </style>
+
+    <style name="Animation.Flare.PopupNone" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@null</item>
+        <item name="android:windowExitAnimation">@null</item>
+    </style>
+
     <style name="Widget.Flare.MaterialSwitch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
         <item name="android:minWidth">52dp</item>
         <item name="android:minHeight">32dp</item>

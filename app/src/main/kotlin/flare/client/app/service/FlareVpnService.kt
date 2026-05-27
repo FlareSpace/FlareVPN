@@ -1,5 +1,7 @@
 package flare.client.app.service
 
+import flare.client.app.ui.i18n.I18n
+
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -18,6 +20,7 @@ import io.nekohasekai.libbox.Libbox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -35,6 +38,8 @@ class FlareVpnService : VpnService() {
         const val BROADCAST_STATE = "flare.client.app.VPN_STATE"
         const val EXTRA_CONNECTED = "connected"
         const val EXTRA_ERROR = "error"
+        const val EXTRA_ERROR_MESSAGE = "error_message"
+        const val EXTRA_PERMISSION_REQUIRED = "permission_required"
         private const val NOTIF_CHANNEL = "flare_vpn"
         private const val NOTIF_ID = 1001
     }
@@ -44,8 +49,18 @@ class FlareVpnService : VpnService() {
     private var statsJob: kotlinx.coroutines.Job? = null
     private var profileName: String = "Flare Profile"
 
+    override fun onCreate() {
+        super.onCreate()
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val action = intent?.action ?: return START_NOT_STICKY
+        if (intent == null || intent.action == null) {
+            Log.w(TAG, "onStartCommand: intent or action is null, stopping service (startId=$startId)")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
+        val action = intent.action
         val configJson = intent.getStringExtra(EXTRA_CONFIG)
         val name = intent.getStringExtra(EXTRA_PROFILE_NAME) ?: "Flare Profile"
 
@@ -53,6 +68,13 @@ class FlareVpnService : VpnService() {
             commandMutex.withLock {
                 when (action) {
                     ACTION_START -> {
+                        val vpnIntent = VpnService.prepare(this@FlareVpnService)
+                        if (vpnIntent != null) {
+                            broadcastState(false, error = true, permissionRequired = true)
+                            stopSelf(startId)
+                            return@withLock
+                        }
+
                         if (configJson != null) {
                             profileName = name
                             startVpnInternal(configJson, startId)
@@ -70,7 +92,9 @@ class FlareVpnService : VpnService() {
         serviceScope.launch {
             commandMutex.withLock {
                 stopVpnInternal()
+                SingBoxManager.destroy()
             }
+            serviceScope.cancel()
         }
     }
 
@@ -88,22 +112,33 @@ class FlareVpnService : VpnService() {
 
         try {
             GeoFileManager.ensureGeoFiles(this)
+            SingBoxManager.ensureSetup(this)
             
             try {
-                Libbox.checkConfig(configJson)
+                val patchedConfig = SingBoxManager.patchConfig(configJson, this)
+                Libbox.checkConfig(patchedConfig)
             } catch (e: Exception) {
-                Log.e(TAG, "Config validation FAILED: ${e.message}")
+                val errorMsg = e.message ?: "Unknown validation error"
+                Log.e(TAG, "Config validation FAILED: $errorMsg")
+                stopVpnOnError(startId, errorMessage = errorMsg)
+                return
             }
 
-            val started = SingBoxManager.start(configJson, this)
+            if (SingBoxManager.isRunning) {
+                Log.i(TAG, "Stopping active tunnel for configuration switch/reload")
+                SingBoxManager.stop()
+            }
+
+            val started = try {
+                SingBoxManager.start(configJson, this)
+            } catch (e: Exception) {
+                val isPermission = e.message == "VPN_PERMISSION_MISSING"
+                stopVpnOnError(startId, permissionRequired = isPermission)
+                return
+            }
 
             if (!started) {
-                broadcastState(false, error = true)
-                
-                if (!SingBoxManager.isRunning) {
-                   stopForeground(STOP_FOREGROUND_REMOVE)
-                   stopSelf(startId)
-                }
+                stopVpnOnError(startId)
                 return
             }
 
@@ -111,10 +146,7 @@ class FlareVpnService : VpnService() {
             startStatsPolling()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting VPN", e)
-            broadcastState(false, error = true)
-            SingBoxManager.stop()
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf(startId)
+            stopVpnOnError(startId)
         }
     }
 
@@ -126,7 +158,9 @@ class FlareVpnService : VpnService() {
         statsJob = serviceScope.launch {
             while (isActive) {
                 SingBoxManager.getTraffic { up, down ->
-                    updateNotification(up, down)
+                    if (isActive && SingBoxManager.isRunning) {
+                        updateNotification(up, down)
+                    }
                 }
                 delay(1000)
             }
@@ -134,8 +168,13 @@ class FlareVpnService : VpnService() {
     }
 
     private fun updateNotification(up: Long, down: Long) {
+        val settings = flare.client.app.data.SettingsManager(this)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIF_ID, buildNotification(formatSpeed(up), formatSpeed(down)))
+        if (settings.isNotificationSpeedEnabled) {
+            manager.notify(NOTIF_ID, buildNotification(formatSpeed(up), formatSpeed(down)))
+        } else {
+            manager.notify(NOTIF_ID, buildNotification(null, null))
+        }
     }
 
     private fun formatSpeed(bytes: Long): String {
@@ -149,18 +188,35 @@ class FlareVpnService : VpnService() {
     }
 
     private suspend fun stopVpnInternal(startId: Int = -1) {
+        Log.i(TAG, "stopVpnInternal: begin (startId=$startId)")
         statsJob?.cancel()
-        SingBoxManager.stop()
         broadcastState(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
+        SingBoxManager.stop()
+        Log.i(TAG, "stopVpnInternal: engine stopped")
         if (startId != -1) stopSelf(startId)
     }
 
-    private fun broadcastState(connected: Boolean, error: Boolean = false) {
+    private suspend fun stopVpnOnError(
+        startId: Int,
+        errorMessage: String? = null,
+        permissionRequired: Boolean = false
+    ) {
+        Log.i(TAG, "stopVpnOnError: startId=$startId, error=$errorMessage, permission=$permissionRequired")
+        statsJob?.cancel()
+        broadcastState(false, error = true, permissionRequired = permissionRequired, errorMessage = errorMessage)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        SingBoxManager.stop()
+        stopSelf(startId)
+    }
+
+    private fun broadcastState(connected: Boolean, error: Boolean = false, permissionRequired: Boolean = false, errorMessage: String? = null) {
         sendBroadcast(
                 Intent(BROADCAST_STATE).apply {
                     putExtra(EXTRA_CONNECTED, connected)
                     putExtra(EXTRA_ERROR, error)
+                    putExtra(EXTRA_ERROR_MESSAGE, errorMessage)
+                    putExtra(EXTRA_PERMISSION_REQUIRED, permissionRequired)
                     `package` = packageName
                 }
         )
@@ -194,7 +250,7 @@ class FlareVpnService : VpnService() {
         val contentText = if (upStr != null && downStr != null) {
             "$upStr ↑ $downStr ↓"
         } else {
-            getString(R.string.vpn_active)
+            I18n.strings.vpn_active
         }
 
         return NotificationCompat.Builder(this, NOTIF_CHANNEL)
@@ -202,7 +258,7 @@ class FlareVpnService : VpnService() {
                 .setContentText(contentText)
                 .setSmallIcon(R.drawable.ic_vpn_key)
                 .setContentIntent(mainPendingIntent)
-                .addAction(R.drawable.ic_vpn_key, getString(R.string.vpn_disconnect), stopIntent)
+                .addAction(R.drawable.ic_vpn_key, I18n.strings.vpn_disconnect, stopIntent)
                 .setOngoing(true)
                 .build()
     }

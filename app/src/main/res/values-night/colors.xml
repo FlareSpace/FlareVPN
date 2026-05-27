@@ -7,7 +7,7 @@
     <color name="bg_notification_bar">#1C2233</color>
 
     <color name="accent">#5B8CFF</color>
-    <color name="accent_end">#A066FF</color>
+    <color name="accent_end">#5B8CFF</color>
 
     <color name="text_primary">#E8ECF4</color>
     <color name="text_secondary">#6B7A99</color>
@@ -50,4 +50,7 @@
     <color name="divider_profile_selected">#4DFFFFFF</color>
     <color name="slider_thumb_stroke">#FFFFFF</color>
     <color name="glass_input_bg">#1AFFFFFF</color>
+
+    <color name="info_bg">#26FFFFFF</color>
+    <color name="info_stroke">#33FFFFFF</color>
 </resources>

@@ -1,5 +1,7 @@
 package flare.client.app.util
 
+import flare.client.app.ui.i18n.I18n
+
 import android.content.Context
 import android.util.Log
 import flare.client.app.BuildConfig
@@ -46,17 +48,17 @@ object VersionManager {
                     val currentVersion = BuildConfig.VERSION_NAME
 
                     if (isNewer(latestVersion, currentVersion)) {
-                        val message = context.getString(R.string.update_available_title, latestVersion)
+                        val message = I18n.strings.update_available_title.format(latestVersion)
                         
                         AppNotificationManager.showNotification(
                             NotificationType.WARNING,
                             message,
-                            15
+                            30
                         )
 
                         AppNotificationManager.showSystemNotification(
                             context,
-                            context.getString(R.string.notif_update_title),
+                            I18n.strings.notif_update_title,
                             message
                         )
                     }
