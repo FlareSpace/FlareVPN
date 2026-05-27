@@ -48,7 +48,7 @@ In version 1.1.0, the ability to create your own personal VPN servers was added.
 ### 📢 Telegram Channel
 **[@FlareApp](https://t.me/FlareApp)** - Official Flare VPN news and updates.
 
-### 🧪 Join the test Flare 1.2.0
+### 🧪 Join the test Flare
 We created a channel with beta versions of Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
@@ -90,7 +90,7 @@ Flare поддерживает широкий спектр современны�
 ### 📢 Telegram-канал
 **[@FlareApp](https://t.me/FlareApp)** — официальный Telegram-канал проекта Flare VPN.
 
-###  🧪 Присоединяйтесь к тестированию Flare 1.2.0
+###  🧪 Присоединяйтесь к тестированию Flare
 Мы создали канал с бета-версиями Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
