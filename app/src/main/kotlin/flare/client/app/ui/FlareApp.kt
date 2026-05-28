@@ -83,8 +83,8 @@ import kotlinx.coroutines.launch
 
 private const val ROOT_TAB_EXIT_DURATION = 220
 private const val ROOT_TAB_ENTER_DURATION = 260
-private const val SETTINGS_EXIT_DURATION = 260
-private const val SETTINGS_ENTER_DURATION = 260
+private const val SETTINGS_EXIT_DURATION = 220
+private const val SETTINGS_ENTER_DURATION = 220
 private const val ROOT_TAB_BLUR = 0f
 private const val SETTINGS_BLUR = 25f
 private const val MORPH_DURATION = 450

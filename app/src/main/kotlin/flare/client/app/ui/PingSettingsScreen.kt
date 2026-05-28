@@ -275,8 +275,8 @@ fun PingTypeButton(
     modifier: Modifier = Modifier,
     accentColor: Color
 ) {
-    val backgroundColor = if (isSelected) Color(0xFF2A324A) else FlareTheme.colors.bgItem
-    val textColor = if (isSelected) Color.White else FlareTheme.colors.textPrimary
+    val backgroundColor = if (isSelected) FlareTheme.colors.bgProfileSelected else FlareTheme.colors.bgItem
+    val textColor = if (isSelected) FlareTheme.colors.textProfileSelectedPrimary else FlareTheme.colors.textPrimary
     val iconColor = if (isSelected) accentColor else FlareTheme.colors.textSecondary
 
     Box(

@@ -123,15 +123,15 @@ fun FlareTheme(
 ) {
     val colors = if (isDark) {
         FlareColors(
-            bgDark = Color(0xFF0D0F14),
-            bgSurface = Color(0xFF161B25),
-            bgItem = Color(0xFF1C2233),
-            bgNavBar = Color(0x801E1E1E),
-            bgNotificationBar = Color(0xFF1C2233),
+            bgDark = Color(0xFF000000),
+            bgSurface = Color(0xFF0F0F11),
+            bgItem = Color(0xFF1C1C1E),
+            bgNavBar = Color(0x951C1C1E),
+            bgNotificationBar = Color(0xFF1C1C1E),
             accent = accentColor,
             accentEnd = accentEndColor,
             textPrimary = Color(0xFFE8ECF4),
-            textSecondary = Color(0xFF6B7A99),
+            textSecondary = Color(0xFF8E9099),
             white = Color(0xFFFFFFFF),
             glassStroke = Color(0x26FFFFFF),
             dividerColor = Color(0x0DFFFFFF),
@@ -141,10 +141,10 @@ fun FlareTheme(
             disconnectedRed = Color(0xFFFF453A),
             dialogGlassFill = Color(0x33000000),
             dialogGlassStroke = Color(0x4DFFFFFF),
-            bgProfileSelected = Color(0xFF2A3245),
+            bgProfileSelected = Color(0xFF2C2C2E),
             textProfileSelectedPrimary = Color(0xFFFFFFFF),
             textProfileSelectedSecondary = Color(0xFFB0BDD1),
-            dividerProfileSelected = Color(0x4DFFFFFF),
+            dividerProfileSelected = Color(0x26FFFFFF),
             
             btnConnectRimStart = Color(0xFF0A0C1C),
             btnConnectRimEnd = Color(0xFF3F4678),
@@ -152,7 +152,7 @@ fun FlareTheme(
             btnConnectBodyCenter = Color(0xFF1B1E38),
             btnConnectBodyEnd = Color(0xFF0B0D19),
             btnConnectIconTint = Color(0xFFA0A5D6),
-            gradientBase = Color(0xFF0F1014),
+            gradientBase = Color(0xFF000000),
             gradientBlueStart = Color(0x401565C0),
             gradientBlueEnd = Color(0x001565C0),
             gradientPurpleStart = Color(0x406A1B9A),
@@ -168,8 +168,8 @@ fun FlareTheme(
             infoStroke = Color(0x33FFFFFF),
             trafficTextColor = Color(0xFFE8ECF4),
 
-            headerGradientStart = Color(0xB01F2228),
-            headerGradientEnd = Color(0x8A14171D),
+            headerGradientStart = Color(0xB01C1C1E),
+            headerGradientEnd = Color(0x8A000000),
 
             isDark = true
         )
