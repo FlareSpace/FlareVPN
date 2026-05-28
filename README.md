@@ -30,7 +30,12 @@ Flare offers professional-grade tunnel settings to bypass censorship and optimiz
 - And much more to explore!
 
 ### 📡 Creating your own servers
-In version 1.1.0, the ability to create your own personal VPN servers was added.
+FlareVPN supports the deployment and management of your own VPN servers based on the most modern and block-resistant protocols:
+
+* **VLESS (with REALITY support)**
+* **Hysteria 2**
+* **Shadowsocks**
+* **WireGuard**
 
 ### 🛠 Installation
 1. Download `Flare.apk` from the [Releases](https://github.com/gitwelk/FlareVPN/releases) page.
@@ -39,8 +44,8 @@ In version 1.1.0, the ability to create your own personal VPN servers was added.
 4. **Done!** Let's get started.
 
 ### 🗺 Roadmap
-- [ ] **UI Improvements:** Making the interface even more modern and intuitive.
-- [ ] **Expanded Tunnel Features:** Adding more advanced settings for fine-tuning your connection.
+- [x] **UI Improvements:** Making the interface even more modern and intuitive.
+- [x] **Expanded Tunnel Features:** Adding more advanced settings for fine-tuning your connection.
 - [x] **Power Optimization:** Reducing battery consumption for long-term usage. (consumption was reduced from 15% per day to 3-5% per day)
 - [x] **Profile Management:** Improved interaction with single profiles (e.g., adding a delete button and other management features).
 - [x] **JSON Converter:** Potential improvements to the Xray to Sing-box JSON converter.
@@ -72,7 +77,14 @@ Flare поддерживает широкий спектр современны�
 - И еще немало других полезных опций!
 
 ### 📡 Создание своих серверов
-В версии 1.1.0 была добавлена возможность создавать свои личные VPN сервера.
+
+FlareVPN поддерживает развертывание и управление собственными VPN-серверами на базе самых современных и устойчивых к блокировкам протоколов:
+
+* **VLESS (с поддержкой REALITY)**
+* **Hysteria 2**
+* **Shadowsocks**
+* **WireGuard**
+
 
 ### 🛠 Установка
 1. Скачайте `Flare.apk` со страницы [Релизов](https://github.com/gitwelk/FlareVPN/releases).
@@ -81,8 +93,8 @@ Flare поддерживает широкий спектр современны�
 4. **Готово!** Можно пользоваться.
 
 ### 🗺 Планы на будущее
-- [ ] **Улучшение UI:** Сделаем интерфейс еще более современным и интуитивно понятным.
-- [ ] **Больше функций туннеля:** Добавление продвинутых настроек для тонкой конфигурации соединения.
+- [x] **Улучшение UI:** Сделаем интерфейс еще более современным и интуитивно понятным.
+- [x] **Больше функций туннеля:** Добавление продвинутых настроек для тонкой конфигурации соединения.
 - [x] **Оптимизация энергопотребления:** Снижение расхода батареи при длительной работе. (потребление было снижено с 15% в день до 3-5% в день)
 - [x] **Улучшение работы с профилями:** Более удобное взаимодействие с одиночными профилями (кнопка удаления и другие функции управления).
 - [x] **Конвертер JSON:** Возможное улучшение конвертера JSON из формата Xray в Sing-box.
