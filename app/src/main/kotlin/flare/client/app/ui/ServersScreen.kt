@@ -131,12 +131,12 @@ fun ServersScreen(
                         WizardStep.PROGRESS, WizardStep.SUCCESS -> 3
                         else -> 0
                     }
-                    val isRu = I18n.strings.servers_protocol_title.contains("Выберите")
-                    val stepLabels = if (isRu) {
-                        listOf("SSH", "Протокол", "Настройки", "Установка")
-                    } else {
-                        listOf("SSH", "Protocol", "Settings", "Setup")
-                    }
+                    val stepLabels = listOf(
+                        I18n.strings.wizard_step_ssh,
+                        I18n.strings.wizard_step_protocol,
+                        I18n.strings.wizard_step_settings,
+                        I18n.strings.wizard_step_setup
+                    )
                     WizardStepper(
                         activeIndex = activeIndex,
                         steps = stepLabels,

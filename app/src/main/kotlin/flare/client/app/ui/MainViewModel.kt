@@ -443,7 +443,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             }
                             flare.client.app.ui.notification.AppNotificationManager.showNotification(
                                 flare.client.app.ui.notification.NotificationType.ERROR,
-                                "Ошибка загрузки ${ruleId.uppercase()}: $err", 3
+                                I18n.strings.error_downloading_rule.format(ruleId.uppercase(), err), 3
                             )
                         }
                     }

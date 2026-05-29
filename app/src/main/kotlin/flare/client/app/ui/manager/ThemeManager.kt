@@ -17,6 +17,7 @@ import flare.client.app.R
 import flare.client.app.data.SettingsManager
 import flare.client.app.ui.notification.AppNotificationManager
 import flare.client.app.ui.notification.NotificationType
+import flare.client.app.ui.i18n.I18n
 
 class ThemeManager(
     private val activity: AppCompatActivity,
@@ -123,7 +124,7 @@ class ThemeManager(
 
                     AppNotificationManager.showNotification(
                         NotificationType.SUCCESS,
-                        "Тема была успешно изменена!",
+                        I18n.strings.notif_theme_changed,
                         3
                     )
                 }

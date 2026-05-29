@@ -74,6 +74,7 @@ import flare.client.app.ui.SubscriptionsScreen
 import flare.client.app.ui.ThemeSettingsScreen
 import flare.client.app.ui.LanguageSettingsScreen
 import flare.client.app.ui.notification.AppNotificationManager
+import flare.client.app.ui.i18n.I18n
 import flare.client.app.ui.notification.NotificationType
 import flare.client.app.ui.components.ProfileJsonEditor
 import flare.client.app.ui.components.ProfileSimpleEditor
@@ -718,7 +719,7 @@ fun FlareApp(
                             if (it) {
                                 AppNotificationManager.showNotification(
                                     NotificationType.SUCCESS,
-                                    "Уведомления успешно включены!",
+                                    I18n.strings.notif_notifications_enabled,
                                     3
                                 )
                             }
@@ -1064,7 +1065,7 @@ fun FlareApp(
                                     mainViewModel.setEditingProfile(null)
                                     AppNotificationManager.showNotification(
                                         NotificationType.SUCCESS,
-                                        "Данные JSON профиля изменены!",
+                                        I18n.strings.notif_profile_changed,
                                         3
                                     )
                                     navController.popBackStack()
@@ -1106,7 +1107,7 @@ fun FlareApp(
                                     mainViewModel.setEditingProfile(null)
                                     AppNotificationManager.showNotification(
                                         NotificationType.SUCCESS,
-                                        "Данные JSON профиля изменены!",
+                                        I18n.strings.notif_profile_changed,
                                         3
                                     )
                                     navController.popBackStack()

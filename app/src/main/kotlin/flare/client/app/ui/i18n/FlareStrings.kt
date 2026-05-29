@@ -111,6 +111,17 @@ interface FlareStrings {
     val notif_language_changed_auto: String
     val notif_theme_changed: String
     val notif_theme_changed_auto: String
+    val notif_notifications_enabled: String
+    val notif_profile_changed: String
+    val onboarding_toast_notification_granted: String
+    val onboarding_toast_notification_denied: String
+    val onboarding_toast_battery_unrestricted: String
+    val error_downloading_rule: String
+    val split_presets_applied: String
+    val wizard_step_ssh: String
+    val wizard_step_protocol: String
+    val wizard_step_settings: String
+    val wizard_step_setup: String
     val notif_update_title: String
     val onboarding_battery_desc: String
     val onboarding_battery_title: String
@@ -580,6 +591,17 @@ object RuFlareStrings : FlareStrings {
     override val notif_language_changed_auto: String = "Язык приложения был изменен!"
     override val notif_theme_changed: String = "Тема приложения была успешно изменена!"
     override val notif_theme_changed_auto: String = "Тема приложения была изменена автоматически!"
+    override val notif_notifications_enabled: String = "Уведомления успешно включены!"
+    override val notif_profile_changed: String = "Данные профиля изменены!"
+    override val onboarding_toast_notification_granted: String = "Разрешение на уведомления получено"
+    override val onboarding_toast_notification_denied: String = "Уведомления отключены"
+    override val onboarding_toast_battery_unrestricted: String = "Энергопотребление настроено"
+    override val error_downloading_rule: String = "Ошибка загрузки %1\$s: %2\$s"
+    override val split_presets_applied: String = "Настройки раздельного туннелирования применены!"
+    override val wizard_step_ssh: String = "SSH"
+    override val wizard_step_protocol: String = "Протокол"
+    override val wizard_step_settings: String = "Настройки"
+    override val wizard_step_setup: String = "Установка"
     override val notif_update_title: String = "Обновление Flare"
     override val onboarding_battery_desc: String = "Что-бы приложение работало стабильно и Android его не закрывал нужно отключить экономию энергии для Flare"
     override val onboarding_battery_title: String = "Энергопотребление"
@@ -1063,6 +1085,17 @@ object EnFlareStrings : FlareStrings {
     override val notif_language_changed_auto: String = "App language changed successfully!"
     override val notif_theme_changed: String = "App theme changed successfully!"
     override val notif_theme_changed_auto: String = "App theme changed automatically!"
+    override val notif_notifications_enabled: String = "Notifications successfully enabled!"
+    override val notif_profile_changed: String = "Profile data changed successfully!"
+    override val onboarding_toast_notification_granted: String = "Notification permission granted"
+    override val onboarding_toast_notification_denied: String = "Notifications disabled"
+    override val onboarding_toast_battery_unrestricted: String = "Battery optimization configured"
+    override val error_downloading_rule: String = "Failed to download %1\$s: %2\$s"
+    override val split_presets_applied: String = "Split tunneling presets applied!"
+    override val wizard_step_ssh: String = "SSH"
+    override val wizard_step_protocol: String = "Protocol"
+    override val wizard_step_settings: String = "Settings"
+    override val wizard_step_setup: String = "Setup"
     override val notif_update_title: String = "Flare Update"
     override val onboarding_battery_desc: String = "To keep the app stable and prevent Android from closing it, disable battery optimization for Flare"
     override val onboarding_battery_title: String = "Power consumption"

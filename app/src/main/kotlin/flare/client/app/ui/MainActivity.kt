@@ -193,15 +193,15 @@ class MainActivity : AppCompatActivity() {
             onOnboardingNotificationResult = { isGranted ->
                 isNotificationPermissionGranted = isGranted
                 if (isGranted) {
-                    showToast("Разрешение на уведомления получено")
+                    showToast(I18n.strings.onboarding_toast_notification_granted)
                 } else {
-                    showToast("Уведомления отключены")
+                    showToast(I18n.strings.onboarding_toast_notification_denied)
                 }
             },
             onBatteryResult = {
                 isBatteryOptimizationIgnored = checkBatteryOptimizationIgnored()
                 if (isBatteryOptimizationIgnored) {
-                    showToast("Энергопотребление настроено")
+                    showToast(I18n.strings.onboarding_toast_battery_unrestricted)
                 }
             },
             onUsageResult = {
@@ -682,7 +682,7 @@ class MainActivity : AppCompatActivity() {
                                 try {
                                     startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                                 } catch (ex: Exception) {
-                                    showToast("Не удалось открыть настройки энергопотребления")
+                                    showToast(I18n.strings.error_open_settings)
                                 }
                             }
                         },
@@ -937,7 +937,7 @@ class MainActivity : AppCompatActivity() {
                 settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
                 
                 showSettingsNotification()
-                showToast("Настройки раздельного туннелирования применены!")
+                showToast(I18n.strings.split_presets_applied)
             }
         }
     }
@@ -978,7 +978,7 @@ class MainActivity : AppCompatActivity() {
                 
                 AppNotificationManager.showNotification(
                     NotificationType.SUCCESS,
-                    "Тема была изменена автоматически!",
+                    I18n.strings.notif_theme_changed_auto,
                     3
                 )
             }
@@ -1125,7 +1125,7 @@ class MainActivity : AppCompatActivity() {
     private fun showTestNotification() {
         flare.client.app.ui.notification.AppNotificationManager.showNotification(
             flare.client.app.ui.notification.NotificationType.SUCCESS,
-            "Уведомления включены",
+            I18n.strings.notif_notifications_enabled,
             3
         )
     }
