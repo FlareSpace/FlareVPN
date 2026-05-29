@@ -13,7 +13,7 @@ import flare.client.app.data.model.SubscriptionEntity
 
 @Database(
     entities = [ProfileEntity::class, SubscriptionEntity::class],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -31,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "flare_client.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .openHelperFactory(SafeOpenHelperFactory())
                     .fallbackToDestructiveMigration(true)
                     .build().also { INSTANCE = it }
@@ -75,6 +75,13 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE profiles ADD COLUMN protocol TEXT")
+            }
+        }
+
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN updateInterval INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE subscriptions ADD COLUMN lastUpdated INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

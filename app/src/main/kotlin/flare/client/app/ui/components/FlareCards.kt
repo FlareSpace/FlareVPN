@@ -306,6 +306,7 @@ fun SubscriptionCard(
     trafficInfo: String? = null,
     trafficProgress: Float = 0f,
     expire: Long = 0L,
+    updateInterval: Long = 0L,
     isExpanded: Boolean = false,
     isRefreshing: Boolean = false,
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.ALL,
@@ -557,16 +558,33 @@ fun SubscriptionCard(
                             )
                         }
                     }
-                    if (expire > 0) {
-                        val expireMillis = if (expire > 1000000000000L) expire else expire * 1000L
-                        val date = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault()).format(java.util.Date(expireMillis))
-                        Text(
-                            text = I18n.strings.label_expires.format(date),
-                            fontFamily = GeologicaMedium,
-                            fontSize = 9.sp,
-                            color = FlareTheme.colors.textSecondary,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                    if (expire > 0 || updateInterval > 0) {
+                        Column(
+                            horizontalAlignment = Alignment.Start,
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            if (expire > 0) {
+                                val expireMillis = if (expire > 1000000000000L) expire else expire * 1000L
+                                val date = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault()).format(java.util.Date(expireMillis))
+                                Text(
+                                    text = I18n.strings.label_expires.format(date),
+                                    fontFamily = GeologicaMedium,
+                                    fontSize = 9.sp,
+                                    color = FlareTheme.colors.textSecondary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                            if (updateInterval > 0) {
+                                val formattedInterval = formatUpdateInterval(updateInterval)
+                                Text(
+                                    text = I18n.strings.label_update_interval.format(formattedInterval),
+                                    fontFamily = GeologicaMedium,
+                                    fontSize = 9.sp,
+                                    color = FlareTheme.colors.textSecondary,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -676,5 +694,36 @@ fun GlassMenuItem(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+private fun formatUpdateInterval(seconds: Long): String {
+    if (seconds <= 0) return ""
+    val mins = seconds / 60
+    val hours = seconds / 3600
+    val days = seconds / 86400
+    
+    val isRussian = I18n.strings.label_update == "Обновить"
+    
+    return when {
+        days > 0 -> {
+            val remainHours = hours % 24
+            if (remainHours > 0) {
+                if (isRussian) "${days} д. ${remainHours} ч." else "${days} d ${remainHours} h"
+            } else {
+                if (isRussian) "${days} д." else "${days} d"
+            }
+        }
+        hours > 0 -> {
+            val remainMins = mins % 60
+            if (remainMins > 0) {
+                if (isRussian) "${hours} ч. ${remainMins} мин." else "${hours} h ${remainMins} m"
+            } else {
+                if (isRussian) "${hours} ч." else "${hours} h"
+            }
+        }
+        else -> {
+            if (isRussian) "${mins} мин." else "${mins} m"
+        }
     }
 }

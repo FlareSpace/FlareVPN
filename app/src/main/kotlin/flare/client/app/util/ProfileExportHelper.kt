@@ -41,6 +41,9 @@ object ProfileExportHelper {
         val flow = ob.optString("flow")
         if (flow.isNotEmpty()) params["flow"] = flow
 
+        val packetEncoding = ob.optString("packet_encoding")
+        if (packetEncoding.isNotEmpty()) params["packetEncoding"] = packetEncoding
+
         val tls = ob.optJSONObject("tls")
         if (tls != null && tls.optBoolean("enabled", false)) {
             val reality = tls.optJSONObject("reality")

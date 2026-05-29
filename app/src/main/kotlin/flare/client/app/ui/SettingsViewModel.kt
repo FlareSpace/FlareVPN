@@ -65,6 +65,7 @@ class SettingsViewModel : ViewModel() {
     var composePingStyle by mutableStateOf("time")
 
     
+    var composeIsSubIntervalEnabled by mutableStateOf(true)
     var composeIsSubAutoUpdateEnabled by mutableStateOf(false)
     var composeSubAutoUpdateInterval by mutableStateOf("3600")
     var composeSubUserAgent by mutableStateOf("Happ/3.21.1")
@@ -118,6 +119,7 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun syncSub(settings: SettingsManager) {
+        composeIsSubIntervalEnabled = settings.isSubIntervalEnabled
         composeIsSubAutoUpdateEnabled = settings.isSubAutoUpdateEnabled
         composeSubAutoUpdateInterval = settings.subAutoUpdateInterval
         composeSubUserAgent = settings.subUserAgent

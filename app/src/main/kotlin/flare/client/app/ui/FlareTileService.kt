@@ -85,11 +85,7 @@ class FlareTileService : TileService() {
                         putExtra(FlareVpnService.EXTRA_CONFIG, configWithSettings)
                         putExtra(FlareVpnService.EXTRA_PROFILE_NAME, profile.name)
                     }
-                    if (settings.isStatusNotificationEnabled) {
-                        startForegroundService(intent)
-                    } else {
-                        startService(intent)
-                    }
+                    startService(intent)
                 }
             }
         }

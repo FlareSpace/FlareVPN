@@ -465,9 +465,18 @@ fun DataManagementDialog(
                         }
                     )
             ) {
+                val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+                val scrollState = rememberScrollState()
+
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(
+                            if (isLandscape) Modifier
+                                .heightIn(max = 240.dp)
+                                .verticalScroll(scrollState)
+                            else Modifier
+                        )
                         .padding(20.dp)
                 ) {
                     

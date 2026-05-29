@@ -204,7 +204,8 @@ fun FlareHomeBackground(
 fun FlareConnectButton(
     connectionState: MainViewModel.ConnectionState,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    buttonSize: androidx.compose.ui.unit.Dp = 300.dp
 ) {
     var rotationX by remember { mutableStateOf(0f) }
     var rotationY by remember { mutableStateOf(0f) }
@@ -282,15 +283,17 @@ fun FlareConnectButton(
     val bodyCenterOn = Color(0xFF0066FF)
     val bodyEndOn = Color(0xFF5500FF)
 
+    val buttonSizePx = with(LocalDensity.current) { buttonSize.toPx() }
+
     Box(
         modifier = modifier
-            .size(300.dp)
+            .requiredSize(buttonSize)
             .graphicsLayer {
                 this.rotationX = animatedRotationX
                 this.rotationY = animatedRotationY
                 this.scaleX = animatedScale
                 this.scaleY = animatedScale
-                this.cameraDistance = 8f * 300f * density
+                this.cameraDistance = 8f * buttonSizePx * density
             }
             .pointerInput(Unit) {
                 detectTapGestures(

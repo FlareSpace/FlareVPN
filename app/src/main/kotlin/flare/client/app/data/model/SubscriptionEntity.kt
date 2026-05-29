@@ -14,5 +14,7 @@ data class SubscriptionEntity(
     val expire: Long = 0,
     val description: String = "",
     val supportUrl: String = "",
-    val webPageUrl: String = ""
+    val webPageUrl: String = "",
+    val updateInterval: Long = 0,
+    val lastUpdated: Long = 0
 )

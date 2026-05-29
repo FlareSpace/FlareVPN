@@ -4,6 +4,7 @@ import flare.client.app.ui.i18n.I18n
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
@@ -37,12 +38,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.res.painterResource
@@ -87,11 +91,15 @@ fun HomeScreen(
         onBack()
     }
     val isConnected = connectionState == MainViewModel.ConnectionState.CONNECTED
-    val isConnecting = connectionState == MainViewModel.ConnectionState.CONNECTING
+    val isConnecting = connectionState == MainViewModel.ConnectionState.CONNECTING || connectionState == MainViewModel.ConnectionState.DISCONNECTING
 
     
     val coroutineScope = rememberCoroutineScope()
     var isScrollingDown by remember { mutableStateOf(true) }
+    val animatedTopPadding by animateDpAsState(
+        targetValue = if (isAnySubscriptionExpanded) 4.dp else 11.dp,
+        label = "listTopPadding"
+    )
 
     val canScrollBackward by remember { derivedStateOf { listState.canScrollBackward } }
     val canScrollForward by remember { derivedStateOf { listState.canScrollForward } }
@@ -118,13 +126,18 @@ fun HomeScreen(
             }
     }
 
+    val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val buttonSize = if (isLandscape) 170.dp else 300.dp
+    val buttonOffsetY = if (isLandscape) 10.dp else 50.dp
+    val addProfilesBottomPadding = if (isLandscape) 24.dp else 130.dp
+
     Box(
         modifier = Modifier
             .fillMaxSize()
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val screenHeight = maxHeight
-            val guidelineHeight = screenHeight * 0.38f
+            val guidelineHeight = if (isLandscape) screenHeight * 0.35f else screenHeight * 0.38f
 
             
             Box(
@@ -135,8 +148,15 @@ fun HomeScreen(
             ) {
                 FlareConnectButton(
                     connectionState = connectionState,
-                    onClick = onConnectClick,
-                    modifier = Modifier.offset(y = 50.dp)
+                    buttonSize = buttonSize,
+                    onClick = {
+                        if (connectionState != MainViewModel.ConnectionState.CONNECTING &&
+                            connectionState != MainViewModel.ConnectionState.DISCONNECTING
+                        ) {
+                            onConnectClick()
+                        }
+                    },
+                    modifier = Modifier.offset(y = buttonOffsetY)
                 )
             }
 
@@ -173,7 +193,6 @@ fun HomeScreen(
                     val timerColor = if (FlareTheme.colors.isDark) Color(0xFFE2E5EC) else Color(0xFF1A1C1E)
                     Box(
                         modifier = Modifier
-                            .padding(bottom = 12.dp)
                             .height(24.dp)
                             .alpha(containerAlpha),
                         contentAlignment = Alignment.Center
@@ -199,7 +218,44 @@ fun HomeScreen(
                     }
                 }
 
-                
+                AnimatedVisibility(
+                    visible = isAnySubscriptionExpanded,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 20.dp, top = 0.dp, bottom = 2.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onBack
+                                )
+                        ) {
+                            Text(
+                                text = I18n.strings.collapse_all,
+                                color = Color(accentColor),
+                                fontSize = 12.sp,
+                                fontFamily = flare.client.app.ui.components.GeologicaMedium
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                painter = painterResource(R.drawable.ic_arrow_up),
+                                contentDescription = null,
+                                tint = Color(accentColor),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -207,7 +263,7 @@ fun HomeScreen(
                         .padding(
                             start = 16.dp, 
                             end = 16.dp, 
-                            top = 11.dp, 
+                            top = animatedTopPadding, 
                             bottom = 0.dp
                         )
                 ) {
@@ -251,7 +307,7 @@ fun HomeScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 130.dp),
+                            .padding(bottom = addProfilesBottomPadding),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
@@ -292,7 +348,7 @@ fun HomeScreen(
                 exit = fadeOut() + scaleOut(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 104.dp)
+                    .padding(end = 24.dp, bottom = if (isLandscape) 24.dp else 104.dp)
             ) {
                 val isDarkTheme = FlareTheme.colors.isDark
                 Box(

@@ -113,6 +113,7 @@ fun ProfileList(
                             trafficInfo = formatTraffic(used, item.entity.total),
                             trafficProgress = progress,
                             expire = item.entity.expire,
+                            updateInterval = item.entity.updateInterval,
                             isExpanded = item.isExpanded,
                             isRefreshing = item.isRefreshing,
                             cornerType = item.cornerType,

@@ -49,6 +49,9 @@ object SingBoxManager {
     private var setupDone = false
     private var logFile: File? = null
 
+    @Volatile
+    private var lastPermissionError: Boolean = false
+
     internal fun ensureSetup(context: Context) {
         if (setupDone) return
         try {
@@ -294,7 +297,9 @@ object SingBoxManager {
 
                                         val pfd = builder.establish()
                                         if (pfd == null) {
-                                            throw IllegalStateException("VPN_PERMISSION_MISSING")
+                                            lastPermissionError = true
+                                            Log.e(TAG, "openTun: VPN permission missing (establish returned null)")
+                                            return -1
                                         }
 
                                         tunPfd?.close()
@@ -332,22 +337,37 @@ object SingBoxManager {
                 val patchedConfig = patchConfig(configContent, context)
 
                 Log.i(TAG, "Calling startOrReloadService…")
+                lastPermissionError = false
                 try {
                     boxService?.startOrReloadService(patchedConfig, OverrideOptions())
                     if (flare.client.app.BuildConfig.DEBUG) Log.i(TAG, "startOrReloadService completed")
                 } catch (e: Exception) {
+                    if (lastPermissionError) {
+                        Log.e(TAG, "startOrReloadService failed due to VPN permission")
+                        throw Exception("VPN_PERMISSION_MISSING")
+                    }
                     Log.e(TAG, "startOrReloadService failed: ${e.message}", e)
                     throw e
                 }
 
                 isRunning = true
                 startTime = SystemClock.elapsedRealtime()
-                startTrafficStream()
+                startTrafficStream(context)
                 if (flare.client.app.BuildConfig.DEBUG) Log.i(TAG, "sing-box started via AAR")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to start sing-box: ${e.message}", e)
                 isRunning = false
+                startTime = 0L
+                stopTrafficStream()
+                try {
+                    tunPfd?.close()
+                } catch (_: Exception) {}
+                tunPfd = null
+
+                if (e.message == "VPN_PERMISSION_MISSING") {
+                    throw e
+                }
+                Log.e(TAG, "Failed to start sing-box: ${e.message}", e)
                 false
             }
         }
@@ -357,14 +377,17 @@ object SingBoxManager {
         mutex.withLock {
             try {
                 Log.i(TAG, "Stopping sing-box engine...")
+                stopTrafficStream()
+                
+                boxService?.closeService()
+                
                 try {
                     tunPfd?.close()
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error closing tunPfd early: ${e.message}")
+                    Log.e(TAG, "Error closing tunPfd: ${e.message}")
                 }
                 tunPfd = null
 
-                boxService?.closeService()
                 Log.i(TAG, "sing-box engine stopped successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error stopping sing-box: ${e.message}", e)
@@ -381,28 +404,49 @@ object SingBoxManager {
         }
     }
 
-    fun destroy() {
-        stopTrafficStream()
-        val bs = boxService
-        boxService = null
-        currentVpnService = null
-        
-        if (bs != null) {
+    suspend fun destroy() {
+        mutex.withLock {
+            stopTrafficStream()
+            
+            val bs = boxService
+            boxService = null
+            currentVpnService = null
+            
+            if (bs != null) {
+                if (isRunning) {
+                    try {
+                        bs.closeService()
+                    } catch (_: Exception) {}
+                }
+                try {
+                    bs.close()
+                } catch (_: Exception) {}
+            }
+            
             try {
-                bs.closeService()
+                tunPfd?.close()
             } catch (_: Exception) {}
-            try {
-                bs.close()
-            } catch (_: Exception) {}
+            tunPfd = null
+            
+            isRunning = false
+            startTime = 0L
         }
     }
 
     private var trafficJob: kotlinx.coroutines.Job? = null
     @Volatile private var currentUpSpeed: Long = 0L
     @Volatile private var currentDownSpeed: Long = 0L
+    @Volatile private var activeCall: okhttp3.Call? = null
     private val trafficScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
-    private fun startTrafficStream() {
+    fun startTrafficStream(context: Context) {
+        val settings = SettingsManager(context)
+        if (!settings.isStatusNotificationEnabled || !settings.isNotificationSpeedEnabled) {
+            stopTrafficStream()
+            return
+        }
+        if (trafficJob != null) return
+
         stopTrafficStream()
         trafficJob = trafficScope.launch {
             val client = okhttp3.OkHttpClient.Builder()
@@ -416,7 +460,9 @@ object SingBoxManager {
             var attempt = 0
             while (isActive) {
                 try {
-                    client.newCall(request).execute().use { response ->
+                    val call = client.newCall(request)
+                    activeCall = call
+                    call.execute().use { response ->
                         if (!response.isSuccessful) throw java.io.IOException("Unexpected code $response")
                         val body = response.body
                         val reader = body.charStream().buffered()
@@ -439,14 +485,22 @@ object SingBoxManager {
                     currentUpSpeed = 0L
                     currentDownSpeed = 0L
                     delay(2000)
+                } finally {
+                    activeCall = null
                 }
             }
         }
     }
 
-    private fun stopTrafficStream() {
+    fun stopTrafficStream() {
         trafficJob?.cancel()
         trafficJob = null
+        try {
+            activeCall?.cancel()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error canceling active traffic call: ${e.message}")
+        }
+        activeCall = null
         currentUpSpeed = 0L
         currentDownSpeed = 0L
     }

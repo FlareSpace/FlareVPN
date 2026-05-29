@@ -31,6 +31,10 @@ object ClipboardParser {
 
     private val singleSchemes = setOf("vless", "vmess", "ss", "trojan", "shadowsocks", "hysteria", "hy", "hysteria2", "hy2", "wireguard", "wg")
 
+    private val PROFILE_TITLE_REGEX = Regex("""^(?:#|//|;)?\s*profile-title\s*[:=]\s*(.+)$""", RegexOption.IGNORE_CASE)
+    private val UPDATE_INTERVAL_REGEX = Regex("""^(?:#|//|;)?\s*(?:profile-update-interval|subscription-update-interval|update-interval|interval-update)\s*[:=]\s*(.+)$""", RegexOption.IGNORE_CASE)
+    private val INTERVAL_SUFFIX_REGEX = Regex("""^(\d+(?:\.\d+)?)\s*([a-zA-Zа-яА-Я.]+)?$""")
+
     sealed class ParseResult {
         data class SingleProfile(val profile: ProfileEntity) : ParseResult()
         data class MultipleProfiles(val profiles: List<ProfileEntity>) : ParseResult()
@@ -67,10 +71,10 @@ object ClipboardParser {
     }
 
     private fun extractSingleProxyLinks(text: String): List<String> {
-        return text
-            .lines()
+        return text.lineSequence()
             .map { it.trim() }
             .filter { line -> line.isNotEmpty() && singleSchemes.any { scheme -> line.startsWith("$scheme://", ignoreCase = true) } }
+            .toList()
     }
 
     private fun parseSingleProxy(context: Context, uri: String): ParseResult {
@@ -152,22 +156,46 @@ object ClipboardParser {
 
             val proxyLines = decodeSubscriptionBody(body)
             var bodyProfileTitle: String? = null
-            val profileTitleRegex = Regex("""^(?:#|//|;)?\s*profile-title\s*[:=]\s*(.+)$""", RegexOption.IGNORE_CASE)
+            var bodyUpdateInterval: String? = null
+            
             val filteredProxyLines = proxyLines.filter { line ->
                 val trimmedLine = line.trim()
-                val match = profileTitleRegex.find(trimmedLine)
+                val match = PROFILE_TITLE_REGEX.find(trimmedLine)
                 if (match != null) {
                     if (bodyProfileTitle == null) {
                         bodyProfileTitle = match.groupValues[1].trim()
                     }
                     false
                 } else {
-                    true
+                    val matchInterval = UPDATE_INTERVAL_REGEX.find(trimmedLine)
+                    if (matchInterval != null) {
+                        if (bodyUpdateInterval == null) {
+                            bodyUpdateInterval = matchInterval.groupValues[1].trim()
+                        }
+                        false
+                    } else {
+                        true
+                    }
                 }
             }
 
             val finalProfileTitle = profileTitle ?: bodyProfileTitle
             val name = extractSubscriptionName(url, finalProfileTitle, contentDisposition)
+            
+            var headerInterval: String? = null
+            for (headerName in response.headers.names()) {
+                val lowerName = headerName.lowercase()
+                if (lowerName.contains("update-interval") || lowerName.contains("interval-update")) {
+                    val valStr = response.header(headerName)
+                    if (!valStr.isNullOrBlank()) {
+                        headerInterval = valStr
+                        break
+                    }
+                }
+            }
+            val finalIntervalStr = headerInterval ?: bodyUpdateInterval
+            val parsedIntervalSeconds = finalIntervalStr?.let { parseIntervalToSeconds(it) } ?: 0L
+
             val userInfo = response.header("subscription-userinfo")
             val descParts = mutableListOf<String>()
 
@@ -214,7 +242,9 @@ object ClipboardParser {
                     expire = expire,
                     description = description,
                     supportUrl = supportUrl,
-                    webPageUrl = webPageUrl
+                    webPageUrl = webPageUrl,
+                    updateInterval = parsedIntervalSeconds,
+                    lastUpdated = System.currentTimeMillis()
                 ),
                 profiles
             )
@@ -298,12 +328,12 @@ object ClipboardParser {
                         (0 until arr.length()).mapNotNull { arr.optJSONObject(it)?.toString() }
                     }
             } catch (_: Exception) {
-                body.lines().filter { it.isNotBlank() }
+                body.lineSequence().filter { it.isNotBlank() }.toList()
             }
         }
 
-        val lines = trimmed.lines().filter { it.isNotBlank() }
-        val looksLikePlainList = lines.all { line ->
+        val lines = trimmed.lineSequence().filter { it.isNotBlank() }.toList()
+        val looksLikePlainList = lines.isNotEmpty() && lines.all { line ->
             val l = line.trim()
             l.contains("://") || l.startsWith("{") || l.startsWith("[")
         }
@@ -328,7 +358,7 @@ object ClipboardParser {
         val current = StringBuilder()
         var inJson = false
 
-        for (line in text.lines()) {
+        for (line in text.lineSequence()) {
             val l = line.trim()
             if (l.isEmpty()) {
                 if (inJson && depth == 0 && current.isNotEmpty()) {
@@ -345,7 +375,11 @@ object ClipboardParser {
 
             if (inJson) {
                 current.append(line).append('\n')
-                depth += l.count { it == '{' || it == '[' } - l.count { it == '}' || it == ']' }
+                for (i in 0 until l.length) {
+                    val c = l[i]
+                    if (c == '{' || c == '[') depth++
+                    else if (c == '}' || c == ']') depth--
+                }
                 if (depth <= 0) {
                     results.add(current.toString().trim())
                     current.clear()
@@ -379,17 +413,23 @@ object ClipboardParser {
         val displayName = extractDisplayName(uri)
         val params = parseQuery(parsed.rawQuery)
 
+        var vmessJson: JSONObject? = null
         val proxyServer = when (scheme) {
             "vmess" -> {
                 val b64 = uri.removePrefix("vmess://").trim()
-                try { JSONObject(String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))).optString("add", "") } catch (_: Exception) { "" }
+                try {
+                    val decoded = String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
+                    val json = JSONObject(decoded)
+                    vmessJson = json
+                    json.optString("add", "")
+                } catch (_: Exception) { "" }
             }
             else -> parsed.host ?: ""
         }
 
         val xrayOutbound = when (scheme) {
             "vless" -> buildVlessOutbound(parsed, params)
-            "vmess" -> buildVmessOutbound(uri)
+            "vmess" -> buildVmessOutbound(uri, vmessJson)
             "ss", "shadowsocks" -> buildShadowsocksOutbound(uri)
             "trojan" -> buildTrojanOutbound(parsed, params)
             "hysteria", "hy" -> buildHysteriaOutbound(parsed, params)
@@ -538,9 +578,11 @@ object ClipboardParser {
         put("streamSettings", buildStreamSettings(parsed.host, params))
     }
 
-    private fun buildVmessOutbound(uri: String): JSONObject {
-        val b64 = uri.removePrefix("vmess://").trim()
-        val json = JSONObject(String(Base64.decode(b64, Base64.DEFAULT)))
+    private fun buildVmessOutbound(uri: String, parsedJson: JSONObject? = null): JSONObject {
+        val json = parsedJson ?: run {
+            val b64 = uri.removePrefix("vmess://").trim()
+            JSONObject(String(Base64.decode(b64, Base64.DEFAULT)))
+        }
         return JSONObject().apply {
             put("protocol", "vmess")
             put("tag", "proxy")
@@ -990,15 +1032,61 @@ object ClipboardParser {
         }
     }
 
-    private fun parseQuery(query: String?): Map<String, String> = query?.split("&")?.associate {
-        val parts = it.split("=", limit = 2)
-        val key = URLDecoder.decode(parts[0], "UTF-8")
-        val valueRaw = parts.getOrElse(1) { "" }
-        val decodedValue = try {
-            URLDecoder.decode(valueRaw.replace("+", "%2B"), "UTF-8")
-        } catch (_: Exception) {
-            URLDecoder.decode(valueRaw, "UTF-8")
+    private fun parseQuery(query: String?): Map<String, String> {
+        if (query.isNullOrBlank()) return emptyMap()
+        val result = HashMap<String, String>()
+        var start = 0
+        val len = query.length
+        while (start < len) {
+            var nextAmp = query.indexOf('&', start)
+            if (nextAmp == -1) nextAmp = len
+            
+            val eq = query.indexOf('=', start)
+            if (eq != -1 && eq < nextAmp) {
+                val key = URLDecoder.decode(query.substring(start, eq), "UTF-8")
+                val valueRaw = query.substring(eq + 1, nextAmp)
+                val decodedValue = try {
+                    URLDecoder.decode(valueRaw.replace("+", "%2B"), "UTF-8")
+                } catch (_: Exception) {
+                    URLDecoder.decode(valueRaw, "UTF-8")
+                }
+                result[key] = decodedValue
+            } else {
+                val key = URLDecoder.decode(query.substring(start, nextAmp), "UTF-8")
+                result[key] = ""
+            }
+            start = nextAmp + 1
         }
-        key to decodedValue
-    } ?: emptyMap()
+        return result
+    }
+
+    private fun parseIntervalToSeconds(valueStr: String): Long? {
+        val clean = valueStr.trim().lowercase()
+        if (clean.isEmpty()) return null
+
+        val suffixMatch = INTERVAL_SUFFIX_REGEX.find(clean)
+        if (suffixMatch != null) {
+            val numValue = suffixMatch.groupValues[1].toDoubleOrNull() ?: return null
+            val unit = suffixMatch.groupValues[2].trim().removeSuffix(".")
+            if (unit.isEmpty()) {
+                val intValue = numValue.toLong()
+                return if (intValue >= 300) {
+                    intValue
+                } else {
+                    intValue * 3600L
+                }
+            }
+            return when (unit) {
+                "h", "ч", "hour", "hours" -> (numValue * 3600L).toLong()
+                "d", "д", "day", "days" -> (numValue * 86400L).toLong()
+                "m", "м", "min", "minute", "minutes" -> (numValue * 60L).toLong()
+                "s", "с", "sec", "second", "seconds" -> numValue.toLong()
+                else -> {
+                    val intValue = numValue.toLong()
+                    if (intValue >= 300) intValue else intValue * 3600L
+                }
+            }
+        }
+        return null
+    }
 }

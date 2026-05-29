@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 
 
 interface FlareStrings {
+    val collapse_all: String
     val app_monitor_active: String
     val app_name: String
     val btn_add: String
@@ -65,6 +66,9 @@ interface FlareStrings {
     val label_error: String
     val label_errors: String
     val label_expires: String
+    val label_update_interval: String
+    val settings_label_use_sub_interval: String
+    val settings_desc_use_sub_interval: String
     val label_imported_profile: String
     val label_json_data: String
     val label_logs: String
@@ -246,6 +250,7 @@ interface FlareStrings {
     val settings_item_theme: String
     val settings_label_adaptive_tunnel: String
     val settings_label_auto_update: String
+    val settings_desc_auto_update: String
     val settings_label_autostart: String
     val settings_label_best_profile: String
     val settings_label_best_profile_interval: String
@@ -470,6 +475,7 @@ interface FlareStrings {
 }
 
 object RuFlareStrings : FlareStrings {
+    override val collapse_all: String = "Свернуть все"
     override val app_monitor_active: String = "Триггер активен!"
     override val app_name: String = "Flare"
     override val btn_add: String = "Добавить"
@@ -529,6 +535,9 @@ object RuFlareStrings : FlareStrings {
     override val label_error: String = "Ошибка"
     override val label_errors: String = "Ошибки: "
     override val label_expires: String = "Истекает: %s"
+    override val label_update_interval: String = "Обновление: %s"
+    override val settings_label_use_sub_interval: String = "Интервал подписок"
+    override val settings_desc_use_sub_interval: String = "Обновляет подписки по их заданному интервалу например: Обновление 1 ч."
     override val label_imported_profile: String = "Imported Profile"
     override val label_json_data: String = "Данные JSON"
     override val label_logs: String = "Журнал:"
@@ -711,6 +720,7 @@ object RuFlareStrings : FlareStrings {
     override val settings_item_theme: String = "Тема и шрифт"
     override val settings_label_adaptive_tunnel: String = "Адаптивный туннель"
     override val settings_label_auto_update: String = "Автообновление"
+    override val settings_desc_auto_update: String = "Принудительно обновляет все подписки с заданным интервалом например раз в 3600 секунд"
     override val settings_label_autostart: String = "Создавать туннель при запуске приложения"
     override val settings_label_best_profile: String = "Автовыбор профиля"
     override val settings_label_best_profile_interval: String = "Обновлять выбор каждые"
@@ -948,6 +958,7 @@ object RuFlareStrings : FlareStrings {
 }
 
 object EnFlareStrings : FlareStrings {
+    override val collapse_all: String = "Collapse all"
     override val app_monitor_active: String = "Trigger is active!"
     override val app_name: String = "Flare"
     override val btn_add: String = "Add"
@@ -1007,6 +1018,9 @@ object EnFlareStrings : FlareStrings {
     override val label_error: String = "Error"
     override val label_errors: String = "Errors: "
     override val label_expires: String = "Expires: %s"
+    override val label_update_interval: String = "Update: %s"
+    override val settings_label_use_sub_interval: String = "Use subscription intervals"
+    override val settings_desc_use_sub_interval: String = "Updates subscriptions according to their custom intervals, e.g. Update: 1 h."
     override val label_imported_profile: String = "Imported Profile"
     override val label_json_data: String = "JSON data"
     override val label_logs: String = "Logs:"
@@ -1188,6 +1202,7 @@ object EnFlareStrings : FlareStrings {
     override val settings_item_theme: String = "Theme & Font"
     override val settings_label_adaptive_tunnel: String = "Adaptive Tunnel"
     override val settings_label_auto_update: String = "Auto-update"
+    override val settings_desc_auto_update: String = "Forces updates of all subscriptions at the specified interval, for example, once every 3600 seconds"
     override val settings_label_autostart: String = "Create tunnel on app launch"
     override val settings_label_best_profile: String = "Select best profile"
     override val settings_label_best_profile_interval: String = "Update selection every"

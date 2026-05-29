@@ -187,11 +187,7 @@ class AppMonitorService : Service() {
             putExtra(FlareVpnService.EXTRA_PROFILE_NAME, profile.name)
         }
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
+        startService(intent)
 
         delay(1000)
         return true
@@ -241,33 +237,41 @@ class AppMonitorService : Service() {
     }
 
     private fun getForegroundApp(): String? {
-        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-        val endTime = System.currentTimeMillis()
-        val startTime = endTime - EVENT_LOOKBACK_MS
-        
-        val events = usm.queryEvents(startTime, endTime)
-        val event = android.app.usage.UsageEvents.Event()
-        val activePackages = linkedMapOf<String, Long>()
-        
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            when (event.eventType) {
-                android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    activePackages[event.packageName] = event.timeStamp
-                }
-                android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
-                android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    activePackages.remove(event.packageName)
+        try {
+            val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+            val endTime = System.currentTimeMillis()
+            val startTime = endTime - EVENT_LOOKBACK_MS
+            
+            val events = usm.queryEvents(startTime, endTime) ?: return null
+            val event = android.app.usage.UsageEvents.Event()
+            val activePackages = linkedMapOf<String, Long>()
+            
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                when (event.eventType) {
+                    android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        activePackages[event.packageName] = event.timeStamp
+                    }
+                    android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
+                    android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
+                        activePackages.remove(event.packageName)
+                    }
                 }
             }
+
+            val eventForeground = activePackages.maxByOrNull { it.value }?.key
+            if (eventForeground != null) return eventForeground
+
+            return usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+                ?.maxByOrNull { it.lastTimeUsed }
+                ?.packageName
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Failed to query usage stats due to missing permission", e)
+            return null
+        } catch (e: Exception) {
+            Log.e(TAG, "Unexpected error in getForegroundApp", e)
+            return null
         }
-
-        val eventForeground = activePackages.maxByOrNull { it.value }?.key
-        if (eventForeground != null) return eventForeground
-
-        return usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
-            ?.maxByOrNull { it.lastTimeUsed }
-            ?.packageName
     }
 
     private fun isHomeApp(packageName: String): Boolean {

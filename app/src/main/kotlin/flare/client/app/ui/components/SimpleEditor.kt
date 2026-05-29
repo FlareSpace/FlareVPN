@@ -78,6 +78,7 @@ fun ProfileSimpleEditor(
     var port by remember { mutableStateOf("") }
     var uuid by remember { mutableStateOf("") }
     var flow by remember { mutableStateOf("") }
+    var packetEncoding by remember { mutableStateOf("") }
     var method by remember { mutableStateOf("") }
     var isTls by remember { mutableStateOf(false) }
     var sni by remember { mutableStateOf("") }
@@ -118,6 +119,7 @@ fun ProfileSimpleEditor(
     var isAllowInsecureMenuExpanded by remember { mutableStateOf(false) }
 
     var isFlowMenuExpanded by remember { mutableStateOf(false) }
+    var isPacketEncodingMenuExpanded by remember { mutableStateOf(false) }
     var isMethodMenuExpanded by remember { mutableStateOf(false) }
     var isFpMenuExpanded by remember { mutableStateOf(false) }
     var isObfsMenuExpanded by remember { mutableStateOf(false) }
@@ -145,6 +147,11 @@ fun ProfileSimpleEditor(
                 "vless", "trojan" -> {
                     uuid = uri.userInfo ?: ""
                     flow = queryParams["flow"] ?: ""
+                    packetEncoding = queryParams["packetEncoding"] ?: queryParams["packet_encoding"] ?: ""
+                    if (flow == "xtls-rprx-vision-udp443") {
+                        flow = "xtls-rprx-vision"
+                        packetEncoding = "xudp"
+                    }
                     val sec = queryParams["security"] ?: "none"
                     isTls = sec == "tls" || sec == "reality"
                     tlsType = if (sec == "reality") "Reality" else "TLS"
@@ -326,6 +333,10 @@ fun ProfileSimpleEditor(
 
                     if (scheme == "vless" && flow.isNotEmpty()) {
                         query.add("flow=${encode(flow)}")
+                    }
+
+                    if (scheme == "vless" && packetEncoding.isNotEmpty()) {
+                        query.add("packetEncoding=${encode(packetEncoding)}")
                     }
 
                     if (isTls) {
@@ -542,9 +553,21 @@ fun ProfileSimpleEditor(
                                 value = if (flow.isEmpty()) "None" else flow,
                                 expanded = isFlowMenuExpanded,
                                 onExpandedChange = { isFlowMenuExpanded = it },
-                                options = listOf("xtls-rprx-vision", "xtls-rprx-vision-udp443", ""),
-                                optionTitles = listOf("xtls-rprx-vision", "xtls-rprx-vision-udp443", "None"),
+                                options = listOf("xtls-rprx-vision", ""),
+                                optionTitles = listOf("xtls-rprx-vision", "None"),
                                 onOptionSelected = { flow = it },
+                                accentColor = accentColor,
+                                hazeState = hazeState
+                            )
+                            EditorFieldDivider()
+                            EditorSelectField(
+                                label = I18n.strings.simple_editor_packet_encoding,
+                                value = if (packetEncoding.isEmpty()) "None" else packetEncoding,
+                                expanded = isPacketEncodingMenuExpanded,
+                                onExpandedChange = { isPacketEncodingMenuExpanded = it },
+                                options = listOf("", "packet", "xudp"),
+                                optionTitles = listOf("None", "packet", "xudp"),
+                                onOptionSelected = { packetEncoding = it },
                                 accentColor = accentColor,
                                 hazeState = hazeState
                             )

@@ -15,6 +15,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,11 +40,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import flare.client.app.ui.navigation.Destination
 import flare.client.app.ui.components.FlareBottomNav
+import flare.client.app.ui.components.FlareSideNav
 import flare.client.app.ui.components.FlareHomeBackground
 import flare.client.app.ui.MainViewModel
 import flare.client.app.ui.SettingsViewModel
 import flare.client.app.ui.WizardViewModel
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -51,6 +55,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
@@ -120,38 +125,60 @@ private fun NavBackStackEntry.route(): String? = destination.route
 
 private fun rootTabEnterTransition(
     initial: NavBackStackEntry,
-    target: NavBackStackEntry
+    target: NavBackStackEntry,
+    isLandscape: Boolean
 ): EnterTransition {
     val fromIndex = rootTabIndexForRoute(initial.route()) ?: return EnterTransition.None
     val toIndex = rootTabIndexForRoute(target.route()) ?: return EnterTransition.None
     if (fromIndex == toIndex) return EnterTransition.None
 
     val direction = if (toIndex > fromIndex) 1 else -1
-    return slideInHorizontally(
-        animationSpec = tween(
-            durationMillis = ROOT_TAB_ENTER_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-        ),
-        initialOffsetX = { fullWidth -> fullWidth * direction }
-    ) + fadeIn(animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION))
+    return if (isLandscape) {
+        slideInVertically(
+            animationSpec = tween(
+                durationMillis = ROOT_TAB_ENTER_DURATION,
+                easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
+            ),
+            initialOffsetY = { fullHeight -> fullHeight * direction }
+        ) + fadeIn(animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION))
+    } else {
+        slideInHorizontally(
+            animationSpec = tween(
+                durationMillis = ROOT_TAB_ENTER_DURATION,
+                easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
+            ),
+            initialOffsetX = { fullWidth -> fullWidth * direction }
+        ) + fadeIn(animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION))
+    }
 }
 
 private fun rootTabExitTransition(
     initial: NavBackStackEntry,
-    target: NavBackStackEntry
+    target: NavBackStackEntry,
+    isLandscape: Boolean
 ): ExitTransition {
     val fromIndex = rootTabIndexForRoute(initial.route()) ?: return ExitTransition.None
     val toIndex = rootTabIndexForRoute(target.route()) ?: return ExitTransition.None
     if (fromIndex == toIndex) return ExitTransition.None
 
     val direction = if (toIndex > fromIndex) -1 else 1
-    return slideOutHorizontally(
-        animationSpec = tween(
-            durationMillis = ROOT_TAB_EXIT_DURATION,
-            easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
-        ),
-        targetOffsetX = { fullWidth -> fullWidth * direction }
-    ) + fadeOut(animationSpec = tween(durationMillis = ROOT_TAB_EXIT_DURATION))
+    return if (isLandscape) {
+        slideOutVertically(
+            animationSpec = tween(
+                durationMillis = ROOT_TAB_EXIT_DURATION,
+                easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
+            ),
+            targetOffsetY = { fullHeight -> fullHeight * direction }
+        ) + fadeOut(animationSpec = tween(durationMillis = ROOT_TAB_EXIT_DURATION))
+    } else {
+        slideOutHorizontally(
+            animationSpec = tween(
+                durationMillis = ROOT_TAB_EXIT_DURATION,
+                easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
+            ),
+            targetOffsetX = { fullWidth -> fullWidth * direction }
+        ) + fadeOut(animationSpec = tween(durationMillis = ROOT_TAB_EXIT_DURATION))
+    }
 }
 
 private fun settingsForwardEnterTransition(): EnterTransition =
@@ -323,6 +350,8 @@ fun FlareApp(
         val rootView = LocalView.current
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
         val isAnySubscriptionExpanded by mainViewModel.isAnySubscriptionExpanded.collectAsState(false)
         var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
         var showDataManagementDialog by remember { mutableStateOf(false) }
@@ -332,8 +361,11 @@ fun FlareApp(
         if (currentRoute != Destination.Servers.route) {
             settingsViewModel.composeBottomNavIsShrunk = false
             settingsViewModel.composeBottomNavIsShrunkToHome = false
-        } else if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
-            settingsViewModel.composeBottomNavIsShrunk = true
+        } else {
+            settingsViewModel.composeBottomNavIsShrunkToHome = false
+            if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
+                settingsViewModel.composeBottomNavIsShrunk = true
+            }
         }
     }
 
@@ -426,6 +458,8 @@ fun FlareApp(
                 .hazeSource(state = appHazeState)
         )
 
+        val contentPaddingStart = if (isLandscape && isBottomNavVisible) 72.dp else 0.dp
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -433,13 +467,15 @@ fun FlareApp(
             NavHost(
                 navController = navController,
                 startDestination = Destination.Home.route,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = contentPaddingStart),
                 enterTransition = {
                     when {
                         rootTabIndexForRoute(initialState.destination.route) != null &&
                             rootTabIndexForRoute(targetState.destination.route) != null &&
                             rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabEnterTransition(initialState, targetState)
+                            rootTabEnterTransition(initialState, targetState, isLandscape)
                         targetState.destination.route?.let(::isSettingsDetailRoute) == true &&
                             initialState.destination.route?.let(::isSettingsRoute) == true ->
                             settingsForwardEnterTransition()
@@ -453,7 +489,7 @@ fun FlareApp(
                         rootTabIndexForRoute(initialState.destination.route) != null &&
                             rootTabIndexForRoute(targetState.destination.route) != null &&
                             rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabExitTransition(initialState, targetState)
+                            rootTabExitTransition(initialState, targetState, isLandscape)
                         initialState.destination.route?.let(::isSettingsRoute) == true &&
                             targetState.destination.route?.let(::isSettingsDetailRoute) == true ->
                             settingsForwardExitTransition()
@@ -467,7 +503,7 @@ fun FlareApp(
                         rootTabIndexForRoute(initialState.destination.route) != null &&
                             rootTabIndexForRoute(targetState.destination.route) != null &&
                             rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabEnterTransition(initialState, targetState)
+                            rootTabEnterTransition(initialState, targetState, isLandscape)
                         initialState.destination.route?.let(::isSettingsDetailRoute) == true &&
                             targetState.destination.route?.let(::isSettingsRoute) == true ->
                             settingsBackEnterTransition()
@@ -481,7 +517,7 @@ fun FlareApp(
                         rootTabIndexForRoute(initialState.destination.route) != null &&
                             rootTabIndexForRoute(targetState.destination.route) != null &&
                             rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabExitTransition(initialState, targetState)
+                            rootTabExitTransition(initialState, targetState, isLandscape)
                         initialState.destination.route?.let(::isSettingsDetailRoute) == true &&
                             targetState.destination.route?.let(::isSettingsRoute) == true ->
                             settingsBackExitTransition()
@@ -871,15 +907,31 @@ fun FlareApp(
                     settingsViewModel = settingsViewModel
                 ) {
                 SubscriptionsScreen(
+                    isSubIntervalEnabled = settingsViewModel.composeIsSubIntervalEnabled,
+                    onSubIntervalChange = { checked ->
+                        settings.isSubIntervalEnabled = checked
+                        settingsViewModel.composeIsSubIntervalEnabled = checked
+                        if (checked) {
+                            settings.isSubAutoUpdateEnabled = false
+                            settingsViewModel.composeIsSubAutoUpdateEnabled = false
+                        }
+                        mainViewModel.startAutoUpdateJob()
+                    },
                     isAutoUpdateEnabled = settingsViewModel.composeIsSubAutoUpdateEnabled,
-                    onAutoUpdateChange = {
-                        settings.isSubAutoUpdateEnabled = it
-                        settingsViewModel.composeIsSubAutoUpdateEnabled = it
+                    onAutoUpdateChange = { checked ->
+                        settings.isSubAutoUpdateEnabled = checked
+                        settingsViewModel.composeIsSubAutoUpdateEnabled = checked
+                        if (checked) {
+                            settings.isSubIntervalEnabled = false
+                            settingsViewModel.composeIsSubIntervalEnabled = false
+                        }
+                        mainViewModel.startAutoUpdateJob()
                     },
                     updateInterval = settingsViewModel.composeSubAutoUpdateInterval,
                     onUpdateIntervalChange = {
                         settings.subAutoUpdateInterval = it
                         settingsViewModel.composeSubAutoUpdateInterval = it
+                        mainViewModel.startAutoUpdateJob()
                     },
                     userAgent = settingsViewModel.composeSubUserAgent,
                     onUserAgentClick = onUserAgentClick,
@@ -1071,49 +1123,164 @@ fun FlareApp(
             }
         }
 
-        if (showBottomNav) {
-            FlareBottomNav(
+        val isDimmingActive = showBottomNav && !isLandscape && isBottomNavVisible && !settingsViewModel.composeBottomNavIsShrunk
+        val dimmingAlpha by animateFloatAsState(
+            targetValue = if (isDimmingActive) 1f else 0f,
+            animationSpec = tween(durationMillis = 350),
+            label = "bottomNavDimmingAlpha"
+        )
+
+        if (dimmingAlpha > 0.01f) {
+            val isDark = FlareTheme.colors.isDark
+            val dimmingColor = FlareTheme.colors.bgDark
+            val endColorAlpha = if (isDark) 0.9f else 0.95f
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(bottom = 22.dp),
-                selectedIndex = selectedIndex,
-                onTabSelected = { index ->
-                    val dest = when (index) {
-                        0 -> Destination.Settings.route
-                        1 -> Destination.Home.route
-                        2 -> Destination.Servers.route
-                        else -> Destination.Home.route
+                    .height(160.dp)
+                    .graphicsLayer { alpha = dimmingAlpha }
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                dimmingColor.copy(alpha = endColorAlpha * 0.4f),
+                                dimmingColor.copy(alpha = endColorAlpha)
+                            )
+                        )
+                    )
+            )
+        }
+
+        if (showBottomNav) {
+            if (isLandscape) {
+                FlareSideNav(
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    selectedIndex = selectedIndex,
+                    onTabSelected = { index ->
+                        val dest = when (index) {
+                            0 -> Destination.Settings.route
+                            1 -> Destination.Home.route
+                            2 -> Destination.Servers.route
+                            else -> Destination.Home.route
+                        }
+                        navController.navigate(dest) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    isVisible = isBottomNavVisible,
+                    onDoubleTapPill = {
+                        if (selectedIndex == 1) {
+                            val newShrunk = !settingsViewModel.composeBottomNavIsShrunk
+                            settingsViewModel.composeBottomNavIsShrunk = newShrunk
+                            settingsViewModel.composeBottomNavIsShrunkToHome = newShrunk
+                        }
+                    },
+                    accentColorStart = Color(accentColor),
+                    accentColorEnd = Color(accentEndColor),
+                    hazeState = appHazeState
+                )
+            } else {
+                val context = LocalContext.current
+                var isGestureNav by remember { mutableStateOf(false) }
+
+                DisposableEffect(context) {
+                    fun checkGestureNav(): Boolean {
+                        var gestureEnabled = false
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                            try {
+                                val mode = android.provider.Settings.Secure.getInt(
+                                    context.contentResolver,
+                                    "navigation_mode"
+                                )
+                                gestureEnabled = (mode == 2)
+                            } catch (_: Exception) {}
+                        }
+                        if (!gestureEnabled) {
+                            try {
+                                val resources = context.resources
+                                val resourceId = resources.getIdentifier(
+                                    "config_navBarInteractionMode",
+                                    "integer",
+                                    "android"
+                                )
+                                if (resourceId > 0) {
+                                    gestureEnabled = (resources.getInteger(resourceId) == 2)
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        return gestureEnabled
                     }
-                    navController.navigate(dest) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                isVisible = isBottomNavVisible,
-                isShrunk = settingsViewModel.composeBottomNavIsShrunk,
-                isShrunkToHome = settingsViewModel.composeBottomNavIsShrunkToHome,
-                onArrowClick = {
-                    wizardViewModel.nextStep()
-                    
-                    if (wizardViewModel.composeWizardStep == WizardStep.CARDS) {
-                        settingsViewModel.composeBottomNavIsShrunk = false
-                    }
-                },
-                onDoubleTapPill = {
-                    if (selectedIndex == 1) {
-                        val newShrunk = !settingsViewModel.composeBottomNavIsShrunk
-                        settingsViewModel.composeBottomNavIsShrunk = newShrunk
-                        if (newShrunk) {
-                            settingsViewModel.composeBottomNavIsShrunkToHome = true
+
+                    isGestureNav = checkGestureNav()
+
+                    val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                        override fun onChange(selfChange: Boolean) {
+                            super.onChange(selfChange)
+                            isGestureNav = checkGestureNav()
                         }
                     }
-                },
-                accentColorStart = Color(accentColor),
-                accentColorEnd = Color(accentEndColor),
-                hazeState = appHazeState
-            )
+
+                    try {
+                        context.contentResolver.registerContentObserver(
+                            android.provider.Settings.Secure.getUriFor("navigation_mode"),
+                            false,
+                            observer
+                        )
+                    } catch (_: Exception) {}
+
+                    onDispose {
+                        try {
+                            context.contentResolver.unregisterContentObserver(observer)
+                        } catch (_: Exception) {}
+                    }
+                }
+
+                val bottomPadding = if (isGestureNav) 22.dp else 38.dp
+
+                FlareBottomNav(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(bottom = bottomPadding),
+                    selectedIndex = selectedIndex,
+                    onTabSelected = { index ->
+                        val dest = when (index) {
+                            0 -> Destination.Settings.route
+                            1 -> Destination.Home.route
+                            2 -> Destination.Servers.route
+                            else -> Destination.Home.route
+                        }
+                        navController.navigate(dest) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    isVisible = isBottomNavVisible,
+                    isShrunk = settingsViewModel.composeBottomNavIsShrunk,
+                    isShrunkToHome = settingsViewModel.composeBottomNavIsShrunkToHome,
+                    onArrowClick = {
+                        wizardViewModel.nextStep()
+                        
+                        if (wizardViewModel.composeWizardStep == WizardStep.CARDS) {
+                            settingsViewModel.composeBottomNavIsShrunk = false
+                        }
+                    },
+                    onDoubleTapPill = {
+                        if (selectedIndex == 1) {
+                            val newShrunk = !settingsViewModel.composeBottomNavIsShrunk
+                            settingsViewModel.composeBottomNavIsShrunk = newShrunk
+                            settingsViewModel.composeBottomNavIsShrunkToHome = newShrunk
+                        }
+                    },
+                    accentColorStart = Color(accentColor),
+                    accentColorEnd = Color(accentEndColor),
+                    hazeState = appHazeState
+                )
+            }
         }
 
         ComposeNotificationHost(

@@ -42,7 +42,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.snackbar.Snackbar
+import android.widget.Toast
 import flare.client.app.R
 import flare.client.app.ui.manager.*
 import flare.client.app.data.SettingsManager
@@ -179,13 +179,13 @@ class MainActivity : AppCompatActivity() {
             activity = this,
             onVpnResult = { isGranted ->
                 if (isGranted) viewModel.startVpnFromUi()
-                else showSnackbar(I18n.strings.vpn_error_permission_denied)
+                else showToast(I18n.strings.vpn_error_permission_denied)
             },
             onNotificationResult = { isGranted ->
                 if (isGranted) {
                     showTestNotification()
                 } else {
-                    showSnackbar(I18n.strings.onboarding_notifications_error)
+                    showToast(I18n.strings.onboarding_notifications_error)
                     settingsViewModel.composeIsStatusNotificationEnabled = false
                     settings.isStatusNotificationEnabled = false
                 }
@@ -193,15 +193,15 @@ class MainActivity : AppCompatActivity() {
             onOnboardingNotificationResult = { isGranted ->
                 isNotificationPermissionGranted = isGranted
                 if (isGranted) {
-                    showSnackbar("Разрешение на уведомления получено")
+                    showToast("Разрешение на уведомления получено")
                 } else {
-                    showSnackbar("Уведомления отключены")
+                    showToast("Уведомления отключены")
                 }
             },
             onBatteryResult = {
                 isBatteryOptimizationIgnored = checkBatteryOptimizationIgnored()
                 if (isBatteryOptimizationIgnored) {
-                    showSnackbar("Энергопотребление настроено")
+                    showToast("Энергопотребление настроено")
                 }
             },
             onUsageResult = {
@@ -210,13 +210,13 @@ class MainActivity : AppCompatActivity() {
             onImportFileResult = { uri ->
                 if (uri == null) return@PermissionHandler
                 if (!isSupportedImportFile(uri)) {
-                    showSnackbar(I18n.strings.error_import_file_type)
+                    showToast(I18n.strings.error_import_file_type)
                     return@PermissionHandler
                 }
                 lifecycleScope.launch {
                     val content = withContext(Dispatchers.IO) { readTextFromUri(uri) }
                     if (content.isNullOrBlank()) {
-                        showSnackbar(I18n.strings.error_import_file_read)
+                        showToast(I18n.strings.error_import_file_read)
                     } else {
                         viewModel.importFromClipboard(content)
                     }
@@ -224,7 +224,7 @@ class MainActivity : AppCompatActivity() {
             },
             onQrScanResult = { qrContent ->
                 if (qrContent.isNullOrBlank()) {
-                    showSnackbar(I18n.strings.error_qr_scan_empty)
+                    showToast(I18n.strings.error_qr_scan_empty)
                 } else {
                     viewModel.importFromClipboard(qrContent)
                 }
@@ -329,7 +329,7 @@ class MainActivity : AppCompatActivity() {
                                     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     val clip = ClipData.newPlainText("proxy_link", link)
                                     clipboard.setPrimaryClip(clip)
-                                    showSnackbar(I18n.strings.success_link_copied)
+                                    showToast(I18n.strings.success_link_copied)
 
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
@@ -337,10 +337,10 @@ class MainActivity : AppCompatActivity() {
                                     }
                                     startActivity(Intent.createChooser(shareIntent, I18n.strings.btn_share_link))
                                 } else {
-                                    showSnackbar(I18n.strings.error_link_generation)
+                                    showToast(I18n.strings.error_link_generation)
                                 }
                             } else {
-                                showSnackbar(I18n.strings.error_link_generation)
+                                showToast(I18n.strings.error_link_generation)
                             }
                         }
                     },
@@ -355,10 +355,10 @@ class MainActivity : AppCompatActivity() {
                                     profileQrBitmap = generateQrCodeBitmap(link)
                                     showProfileQrDialogState = true
                                 } else {
-                                    showSnackbar(I18n.strings.error_link_generation)
+                                    showToast(I18n.strings.error_link_generation)
                                 }
                             } else {
-                                showSnackbar(I18n.strings.error_link_generation)
+                                showToast(I18n.strings.error_link_generation)
                             }
                         }
                     },
@@ -432,7 +432,7 @@ class MainActivity : AppCompatActivity() {
                         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
                         if (text.isNullOrBlank()) {
-                            showSnackbar(I18n.strings.error_clipboard_empty)
+                            showToast(I18n.strings.error_clipboard_empty)
                         } else {
                             viewModel.importFromClipboard(text)
                         }
@@ -562,7 +562,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         },
                         onTriggerHintClick = {
-                            showSnackbar(I18n.strings.trigger_hint)
+                            showToast(I18n.strings.trigger_hint)
                         },
                         onCancel = { showAppSelectionDialogState = false },
                         onSave = {
@@ -682,7 +682,7 @@ class MainActivity : AppCompatActivity() {
                                 try {
                                     startActivity(Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                                 } catch (ex: Exception) {
-                                    showSnackbar("Не удалось открыть настройки энергопотребления")
+                                    showToast("Не удалось открыть настройки энергопотребления")
                                 }
                             }
                         },
@@ -762,6 +762,13 @@ class MainActivity : AppCompatActivity() {
         I18n.updateLocale(settings.appLanguage)
         settingsViewModel.syncAll(settings)
         settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
+
+        val isDark = when (settings.themeMode) {
+            1 -> false
+            2 -> true
+            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
+        themeManager.updateSystemBars(isDark)
 
         if (settings.isCustomColorEnabled) {
             val (accent, accentEnd) = themeManager.getColorsForKey(settings.accentColorKey)
@@ -930,7 +937,7 @@ class MainActivity : AppCompatActivity() {
                 settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
                 
                 showSettingsNotification()
-                showSnackbar("Настройки раздельного туннелирования применены!")
+                showToast("Настройки раздельного туннелирования применены!")
             }
         }
     }
@@ -1111,8 +1118,8 @@ class MainActivity : AppCompatActivity() {
         
     }
 
-    private fun showSnackbar(message: String) {
-        Snackbar.make(findViewById<android.view.View>(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     private fun showTestNotification() {

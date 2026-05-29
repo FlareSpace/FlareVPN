@@ -62,6 +62,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("autostart_enabled", false)
         set(value) = prefs.edit().putBoolean("autostart_enabled", value).apply()
 
+    var isSubIntervalEnabled: Boolean
+        get() = prefs.getBoolean("sub_interval_enabled", true)
+        set(value) = prefs.edit().putBoolean("sub_interval_enabled", value).apply()
+
     var isSubAutoUpdateEnabled: Boolean
         get() = prefs.getBoolean("sub_auto_update_enabled", false)
         set(value) = prefs.edit().putBoolean("sub_auto_update_enabled", value).apply()

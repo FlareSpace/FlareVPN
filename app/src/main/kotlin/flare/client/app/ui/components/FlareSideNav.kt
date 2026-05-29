@@ -18,14 +18,14 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
@@ -59,171 +59,53 @@ import kotlin.math.abs
 import android.os.Build
 import flare.client.app.ui.theme.FlareTheme
 
-
-tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
-    is android.app.Activity -> this
-    is android.content.ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
-
-fun Modifier.bottomNavSoftShadow(
-    isDark: Boolean,
-    cornersRadius: androidx.compose.ui.unit.Dp = 28.dp
-): Modifier {
-    if (isDark) return this
-    return this.drawBehind {
-        drawIntoCanvas { canvas ->
-            val nativeCanvas = canvas.nativeCanvas
-            
-            
-            val paintAmbient = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(
-                    14.dp.toPx(),
-                    0f,
-                    4.dp.toPx(),
-                    android.graphics.Color.argb(32, 0, 0, 0)
-                )
-            }
-            nativeCanvas.drawRoundRect(
-                0f,
-                0f,
-                size.width,
-                size.height,
-                cornersRadius.toPx(),
-                cornersRadius.toPx(),
-                paintAmbient
-            )
-            
-            
-            val paintSpot = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.TRANSPARENT
-                setShadowLayer(
-                    8.dp.toPx(),
-                    0f,
-                    6.dp.toPx(),
-                    android.graphics.Color.argb(22, 0, 0, 0)
-                )
-            }
-            nativeCanvas.drawRoundRect(
-                0f,
-                0f,
-                size.width,
-                size.height,
-                cornersRadius.toPx(),
-                cornersRadius.toPx(),
-                paintSpot
-            )
-        }
-    }
-}
-
-
-
-
-
-
-
 @Composable
-fun FlareBottomNav(
+fun FlareSideNav(
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
-    isShrunk: Boolean = false,
-    isShrunkToHome: Boolean = false,
-    onArrowClick: () -> Unit = {},
     onDoubleTapPill: () -> Unit = {},
     accentColorStart: Color = Color(0xFF50C8FF),
     accentColorEnd: Color = Color(0xFF0064FF),
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val density = LocalDensity.current
-    val context = LocalContext.current
     val isDarkTheme = FlareTheme.colors.isDark
-    
     
     var isReady by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        
         kotlinx.coroutines.delay(150)
         isReady = true
     }
 
-    
-    val navTranslationY by animateDpAsState(
-        targetValue = if (isVisible && isReady) 0.dp else 200.dp,
+    val navTranslationX by animateDpAsState(
+        targetValue = if (isVisible && isReady) 0.dp else (-200).dp,
         animationSpec = tween(
             durationMillis = 300,
             easing = if (isVisible)
                 Easing { android.view.animation.DecelerateInterpolator().getInterpolation(it) }
             else
                 Easing { android.view.animation.AccelerateInterpolator().getInterpolation(it) }
-        ), label = "navTransY"
-    )
-
-    
-    val containerWidthFraction by animateFloatAsState(
-        targetValue = if (isShrunk) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = 450,
-            easing = Easing { AnticipateOvershootInterpolator(0.8f).getInterpolation(it) }
-        ), label = "widthFrac"
-    )
-
-    
-    val tabsAlpha by animateFloatAsState(
-        targetValue = if (isShrunk) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = if (isShrunk) 200 else 300,
-            delayMillis = if (isShrunk) 0 else 200
-        ), label = "tabsAlpha"
-    )
-
-    
-    val arrowAlpha by animateFloatAsState(
-        targetValue = if (isShrunk) 1f else 0f,
-        animationSpec = tween(
-            durationMillis = if (isShrunk) 400 else 200,
-            delayMillis = if (isShrunk) 150 else 0
-        ), label = "arrowAlpha"
-    )
-    val arrowScale by animateFloatAsState(
-        targetValue = if (isShrunk) 1f else 0.5f,
-        animationSpec = tween(
-            durationMillis = if (isShrunk) 400 else 200,
-            delayMillis = if (isShrunk) 150 else 0,
-            easing = if (isShrunk)
-                Easing { OvershootInterpolator(1.4f).getInterpolation(it) }
-            else
-                Easing { android.view.animation.AccelerateInterpolator().getInterpolation(it) }
-        ), label = "arrowScale"
+        ), label = "navTransX"
     )
 
     BoxWithConstraints(
         modifier = modifier
-            .fillMaxWidth()
-            .height(100.dp) 
-            .offset(y = navTranslationY),
-        contentAlignment = Alignment.BottomCenter
+            .width(100.dp)
+            .fillMaxHeight()
+            .offset(x = navTranslationX),
+        contentAlignment = Alignment.CenterStart
     ) {
         val dpValue = density.density
-        val minWpx = 64f * dpValue
-        
-        
-        val fullWidthDp = maxWidth - 40.dp
-        val fullWpx = fullWidthDp.value * dpValue
-        
-        val currentWpx = minWpx + (fullWpx - minWpx) * containerWidthFraction
-        val currentWidthDp = with(density) { currentWpx.toDp() }
-
+        val fullHeightDp = 280.dp
         
         Box(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 4.dp)
-                .width(currentWidthDp)
-                .height(64.dp)
+                .align(Alignment.CenterStart)
+                .padding(start = 16.dp)
+                .width(64.dp)
+                .height(fullHeightDp)
                 .bottomNavSoftShadow(isDarkTheme),
             contentAlignment = Alignment.Center
         ) {
@@ -270,84 +152,33 @@ fun FlareBottomNav(
                     )
             )
 
-            
-            
-            
             Box(
                 modifier = Modifier
-                    .requiredWidth(fullWidthDp)
-                    .fillMaxHeight()
-                    .graphicsLayer { alpha = tabsAlpha },
-                contentAlignment = Alignment.BottomCenter
+                    .requiredHeight(fullHeightDp)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                LiquidPillCanvas(
+                VerticalLiquidPillCanvas(
                     selectedIndex = selectedIndex,
                     onTabSelected = onTabSelected,
                     onDoubleTapPill = onDoubleTapPill,
                     accentStart = accentColorStart,
                     accentEnd = accentColorEnd,
-                    isNightMode = isDarkTheme,
-                    isShrunk = isShrunk
-                )
-            }
-        }
-
-        
-        if (isShrunk || arrowAlpha > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(64.dp)
-                    .graphicsLayer { 
-                        alpha = arrowAlpha
-                        scaleX = arrowScale
-                        scaleY = arrowScale 
-                    }
-                    .pointerInput(isShrunk, isShrunkToHome) {
-                        if (!isShrunk) return@pointerInput
-                        detectTapGestures(
-                            onTap = {
-                                if (!isShrunkToHome) {
-                                    onArrowClick()
-                                }
-                            },
-                            onDoubleTap = {
-                                if (isShrunkToHome) {
-                                    onDoubleTapPill()
-                                }
-                            }
-                        )
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(
-                        id = if (isShrunkToHome) R.drawable.ic_nav_home else R.drawable.ic_arrow_right
-                    ),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.navIconTint,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .padding(16.dp)
+                    isNightMode = isDarkTheme
                 )
             }
         }
     }
 }
 
-
-
-
 @Composable
-private fun LiquidPillCanvas(
+private fun VerticalLiquidPillCanvas(
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit,
     onDoubleTapPill: () -> Unit,
     accentStart: Color,
     accentEnd: Color,
-    isNightMode: Boolean,
-    isShrunk: Boolean
+    isNightMode: Boolean
 ) {
     val density = LocalDensity.current
     val dp = density.density
@@ -355,32 +186,30 @@ private fun LiquidPillCanvas(
     var containerWidthPx  by remember { mutableStateOf(0f) }
     var containerHeightPx by remember { mutableStateOf(0f) }
 
-    
-    val pillHeight by derivedStateOf {
-        if (containerHeightPx > 0f) containerHeightPx - 14f * dp
+    val pillWidth by derivedStateOf {
+        if (containerWidthPx > 0f) containerWidthPx - 14f * dp
         else 50f * dp
     }
 
-    val leftFrac  = remember { Animatable(selectedIndex / 3f) }
-    val rightFrac = remember { Animatable((selectedIndex + 1) / 3f) }
+    val topFrac = remember { Animatable(selectedIndex / 3f) }
+    val bottomFrac = remember { Animatable((selectedIndex + 1) / 3f) }
     val scope = rememberCoroutineScope()
 
-    
     var lastIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(selectedIndex) {
-        val newL = selectedIndex / 3f
-        val newR = (selectedIndex + 1) / 3f
+        val newT = selectedIndex / 3f
+        val newB = (selectedIndex + 1) / 3f
         val animate = lastIndex >= 0 && lastIndex != selectedIndex
         if (animate) {
             val spec = tween<Float>(
                 durationMillis = (340 * 1.2f).toInt(),
                 easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
             )
-            launch { leftFrac.animateTo(newL, spec) }
-            launch { rightFrac.animateTo(newR, spec) }
+            launch { topFrac.animateTo(newT, spec) }
+            launch { bottomFrac.animateTo(newB, spec) }
         } else {
-            leftFrac.snapTo(newL)
-            rightFrac.snapTo(newR)
+            topFrac.snapTo(newT)
+            bottomFrac.snapTo(newB)
         }
         lastIndex = selectedIndex
     }
@@ -388,11 +217,9 @@ private fun LiquidPillCanvas(
     val glowAlpha = remember { Animatable(0f) }
     val expansion = remember { Animatable(0f) }
 
-    
     val latestOnTabSelected  = rememberUpdatedState(onTabSelected)
     val latestOnDoubleTap    = rememberUpdatedState(onDoubleTapPill)
     val latestSelectedIndex  = rememberUpdatedState(selectedIndex)
-    val latestIsShrunk       = rememberUpdatedState(isShrunk)
 
     Box(
         modifier = Modifier
@@ -401,38 +228,31 @@ private fun LiquidPillCanvas(
                 containerWidthPx  = it.size.width.toFloat()
                 containerHeightPx = it.size.height.toFloat()
             }
-            
-            
-            
-            .pointerInput(isShrunk) {
-                if (isShrunk) return@pointerInput
+            .pointerInput(Unit) {
                 var lastTapMs = 0L
                 awaitEachGesture {
                     val down   = awaitFirstDown(requireUnconsumed = false)
-                    val cw = containerWidthPx
-                    if (cw <= 0f) return@awaitEachGesture
+                    val ch = containerHeightPx
+                    if (ch <= 0f) return@awaitEachGesture
 
-                    val startX = down.position.x
+                    val startY = down.position.y
 
-                    
                     val touchedTab = when {
-                        startX < cw / 3f       -> 0
-                        startX < 2f * cw / 3f  -> 1
+                        startY < ch / 3f       -> 0
+                        startY < 2f * ch / 3f  -> 1
                         else                   -> 2
                     }
 
-                    
                     val pad      = 8f * dp
-                    val curLeft  = leftFrac.value  * cw + pad
-                    val curRight = rightFrac.value * cw - pad
-                    val onPill   = startX >= curLeft && startX <= curRight
+                    val curTop   = topFrac.value  * ch + pad
+                    val curBottom = bottomFrac.value * ch - pad
+                    val onPill   = startY >= curTop && startY <= curBottom
 
-                    val dragStartLeftFrac  = leftFrac.value
-                    val dragStartRightFrac = rightFrac.value
+                    val dragStartTopFrac  = topFrac.value
+                    val dragStartBottomFrac = bottomFrac.value
                     val dragThreshold      = 10f * dp
                     var dragIntercepted    = false
 
-                    
                     if (onPill) {
                         scope.launch {
                             launch { glowAlpha.animateTo(1f, tween(120)) }
@@ -448,27 +268,27 @@ private fun LiquidPillCanvas(
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
 
-                        val delta = change.position.x - startX
+                        val delta = change.position.y - startY
 
                         if (!dragIntercepted && abs(delta) > dragThreshold && onPill) {
                             dragIntercepted = true
                         }
 
                         if (dragIntercepted) {
-                            val stretchFrac = ((abs(delta) * 0.08f).coerceAtMost(18f * dp)) / cw
-                            val deltaFrac   = delta / cw
-                            val minWidth = 0.08f
+                            val stretchFrac = ((abs(delta) * 0.08f).coerceAtMost(18f * dp)) / ch
+                            val deltaFrac   = delta / ch
+                            val minHeight = 0.08f
                             scope.launch {
                                 if (delta > 0) {
-                                    val targetRight = (dragStartRightFrac + deltaFrac + stretchFrac).coerceIn(0f, 1f)
-                                    val targetLeft = (dragStartLeftFrac + deltaFrac).coerceIn(0f, (targetRight - minWidth).coerceAtLeast(0f))
-                                    leftFrac.snapTo(targetLeft)
-                                    rightFrac.snapTo(targetRight)
+                                    val targetBottom = (dragStartBottomFrac + deltaFrac + stretchFrac).coerceIn(0f, 1f)
+                                    val targetTop = (dragStartTopFrac + deltaFrac).coerceIn(0f, (targetBottom - minHeight).coerceAtLeast(0f))
+                                    topFrac.snapTo(targetTop)
+                                    bottomFrac.snapTo(targetBottom)
                                 } else {
-                                    val targetLeft = (dragStartLeftFrac + deltaFrac - stretchFrac).coerceIn(0f, 1f)
-                                    val targetRight = (dragStartRightFrac + deltaFrac).coerceIn((targetLeft + minWidth).coerceAtMost(1f), 1f)
-                                    leftFrac.snapTo(targetLeft)
-                                    rightFrac.snapTo(targetRight)
+                                    val targetTop = (dragStartTopFrac + deltaFrac - stretchFrac).coerceIn(0f, 1f)
+                                    val targetBottom = (dragStartBottomFrac + deltaFrac).coerceIn((targetTop + minHeight).coerceAtMost(1f), 1f)
+                                    topFrac.snapTo(targetTop)
+                                    bottomFrac.snapTo(targetBottom)
                                 }
                             }
                             change.consume()
@@ -476,8 +296,7 @@ private fun LiquidPillCanvas(
                     } while (true)
 
                     if (dragIntercepted) {
-                        
-                        val centerFrac = (leftFrac.value + rightFrac.value) / 2f
+                        val centerFrac = (topFrac.value + bottomFrac.value) / 2f
                         val newTab = when {
                             centerFrac < 1f / 3f -> 0
                             centerFrac < 2f / 3f -> 1
@@ -493,19 +312,17 @@ private fun LiquidPillCanvas(
                                 durationMillis = (340 * 1.2f).toInt(),
                                 easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
                             )
-                            launch { leftFrac.animateTo(newTab / 3f, spec) }
-                            launch { rightFrac.animateTo((newTab + 1) / 3f, spec) }
+                            launch { topFrac.animateTo(newTab / 3f, spec) }
+                            launch { bottomFrac.animateTo((newTab + 1) / 3f, spec) }
                         }
                         latestOnTabSelected.value(newTab)
                     } else {
-                        
                         scope.launch {
                             launch { glowAlpha.animateTo(0f, tween(100)) }
                             launch { expansion.animateTo(0f, tween(150)) }
                         }
                         val now = System.currentTimeMillis()
                         if (touchedTab == 1 && latestSelectedIndex.value == 1 && now - lastTapMs < 350L) {
-                            
                             lastTapMs = 0L
                             latestOnDoubleTap.value()
                         } else {
@@ -515,22 +332,19 @@ private fun LiquidPillCanvas(
                     }
                 }
             }
-
     ) {
-        
         Canvas(modifier = Modifier.fillMaxSize()) {
-            if (size.width <= 0f || pillHeight <= 0f) return@Canvas
+            if (size.height <= 0f || pillWidth <= 0f) return@Canvas
 
-            
-            val cy    = size.height - 32f * dp
-            val halfH = (pillHeight / 2f) + (expansion.value * dp)
-            val radius = halfH
+            val cx = size.width / 2f
+            val halfW = (pillWidth / 2f) + (expansion.value * dp)
+            val radius = halfW
 
             val pad = 8f * dp
-            val cw = size.width
-            val curLeft = leftFrac.value * cw + pad
-            val curRight = rightFrac.value * cw - pad
-            val rect = Rect(curLeft, cy - halfH, curRight, cy + halfH)
+            val ch = size.height
+            val curTop = topFrac.value * ch + pad
+            val curBottom = bottomFrac.value * ch - pad
+            val rect = Rect(cx - halfW, curTop, cx + halfW, curBottom)
 
             drawIntoCanvas { canvas ->
                 val nc          = canvas.nativeCanvas
@@ -545,11 +359,10 @@ private fun LiquidPillCanvas(
                 val aStG  = (accentStart.green * 255).toInt()
                 val aStB  = (accentStart.blue  * 255).toInt()
 
-                
                 val ambPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     shader = android.graphics.RadialGradient(
                         rect.center.x, rect.center.y,
-                        ((rect.width + ambMargin * 2) * 0.6f).coerceAtLeast(1f),
+                        ((rect.height + ambMargin * 2) * 0.6f).coerceAtLeast(1f),
                         intArrayOf(
                             android.graphics.Color.argb((50 * effGlow).toInt(), aEndR, aEndG, aEndB),
                             android.graphics.Color.TRANSPARENT
@@ -563,13 +376,12 @@ private fun LiquidPillCanvas(
                     radius + ambMargin, radius + ambMargin, ambPaint
                 )
 
-                
                 if (glow > 0.01f) {
                     val coreM = 10f * dp
                     val corePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                         shader = android.graphics.RadialGradient(
                             rect.center.x, rect.center.y,
-                            ((rect.width + coreM * 2) * 0.5f).coerceAtLeast(1f),
+                            ((rect.height + coreM * 2) * 0.5f).coerceAtLeast(1f),
                             intArrayOf(
                                 android.graphics.Color.argb((180 * glow).toInt(), aStR, aStG, aStB),
                                 android.graphics.Color.argb(0, aEndR, aEndG, aEndB)
@@ -584,7 +396,6 @@ private fun LiquidPillCanvas(
                     )
                 }
 
-                
                 val pillPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     if (isNightMode) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
@@ -603,7 +414,6 @@ private fun LiquidPillCanvas(
                 }
                 nc.drawRoundRect(rect.left, rect.top, rect.right, rect.bottom, radius, radius, pillPaint)
 
-                
                 val innerGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     style = android.graphics.Paint.Style.STROKE
                     strokeWidth = 1.0f * dp
@@ -623,7 +433,6 @@ private fun LiquidPillCanvas(
                     radius - innerB, radius - innerB, innerGlow
                 )
 
-                
                 val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     style       = android.graphics.Paint.Style.STROKE
                     strokeWidth = 1.5f * dp
@@ -659,21 +468,19 @@ private fun LiquidPillCanvas(
             }
         }
 
-        
-        Row(
+        Column(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(64.dp)
+                .align(Alignment.Center)
+                .fillMaxHeight()
+                .width(64.dp)
         ) {
-            NavTabIcon(R.drawable.ic_nav_settings, selectedIndex == 0, Modifier.weight(1f))
-            NavTabIcon(R.drawable.ic_nav_home,     selectedIndex == 1, Modifier.weight(1f))
-            NavTabIcon(R.drawable.ic_nav_servers,  selectedIndex == 2, Modifier.weight(1f))
+            val cellWeightModifier = Modifier.weight(1f)
+            NavTabIcon(R.drawable.ic_nav_settings, selectedIndex == 0, cellWeightModifier)
+            NavTabIcon(R.drawable.ic_nav_home,     selectedIndex == 1, cellWeightModifier)
+            NavTabIcon(R.drawable.ic_nav_servers,  selectedIndex == 2, cellWeightModifier)
         }
     }
 }
-
-
 
 @Composable
 private fun NavTabIcon(
@@ -691,7 +498,7 @@ private fun NavTabIcon(
     )
 
     Box(
-        modifier = modifier.fillMaxHeight(),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Icon(

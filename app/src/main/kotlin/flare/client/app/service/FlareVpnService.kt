@@ -26,7 +26,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.runBlocking
+
 
 class FlareVpnService : VpnService() {
 
@@ -49,6 +49,8 @@ class FlareVpnService : VpnService() {
     private val commandMutex = Mutex()
     private var statsJob: kotlinx.coroutines.Job? = null
     private var profileName: String = "Flare Profile"
+    @Volatile
+    private var isDeinitialized = false
 
     override fun onCreate() {
         super.onCreate()
@@ -107,16 +109,22 @@ class FlareVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
-        runBlocking {
+        val wasDeinitialized = isDeinitialized
+        broadcastState(false)
+        CoroutineScope(Dispatchers.IO).launch {
             commandMutex.withLock {
-                stopVpnInternal()
+                if (!wasDeinitialized && !isDeinitialized) {
+                    stopVpnInternal()
+                }
                 SingBoxManager.destroy()
+                isDeinitialized = true
             }
         }
         serviceScope.cancel()
     }
 
     private suspend fun startVpnInternal(configJson: String, startId: Int) {
+        isDeinitialized = false
         val notification = buildNotification()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(NOTIF_ID, notification)
@@ -162,15 +170,33 @@ class FlareVpnService : VpnService() {
     }
 
     private fun startStatsPolling() {
-        val settings = flare.client.app.data.SettingsManager(this)
-        if (!settings.isStatusNotificationEnabled) return
-
         statsJob?.cancel()
         statsJob = serviceScope.launch {
+            val settings = flare.client.app.data.SettingsManager(this@FlareVpnService)
+            var wasNotificationShown = true
             while (isActive) {
-                SingBoxManager.getTraffic { up, down ->
-                    if (isActive && SingBoxManager.isRunning) {
-                        updateNotification(up, down)
+                val statusEnabled = settings.isStatusNotificationEnabled
+                val speedEnabled = settings.isNotificationSpeedEnabled
+
+                if (statusEnabled) {
+                    if (speedEnabled) {
+                        SingBoxManager.startTrafficStream(this@FlareVpnService)
+                    } else {
+                        SingBoxManager.stopTrafficStream()
+                    }
+
+                    SingBoxManager.getTraffic { up, down ->
+                        if (isActive && SingBoxManager.isRunning) {
+                            updateNotification(up, down)
+                        }
+                    }
+                    wasNotificationShown = true
+                } else {
+                    SingBoxManager.stopTrafficStream()
+                    if (wasNotificationShown) {
+                        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        manager.cancel(NOTIF_ID)
+                        wasNotificationShown = false
                     }
                 }
                 delay(1000)
@@ -199,13 +225,17 @@ class FlareVpnService : VpnService() {
     }
 
     private suspend fun stopVpnInternal(startId: Int = -1) {
+        if (isDeinitialized) return
+        isDeinitialized = true
         Log.i(TAG, "stopVpnInternal: begin (startId=$startId)")
         statsJob?.cancel()
-        broadcastState(false)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIF_ID)
-        SingBoxManager.stop()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+            SingBoxManager.stop()
+        }
         Log.i(TAG, "stopVpnInternal: engine stopped")
+        broadcastState(false)
         stopSelf()
     }
 
@@ -214,12 +244,16 @@ class FlareVpnService : VpnService() {
         errorMessage: String? = null,
         permissionRequired: Boolean = false
     ) {
+        if (isDeinitialized) return
+        isDeinitialized = true
         Log.i(TAG, "stopVpnOnError: startId=$startId, error=$errorMessage, permission=$permissionRequired")
         statsJob?.cancel()
         broadcastState(false, error = true, permissionRequired = permissionRequired, errorMessage = errorMessage)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIF_ID)
-        SingBoxManager.stop()
+        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+            SingBoxManager.stop()
+        }
         stopSelf()
     }
 

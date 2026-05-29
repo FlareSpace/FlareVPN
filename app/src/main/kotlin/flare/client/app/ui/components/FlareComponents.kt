@@ -643,7 +643,9 @@ fun FlareSettingsItem(
                         fontFamily = GeologicaRegular,
                         fontSize = 16.sp,
                         color = FlareTheme.colors.textPrimary,
-                        modifier = Modifier.padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
                     )
 
                     if (description != null) {
@@ -760,7 +762,9 @@ fun FlareSettingsToggleItem(
                         fontFamily = GeologicaRegular,
                         fontSize = 16.sp,
                         color = FlareTheme.colors.textPrimary,
-                        modifier = Modifier.padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
                     )
 
                     if (description != null) {
@@ -872,7 +876,9 @@ fun FlareSettingsValueItem(
                         fontFamily = GeologicaRegular,
                         fontSize = 16.sp,
                         color = FlareTheme.colors.textPrimary,
-                        modifier = Modifier.padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
                     )
 
                     if (description != null) {
@@ -1025,7 +1031,9 @@ fun FlareSettingsInputItem(
                         fontFamily = GeologicaRegular,
                         fontSize = 16.sp,
                         color = titleColor,
-                        modifier = Modifier.padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .padding(start = if (icon != 0) { if (iconBgColor != Color.Unspecified) 12.dp else 16.dp } else 0.dp)
                     )
 
                     if (description != null) {

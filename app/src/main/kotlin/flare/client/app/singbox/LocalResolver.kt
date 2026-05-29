@@ -64,27 +64,36 @@ object LocalResolver : LocalDNSTransport {
             return
         }
 
+        val isCompleted = java.util.concurrent.atomic.AtomicBoolean(false)
         val signal = CancellationSignal()
-        ctx.onCancel { signal.cancel() }
+        ctx.onCancel {
+            if (isCompleted.compareAndSet(false, true)) {
+                signal.cancel()
+            }
+        }
 
         val executor = Dispatchers.IO.asExecutor()
 
         val callback = object : DnsResolver.Callback<ByteArray> {
             override fun onAnswer(answer: ByteArray, rcode: Int) {
-                if (rcode == 0) {
-                    ctx.rawSuccess(answer)
-                } else {
-                    ctx.errorCode(rcode)
+                if (isCompleted.compareAndSet(false, true)) {
+                    if (rcode == 0) {
+                        ctx.rawSuccess(answer)
+                    } else {
+                        ctx.errorCode(rcode)
+                    }
                 }
             }
 
             override fun onError(error: DnsResolver.DnsException) {
-                val cause = error.cause
-                if (cause is ErrnoException) {
-                    ctx.errnoCode(cause.errno)
-                } else {
-                    Log.w(TAG, "DnsResolver.exchange error", error)
-                ctx.errnoCode(OsConstants.EIO)
+                if (isCompleted.compareAndSet(false, true)) {
+                    val cause = error.cause
+                    if (cause is ErrnoException) {
+                        ctx.errnoCode(cause.errno)
+                    } else {
+                        Log.w(TAG, "DnsResolver.exchange error", error)
+                        ctx.errnoCode(OsConstants.EIO)
+                    }
                 }
             }
         }
@@ -100,7 +109,9 @@ object LocalResolver : LocalDNSTransport {
             )
         } catch (e: Exception) {
             Log.e(TAG, "rawQuery failed", e)
-            ctx.errnoCode(OsConstants.EIO)
+            if (isCompleted.compareAndSet(false, true)) {
+                ctx.errnoCode(OsConstants.EIO)
+            }
         }
     }
 
@@ -112,27 +123,36 @@ object LocalResolver : LocalDNSTransport {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val isCompleted = java.util.concurrent.atomic.AtomicBoolean(false)
             val signal = CancellationSignal()
-            ctx.onCancel { signal.cancel() }
+            ctx.onCancel {
+                if (isCompleted.compareAndSet(false, true)) {
+                    signal.cancel()
+                }
+            }
 
             val executor = Dispatchers.IO.asExecutor()
 
             val callback = object : DnsResolver.Callback<Collection<InetAddress>> {
                 override fun onAnswer(answer: Collection<InetAddress>, rcode: Int) {
-                    if (rcode == 0) {
-                        ctx.success(answer.mapNotNull { it.hostAddress }.joinToString("\n"))
-                    } else {
-                        ctx.errorCode(rcode)
+                    if (isCompleted.compareAndSet(false, true)) {
+                        if (rcode == 0) {
+                            ctx.success(answer.mapNotNull { it.hostAddress }.joinToString("\n"))
+                        } else {
+                            ctx.errorCode(rcode)
+                        }
                     }
                 }
 
                 override fun onError(error: DnsResolver.DnsException) {
-                    val cause = error.cause
-                    if (cause is ErrnoException) {
-                        ctx.errnoCode(cause.errno)
-                    } else {
-                        Log.w(TAG, "DnsResolver.lookup error", error)
-                    ctx.errnoCode(OsConstants.EIO)
+                    if (isCompleted.compareAndSet(false, true)) {
+                        val cause = error.cause
+                        if (cause is ErrnoException) {
+                            ctx.errnoCode(cause.errno)
+                        } else {
+                            Log.w(TAG, "DnsResolver.lookup error", error)
+                            ctx.errnoCode(OsConstants.EIO)
+                        }
                     }
                 }
             }
@@ -151,7 +171,9 @@ object LocalResolver : LocalDNSTransport {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "query failed", e)
-                fallbackLookup(ctx, domain)
+                if (isCompleted.compareAndSet(false, true)) {
+                    fallbackLookup(ctx, domain)
+                }
             }
         } else {
             fallbackLookup(ctx, domain, network)
@@ -159,15 +181,25 @@ object LocalResolver : LocalDNSTransport {
     }
 
     private fun fallbackLookup(ctx: ExchangeContext, domain: String, network: Network? = null) {
+        val isCompleted = java.util.concurrent.atomic.AtomicBoolean(false)
+        ctx.onCancel {
+            isCompleted.set(true)
+        }
         scope.launch {
             try {
                 val addresses = network?.getAllByName(domain) ?: InetAddress.getAllByName(domain)
-                ctx.success(addresses.mapNotNull { it.hostAddress }.joinToString("\n"))
+                if (isCompleted.compareAndSet(false, true)) {
+                    ctx.success(addresses.mapNotNull { it.hostAddress }.joinToString("\n"))
+                }
             } catch (e: UnknownHostException) {
-                ctx.errorCode(RCODE_NXDOMAIN)
+                if (isCompleted.compareAndSet(false, true)) {
+                    ctx.errorCode(RCODE_NXDOMAIN)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "fallbackLookup failed", e)
-                ctx.errnoCode(OsConstants.EIO)
+                if (isCompleted.compareAndSet(false, true)) {
+                    ctx.errnoCode(OsConstants.EIO)
+                }
             }
         }
     }

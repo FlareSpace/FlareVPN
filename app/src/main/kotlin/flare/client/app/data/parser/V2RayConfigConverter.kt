@@ -56,21 +56,18 @@ object V2RayConfigConverter {
         ensureOutbound(sbOutbounds, "direct")
         ensureOutbound(sbOutbounds, "block")
 
-        val proxyDomains = JSONArray()
-        proxyDomains.put("raw.githubusercontent.com")
+        val proxyDomainsSet = linkedSetOf("raw.githubusercontent.com")
         for (i in 0 until sbOutbounds.length()) {
             val ob = sbOutbounds.optJSONObject(i) ?: continue
             val type = ob.optString("type")
             if (type == "direct" || type == "block") continue
             val server = ob.optString("server", "")
             if (server.isNotEmpty() && !server[0].isDigit()) {
-                var found = false
-                for (j in 0 until proxyDomains.length()) {
-                    if (proxyDomains.optString(j) == server) found = true
-                }
-                if (!found) proxyDomains.put(server)
+                proxyDomainsSet.add(server)
             }
         }
+        val proxyDomains = JSONArray()
+        proxyDomainsSet.forEach { proxyDomains.put(it) }
 
         val xrayRouting = xray.optJSONObject("routing")
         val xrayRules = xrayRouting?.optJSONArray("rules")
@@ -88,7 +85,7 @@ object V2RayConfigConverter {
                 val bTag = b.optString("tag", "")
                 if (bTag.isEmpty()) continue
                 val selectors = b.optJSONArray("selector")
-                val matchedOutbounds = mutableListOf<String>()
+                val matchedOutbounds = linkedSetOf<String>()
                 if (selectors != null) {
                     for (j in 0 until selectors.length()) {
                         val sel = selectors.optString(j, "")
@@ -96,7 +93,7 @@ object V2RayConfigConverter {
                         for (k in 0 until sbOutbounds.length()) {
                             val ob = sbOutbounds.optJSONObject(k) ?: continue
                             val obTag = ob.optString("tag", "")
-                            if (obTag.contains(sel) && !matchedOutbounds.contains(obTag)) {
+                            if (obTag.contains(sel)) {
                                 matchedOutbounds.add(obTag)
                             }
                         }
@@ -701,7 +698,7 @@ object V2RayConfigConverter {
 
                 val pin = s.optString("pin", "")
                 if (pin.isNotEmpty()) {
-                    val cleanPin = pin.replace("\\s".toRegex(), "")
+                    val cleanPin = pin.filterNot { it.isWhitespace() }
                         .substringAfter("sha256/")
                         .substringAfter("SHA256:")
                     
@@ -1066,7 +1063,7 @@ object V2RayConfigConverter {
 
         val outbounds = obj.optJSONArray("outbounds")
         if (outbounds != null) {
-            val proxyDomains = JSONArray()
+            val proxyDomainsSet = linkedSetOf<String>()
             for (i in 0 until outbounds.length()) {
                 val ob = outbounds.optJSONObject(i) ?: continue
                 val type = ob.optString("type", "")
@@ -1079,9 +1076,11 @@ object V2RayConfigConverter {
                 }
                 val server = ob.optString("server", "")
                 if (server.isNotEmpty() && !server[0].isDigit() && !dnsRulesStr.contains(server)) {
-                    proxyDomains.put(server)
+                    proxyDomainsSet.add(server)
                 }
             }
+            val proxyDomains = JSONArray()
+            proxyDomainsSet.forEach { proxyDomains.put(it) }
             if (proxyDomains.length() > 0) {
                 val newDnsRules = JSONArray()
                 newDnsRules.put(

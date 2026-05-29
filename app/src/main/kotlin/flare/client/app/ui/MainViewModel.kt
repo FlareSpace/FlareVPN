@@ -394,9 +394,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val fileNames = rule.fileNames
         val urls = rule.urls
         val totalFiles = fileNames.size
-        val progressMap = mutableMapOf<Int, Int>()
-        var completedFiles = 0
-        var hasError = false
+        val progressMap = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+        val completedFiles = java.util.concurrent.atomic.AtomicInteger(0)
+        val hasError = java.util.concurrent.atomic.AtomicBoolean(false)
 
         for (i in 0 until totalFiles) {
             flare.client.app.singbox.GeoFileManager.downloadFile(
@@ -404,7 +404,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 urls[i],
                 fileNames[i],
                 onProgress = { p ->
-                    if (hasError) return@downloadFile
+                    if (hasError.get()) return@downloadFile
                     progressMap[i] = p
                     val totalProgress = if (totalFiles > 0) progressMap.values.sum() / totalFiles else 0
                     _routingRules.update { list ->
@@ -412,38 +412,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 },
                 onSuccess = {
-                    if (hasError) return@downloadFile
-                    completedFiles++
-                    if (completedFiles == totalFiles) {
+                    if (hasError.get()) return@downloadFile
+                    if (completedFiles.incrementAndGet() == totalFiles) {
                         val now = System.currentTimeMillis()
                         val settings = SettingsManager(app)
-                        when (ruleId) {
-                            "main" -> settings.lastRoutingUpdateMain = now
-                            "global" -> settings.lastRoutingUpdateGlobal = now
-                            "media" -> settings.lastRoutingUpdateMedia = now
-                            "social" -> settings.lastRoutingUpdateSocial = now
-                            "ads" -> settings.lastRoutingUpdateAds = now
-                            "cn" -> settings.lastRoutingUpdateCn = now
+                        viewModelScope.launch {
+                            when (ruleId) {
+                                "main" -> settings.lastRoutingUpdateMain = now
+                                "global" -> settings.lastRoutingUpdateGlobal = now
+                                "media" -> settings.lastRoutingUpdateMedia = now
+                                "social" -> settings.lastRoutingUpdateSocial = now
+                                "ads" -> settings.lastRoutingUpdateAds = now
+                                "cn" -> settings.lastRoutingUpdateCn = now
+                            }
+                            _routingRules.update { list ->
+                                list.map { if (it.id == ruleId) it.copy(isDownloading = false, progress = 100, lastUpdate = now) else it }
+                            }
+                            flare.client.app.ui.notification.AppNotificationManager.showNotification(
+                                flare.client.app.ui.notification.NotificationType.SUCCESS,
+                                I18n.strings.routing_success_generic.format(ruleId.uppercase()), 2
+                            )
                         }
-                        _routingRules.update { list ->
-                            list.map { if (it.id == ruleId) it.copy(isDownloading = false, progress = 100, lastUpdate = now) else it }
-                        }
-                        flare.client.app.ui.notification.AppNotificationManager.showNotification(
-                            flare.client.app.ui.notification.NotificationType.SUCCESS,
-                            I18n.strings.routing_success_generic.format(ruleId.uppercase()), 2
-                        )
                     }
                 },
                 onError = { err ->
-                    if (hasError) return@downloadFile
-                    hasError = true
-                    _routingRules.update { list ->
-                        list.map { if (it.id == ruleId) it.copy(isDownloading = false, progress = 0) else it }
+                    if (hasError.compareAndSet(false, true)) {
+                        viewModelScope.launch {
+                            _routingRules.update { list ->
+                                list.map { if (it.id == ruleId) it.copy(isDownloading = false, progress = 0) else it }
+                            }
+                            flare.client.app.ui.notification.AppNotificationManager.showNotification(
+                                flare.client.app.ui.notification.NotificationType.ERROR,
+                                "Ошибка загрузки ${ruleId.uppercase()}: $err", 3
+                            )
+                        }
                     }
-                    flare.client.app.ui.notification.AppNotificationManager.showNotification(
-                        flare.client.app.ui.notification.NotificationType.ERROR,
-                        "Ошибка загрузки ${ruleId.uppercase()}: $err", 3
-                    )
                 }
             )
         }
@@ -796,24 +799,62 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoUpdateJob = viewModelScope.launch {
             ensureInitialized()
             val settings = SettingsManager(getApplication())
-            if (!settings.isSubAutoUpdateEnabled) return@launch
+            
             while (isActive) {
-                val intervalRaw = settings.subAutoUpdateInterval.toLongOrNull() ?: 3600L
-                val interval = if (intervalRaw < 30L) 30L else intervalRaw
-                val lastUpdate = settings.lastSubUpdateTime
-                val now = System.currentTimeMillis()
-                val nextUpdate = lastUpdate + interval * 1000L
-                val delayTime = nextUpdate - now
-                if (delayTime > 0) {
-                    delay(delayTime)
+                if (!settings.isSubAutoUpdateEnabled && !settings.isSubIntervalEnabled) {
+                    delay(10000L)
+                    continue
                 }
-                if (isActive) {
+                
+                if (settings.isSubIntervalEnabled) {
                     try {
-                        refreshAllSubscriptions()
-                    } catch (e: Exception) {
-                        Log.e("MainViewModel", "Auto-update failed: ${e.message}")
+                        val subs = repository.getAllSubscriptions().first()
+                        val now = System.currentTimeMillis()
+                        val toUpdate = mutableListOf<SubscriptionEntity>()
+                        var minDelay = 30000L
                         
-                        delay(60000L)
+                        for (sub in subs) {
+                            if (sub.updateInterval > 0) {
+                                val nextUpdate = sub.lastUpdated + sub.updateInterval * 1000L
+                                val delayForSub = nextUpdate - now
+                                if (delayForSub <= 0) {
+                                    toUpdate.add(sub)
+                                } else {
+                                    if (delayForSub < minDelay) {
+                                        minDelay = delayForSub
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (toUpdate.isNotEmpty()) {
+                            refreshSubscriptions(toUpdate)
+                            delay(2000L)
+                        } else {
+                            val actualDelay = if (minDelay < 5000L) 5000L else minDelay
+                            delay(actualDelay)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainViewModel", "Auto-update interval check failed: ${e.message}")
+                        delay(30000L)
+                    }
+                } else if (settings.isSubAutoUpdateEnabled) {
+                    val intervalRaw = settings.subAutoUpdateInterval.toLongOrNull() ?: 3600L
+                    val interval = if (intervalRaw < 30L) 30L else intervalRaw
+                    val lastUpdate = settings.lastSubUpdateTime
+                    val now = System.currentTimeMillis()
+                    val nextUpdate = lastUpdate + interval * 1000L
+                    val delayTime = nextUpdate - now
+                    if (delayTime > 0) {
+                        val waitTime = if (delayTime > 30000L) 30000L else delayTime
+                        delay(waitTime)
+                    } else {
+                        try {
+                            refreshAllSubscriptions()
+                        } catch (e: Exception) {
+                            Log.e("MainViewModel", "Auto-update failed: ${e.message}")
+                            delay(10000L)
+                        }
                     }
                 }
             }
@@ -1035,6 +1076,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (best.id != _selectedProfileId.value) {
                 selectProfile(best.id)
             }
+        }
+    }
+
+    suspend fun refreshSubscriptions(subsToUpdate: List<SubscriptionEntity>) = withContext(Dispatchers.IO) {
+        if (subsToUpdate.isEmpty()) return@withContext
+        var successCount = 0
+        val selectedBefore = repository.getSelectedProfile()
+        val app = getApplication<Application>()
+        val settings = SettingsManager(app)
+        val hwid = if (settings.isHwidEnabled) getHwid() else null
+        val model = android.os.Build.MODEL
+        val osVersion = android.os.Build.VERSION.RELEASE
+        
+        coroutineScope {
+            val deferreds = subsToUpdate.map { sub ->
+                async {
+                    try {
+                        _refreshingSubs.update { it + sub.id }
+                        val result = withTimeoutOrNull(10000L) {
+                            ClipboardParser.parse(app, sub.url, hwid, model, osVersion, settings.subUserAgent)
+                        }
+                        if (result is ClipboardParser.ParseResult.Subscription) {
+                            repository.replaceSubscriptionProfiles(sub.id, result.profiles)
+                            repository.updateSubscription(result.subscription.copy(id = sub.id))
+                            true
+                        } else false
+                    } catch (e: Exception) {
+                        Log.e("MainViewModel", "Failed to refresh ${sub.name}", e)
+                        false
+                    } finally {
+                        _refreshingSubs.update { it - sub.id }
+                    }
+                }
+            }
+            val results = deferreds.awaitAll()
+            successCount = results.count { it }
+        }
+        if (selectedBefore != null) {
+            val allAfter = repository.getAllProfiles().first()
+            val restored = allAfter.find {
+                it.uri == selectedBefore.uri &&
+                it.name == selectedBefore.name &&
+                it.subscriptionId == selectedBefore.subscriptionId
+            }
+            if (restored != null) {
+                repository.selectProfile(restored.id)
+                _selectedProfileId.value = restored.id
+            } else {
+                _selectedProfileId.value = null
+            }
+        }
+        if (successCount > 0) {
+            flare.client.app.ui.notification.AppNotificationManager.showNotification(
+                flare.client.app.ui.notification.NotificationType.SUCCESS,
+                I18n.strings.sub_update_success.format(successCount),
+                4
+            )
         }
     }
 

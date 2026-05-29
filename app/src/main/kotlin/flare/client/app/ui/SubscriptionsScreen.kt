@@ -40,6 +40,8 @@ private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWei
 
 @Composable
 fun SubscriptionsScreen(
+    isSubIntervalEnabled: Boolean,
+    onSubIntervalChange: (Boolean) -> Unit,
     isAutoUpdateEnabled: Boolean,
     onAutoUpdateChange: (Boolean) -> Unit,
     updateInterval: String,
@@ -78,12 +80,23 @@ fun SubscriptionsScreen(
                 
                 Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
                     FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_use_sub_interval,
+                        checked = isSubIntervalEnabled,
+                        onCheckedChange = onSubIntervalChange,
+                        hazeState = hazeState,
+                        description = I18n.strings.settings_desc_use_sub_interval,
+                        accentColor = accentColor,
+                        cornerType = DisplayItem.CornerType.TOP
+                    )
+                    
+                    FlareSettingsToggleItem(
                         title = I18n.strings.settings_label_auto_update,
                         checked = isAutoUpdateEnabled,
                         onCheckedChange = onAutoUpdateChange,
                         hazeState = hazeState,
+                        description = I18n.strings.settings_desc_auto_update,
                         accentColor = accentColor,
-                        cornerType = if (isAutoUpdateEnabled) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                        cornerType = if (isAutoUpdateEnabled) DisplayItem.CornerType.NONE else DisplayItem.CornerType.BOTTOM
                     )
                     
                     AnimatedVisibility(visible = isAutoUpdateEnabled) {
