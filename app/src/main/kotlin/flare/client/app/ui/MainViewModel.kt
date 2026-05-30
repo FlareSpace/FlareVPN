@@ -195,10 +195,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun ensureInitialized() {
         if (isInitialized) return
+        var shouldAutostart = false
         initMutex.withLock {
             if (isInitialized) return@withLock
 
             val app = getApplication<Application>()
+            val settings = SettingsManager(app)
             if (!isReceiverRegistered) {
                 val flags = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     Context.RECEIVER_NOT_EXPORTED
@@ -240,13 +242,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _connectionState.value = ConnectionState.CONNECTED
                 startTimer()
                 startHealthCheckJob()
+            } else if (settings.isAutostartEnabled) {
+                shouldAutostart = true
             }
 
             viewModelScope.launch {
                 _selectedProfileId.value = repository.getSelectedProfile()?.id
             }
 
-            val settings = SettingsManager(app)
             val chainedIdsStr = settings.chainedProfileIdsString
             if (chainedIdsStr.isNotBlank()) {
                 _chainedProfileIds.value = chainedIdsStr.split(",").mapNotNull { it.trim().toLongOrNull() }
@@ -272,6 +275,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             startNoticeCheckJob()
             initRoutingRules()
             isInitialized = true
+        }
+        if (shouldAutostart) {
+            val profile = repository.getSelectedProfile()
+            if (profile != null) {
+                startVpn()
+            }
         }
     }
 

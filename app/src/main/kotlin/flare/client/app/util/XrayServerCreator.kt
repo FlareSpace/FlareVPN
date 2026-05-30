@@ -55,8 +55,14 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
         var out = ""
         startSession().use { session ->
             val c = session.exec(cmd)
+            val errThread = Thread {
+                try {
+                    c.errorStream.bufferedReader().use { it.readText() }
+                } catch (_: Exception) {}
+            }
+            errThread.start()
             out = c.inputStream.bufferedReader().readText()
-            c.errorStream.bufferedReader().readText()
+            errThread.join()
             c.join()
         }
         return out.trim()
@@ -67,12 +73,19 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
         var err = ""
         startSession().use { session ->
             val c = session.exec(cmd)
+            val errThread = Thread {
+                try {
+                    err = c.errorStream.bufferedReader().readText()
+                } catch (_: Exception) {}
+            }
+            errThread.start()
             out = c.inputStream.bufferedReader().readText()
-            err = c.errorStream.bufferedReader().readText()
+            errThread.join()
             c.join()
         }
         return out.trim() to err.trim()
     }
+
 
     override suspend fun setup(config: VpnServerConfig): String? = withContext(Dispatchers.IO) {
         SecurityInitializer.init()
