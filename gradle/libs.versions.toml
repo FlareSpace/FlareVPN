@@ -3,25 +3,25 @@ agp = "9.2.1"
 kotlin = "2.3.21"
 coreKtx = "1.18.0"
 appcompat = "1.7.1"
-material = "1.13.0"
+material = "1.14.0"
 constraintlayout = "2.2.1"
 recyclerview = "1.4.0"
 lifecycle = "2.10.0"
 room = "2.8.4"
-coroutines = "1.10.2"
+coroutines = "1.11.0"
 okhttp = "5.3.2"
 gson = "2.14.0"
 activity = "1.13.0"
 fragment = "1.8.9"
 sshj = "0.40.0"
 bouncycastle = "1.84"
-composeBom = "2026.04.01"
-zxing = "3.5.3"
+composeBom = "2026.05.01"
+zxing = "3.5.4"
 haze = "1.7.2"
 activityCompose = "1.13.0"
-navigationCompose = "2.8.8"
+navigationCompose = "2.9.8"
 mlkitBarcode = "17.3.0"
-camerax = "1.4.1"
+camerax = "1.6.1"
 
 [libraries]
 core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -41,15 +41,15 @@ gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity" }
 fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
 sshj = { group = "com.hierynomus", name = "sshj", version.ref = "sshj" }
-bouncycastle-prov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
-bouncycastle-kix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-prov = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }       
+bouncycastle-kix = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncycastle" }        
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }  
 haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 
@@ -66,4 +66,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "2.3.7" }
+ksp = { id = "com.google.devtools.ksp", version = "2.3.8" }

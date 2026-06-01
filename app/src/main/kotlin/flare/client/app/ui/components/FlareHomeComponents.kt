@@ -203,6 +203,7 @@ fun FlareHomeBackground(
 @Composable
 fun FlareConnectButton(
     connectionState: MainViewModel.ConnectionState,
+    timerText: String = "",
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     buttonSize: androidx.compose.ui.unit.Dp = 300.dp
@@ -336,14 +337,42 @@ fun FlareConnectButton(
             )
         }
 
+        val isActive = connectingProgress > 0f || connectedProgress > 0f
+        val totalActiveProgress = maxOf(connectingProgress, connectedProgress)
+        
+        val iconSize by animateDpAsState(
+            targetValue = if (isActive) 32.dp else 56.dp,
+            label = "iconSize"
+        )
+        val iconOffsetY by animateDpAsState(
+            targetValue = if (isActive) (-10).dp else (-4).dp,
+            label = "iconOffsetY"
+        )
+        
         Icon(
             painter = painterResource(R.drawable.ic_power),
             contentDescription = null,
-            tint = lerp(iconTint, Color.White, maxOf(connectingProgress, connectedProgress)),
+            tint = lerp(iconTint, Color.White, totalActiveProgress),
             modifier = Modifier
-                .size(56.dp)
-                .offset(y = (-4).dp) 
+                .size(iconSize)
+                .offset(y = iconOffsetY) 
         )
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = connectedProgress > 0f && timerText.isNotEmpty(),
+            enter = androidx.compose.animation.fadeIn(animationSpec = tween(400)),
+            exit = androidx.compose.animation.fadeOut(animationSpec = tween(400)),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            RollingTimer(
+                time = timerText,
+                color = Color.White,
+                fontSize = 11.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = 17.dp)
+            )
+        }
     }
 }
 

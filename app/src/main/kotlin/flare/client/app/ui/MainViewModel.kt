@@ -889,8 +889,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val proxyTag = java.net.URLEncoder.encode(flare.client.app.singbox.SingBoxManager.primaryProxyTag, "UTF-8")
                         val encodedUrl = java.net.URLEncoder.encode(url, "UTF-8")
                         val checkUrl = "http://127.0.0.1:9092/proxies/$proxyTag/delay?url=$encodedUrl&timeout=5000"
-                        
-                        val request = okhttp3.Request.Builder().url(checkUrl).build()
+                        val secret = flare.client.app.singbox.SingBoxManager.clashSecret
+                        val request = okhttp3.Request.Builder()
+                            .url(checkUrl)
+                            .apply {
+                                if (secret.isNotEmpty()) {
+                                    header("Authorization", "Bearer $secret")
+                                }
+                            }
+                            .build()
                         var isWorking = false
                         okHttpClient.newCall(request).execute().use { response ->
                             if (response.isSuccessful) {
@@ -956,8 +963,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val proxyTag = java.net.URLEncoder.encode(flare.client.app.singbox.SingBoxManager.primaryProxyTag, "UTF-8")
                         val encodedUrl = java.net.URLEncoder.encode(settings.pingTestUrl, "UTF-8")
                         val checkUrl = "http://127.0.0.1:9092/proxies/$proxyTag/delay?url=$encodedUrl&timeout=5000"
-                        
-                        val request = okhttp3.Request.Builder().url(checkUrl).build()
+                        val secret = flare.client.app.singbox.SingBoxManager.clashSecret
+                        val request = okhttp3.Request.Builder()
+                            .url(checkUrl)
+                            .apply {
+                                if (secret.isNotEmpty()) {
+                                    header("Authorization", "Bearer $secret")
+                                }
+                            }
+                            .build()
                         okHttpClient.newCall(request).execute().use { response ->
                             if (response.isSuccessful) {
                                 val body = response.body?.string() ?: ""

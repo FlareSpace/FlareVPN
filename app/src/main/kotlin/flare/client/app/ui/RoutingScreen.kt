@@ -29,7 +29,7 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import flare.client.app.R
-import flare.client.app.ui.components.FlareRoutingCard
+import flare.client.app.ui.components.*
 import flare.client.app.ui.theme.FlareTheme
 
 
@@ -45,6 +45,8 @@ fun RoutingScreen(
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: HazeState
 ) {
+    val scrollState = rememberScrollState()
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         
@@ -58,7 +60,7 @@ fun RoutingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .statusBarsPadding()
                     .padding(top = 80.dp, bottom = 160.dp)
                     .padding(horizontal = 20.dp)
@@ -77,43 +79,11 @@ fun RoutingScreen(
         }
 
         
-        val isDark = isSystemInDarkTheme()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = I18n.strings.settings_routing_title,
-                fontFamily = GeologicaMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        FlareTopBar(
+            title = I18n.strings.settings_routing_title,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = onBack
+        )
     }
 }

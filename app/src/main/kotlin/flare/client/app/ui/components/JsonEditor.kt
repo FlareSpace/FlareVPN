@@ -131,18 +131,15 @@ fun ProfileJsonEditor(
                 .padding(top = 2.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable { onBack() },
-                contentAlignment = Alignment.Center
+            FlareGlassButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
             ) {
                 Icon(
                     painter = painterResource(R.drawable.ic_arrow_left),
                     contentDescription = null,
                     tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 

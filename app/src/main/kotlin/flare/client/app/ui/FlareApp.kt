@@ -357,83 +357,83 @@ fun FlareApp(
         var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
         var showDataManagementDialog by remember { mutableStateOf(false) }
 
-    
+
     LaunchedEffect(currentRoute, wizardViewModel.composeWizardStep) {
         if (currentRoute != Destination.Servers.route) {
-            settingsViewModel.composeBottomNavIsShrunk = false
-            settingsViewModel.composeBottomNavIsShrunkToHome = false
-        } else {
-            settingsViewModel.composeBottomNavIsShrunkToHome = false
-            if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
-                settingsViewModel.composeBottomNavIsShrunk = true
+                settingsViewModel.composeBottomNavIsShrunk = false
+                settingsViewModel.composeBottomNavIsShrunkToHome = false
+            } else {
+                settingsViewModel.composeBottomNavIsShrunkToHome = false
+                if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
+                    settingsViewModel.composeBottomNavIsShrunk = true
+                }
             }
         }
-    }
 
 
     
-    val selectedIndex = when {
+        val selectedIndex = when {
         isSettingsRoute(currentRoute) -> 0
         currentRoute == Destination.Home.route -> 1
-        currentRoute == Destination.Servers.route -> 2
-        else -> 1
-    }
+            currentRoute == Destination.Servers.route -> 2
+            else -> 1
+        }
 
     
     val isBottomNavVisible = when (currentRoute) {
         Destination.Home.route, Destination.Settings.route -> true
         Destination.Servers.route -> {
-            when (wizardViewModel.composeWizardStep) {
-                WizardStep.CARDS -> true
-                WizardStep.SSH_CONFIG -> wizardViewModel.isSshConfigValid
-                WizardStep.PROTOCOL -> true
-                WizardStep.XRAY_CONFIG -> wizardViewModel.isXrayConfigValid
-                WizardStep.PROGRESS -> wizardViewModel.composeSetupProgress >= 100f
-                WizardStep.SUCCESS -> false
-                WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff == TariffType.FREE
-                WizardStep.FLARE_PROGRESS -> false
-                WizardStep.FLARE_SUCCESS -> false
-            }
+                    when (wizardViewModel.composeWizardStep) {
+                        WizardStep.CARDS -> true
+                        WizardStep.SSH_CONFIG -> wizardViewModel.isSshConfigValid
+                        WizardStep.PROTOCOL -> true
+                        WizardStep.XRAY_CONFIG -> wizardViewModel.isXrayConfigValid
+                        WizardStep.PROGRESS -> wizardViewModel.composeSetupProgress >= 100f
+                        WizardStep.SUCCESS -> false
+                        WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff == TariffType.FREE
+                        WizardStep.FLARE_PROGRESS -> false
+                        WizardStep.FLARE_SUCCESS -> false
+                    }
         }
         Destination.AdvancedSettings.route, Destination.PingSettings.route, 
         Destination.RoutingSettings.route, Destination.BasicSettings.route,
         Destination.SubscriptionsSettings.route, Destination.ThemeSettings.route,
         Destination.LanguageSettings.route -> true
         Destination.JsonEditor.route, Destination.SimpleEditor.route -> false
-        else -> settingsViewModel.composeBottomNavIsVisible
-    }
+            else -> settingsViewModel.composeBottomNavIsVisible
+        }
 
     
-    LaunchedEffect(isBottomNavVisible) {
-        settingsViewModel.composeBottomNavIsVisible = isBottomNavVisible
-    }
+        LaunchedEffect(isBottomNavVisible) {
+            settingsViewModel.composeBottomNavIsVisible = isBottomNavVisible
+        }
 
-    LaunchedEffect(selectedIndex) {
-        onSelectedRootTabChanged(selectedIndex)
-    }
+        LaunchedEffect(selectedIndex) {
+            onSelectedRootTabChanged(selectedIndex)
+        }
 
-    fun rememberMorphRequestFor(view: android.view.View, route: String): SettingsMorphRequest {
-        val viewLocation = IntArray(2)
-        view.getLocationInWindow(viewLocation)
-        val rootLocation = IntArray(2)
-        rootView.getLocationInWindow(rootLocation)
-        return SettingsMorphRequest(
-            route = route,
-            originOffset = IntOffset(
-                x = viewLocation[0] - rootLocation[0],
-                y = viewLocation[1] - rootLocation[1]
-            ),
-            originSize = IntSize(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1))
-        )
-    }
+        fun rememberMorphRequestFor(view: android.view.View, route: String): SettingsMorphRequest {
+            val viewLocation = IntArray(2)
+            view.getLocationInWindow(viewLocation)
+            val rootLocation = IntArray(2)
+            rootView.getLocationInWindow(rootLocation)
+            return SettingsMorphRequest(
+                route = route,
+                originOffset = IntOffset(
+                    x = viewLocation[0] - rootLocation[0],
+                    y = viewLocation[1] - rootLocation[1]
+                ),
+                originSize = IntSize(view.width.coerceAtLeast(1), view.height.coerceAtLeast(1))
+            )
+        }
 
-    fun navigateToSettingsDetail(route: String, anchorView: android.view.View? = null) {
-        pendingSettingsMorph = anchorView?.let { rememberMorphRequestFor(it, route) }
-        navController.navigate(route)
-    }
+        fun navigateToSettingsDetail(route: String, anchorView: android.view.View? = null) {
+            pendingSettingsMorph = anchorView?.let { rememberMorphRequestFor(it, route) }
+            navController.navigate(route)
+        }
 
-    LaunchedEffect(requestedRootTabNonce) {
-        val requestedIndex = requestedRootTabIndex ?: return@LaunchedEffect
+        LaunchedEffect(requestedRootTabNonce) {
+            val requestedIndex = requestedRootTabIndex ?: return@LaunchedEffect
         val dest = when (requestedIndex) {
             0 -> Destination.Settings.route
             1 -> Destination.Home.route
@@ -441,12 +441,12 @@ fun FlareApp(
             else -> Destination.Home.route
         }
         navController.navigate(dest) {
-            popUpTo(navController.graph.startDestinationId) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+                popUpTo(navController.graph.startDestinationId) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            onRootTabRequestHandled()
         }
-        onRootTabRequestHandled()
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FlareHomeBackground(
@@ -537,52 +537,52 @@ fun FlareApp(
                         exitDuration = ROOT_TAB_EXIT_DURATION
                     ) {
                         val connectionState by mainViewModel.connectionState.collectAsState()
-                        val timerText by mainViewModel.connectionTimerText.collectAsState("")
+                        val timerText by mainViewModel.connectionTimerText.collectAsState()
                         val profiles by mainViewModel.displayItems.collectAsState(emptyList())
                         val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
 
-                        HomeScreen(
-                            connectionState = connectionState,
-                            timerText = timerText,
-                            profiles = profiles,
-                            chainedProfileIds = chainedProfileIds,
-                            onProfileChainToggle = { profile -> mainViewModel.toggleProfileInChain(profile.id) },
-                            isClipboardLoading = isClipboardLoading,
-                            isAnySubscriptionExpanded = isAnySubscriptionExpanded,
-                            accentColor = accentColor,
-                            pingStyle = settingsViewModel.composePingStyle,
-                            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
-                            animationSpeed = settingsViewModel.composeGradientSpeed,
-                            onConnectClick = { mainViewModel.connectOrDisconnect() },
-                            onProfileClick = { profile -> mainViewModel.selectProfile(profile.id) },
-                            onProfileDelete = { profile -> mainViewModel.deleteProfile(profile.id, profile.name) },
-                            onShareProfile = onShareProfile,
-                            onQrProfile = onQrProfile,
-                            onEditProfileJson = { profile ->
-                                mainViewModel.setEditingProfile(null)
-                                navController.navigate(Destination.JsonEditor.createRoute(profile.id, Destination.JsonEditor.TYPE_PROFILE))
-                            },
-                            onEditProfileSimple = { profile ->
-                                mainViewModel.setEditingProfile(null)
-                                navController.navigate(Destination.SimpleEditor.createRoute(profile.id))
-                            },
-                            onSubscriptionToggle = { sub -> mainViewModel.toggleSubscriptionExpanded(sub.id) },
-                            onSubscriptionDelete = { id -> mainViewModel.deleteSubscription(id) },
-                            onSubscriptionSpeedTest = { id -> mainViewModel.speedTestSubscription(id) },
-                            onSubscriptionUpdate = { sub -> mainViewModel.refreshSubscription(sub) },
-                            onEditSubscriptionJson = { sub ->
-                                onEditSubscriptionClick(sub)
-                            },
-                            onClipboardClick = onClipboardClick,
-                            onManualInputClick = onManualInputClick,
-                            onQrScanClick = onQrScanClick,
-                            onImportFileClick = onImportFileClick,
-                            onBack = { mainViewModel.collapseAllSubscriptions() },
-                            onScroll = {  },
-                            hazeState = appHazeState
-                        )
-                    }
+                                    HomeScreen(
+                                        connectionState = connectionState,
+                                        timerText = timerText,
+                                        profiles = profiles,
+                                        chainedProfileIds = chainedProfileIds,
+                                        onProfileChainToggle = { profile -> mainViewModel.toggleProfileInChain(profile.id) },
+                                        isClipboardLoading = isClipboardLoading,
+                                        isAnySubscriptionExpanded = isAnySubscriptionExpanded,
+                                        accentColor = accentColor,
+                                        pingStyle = settingsViewModel.composePingStyle,
+                                        isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
+                                        animationSpeed = settingsViewModel.composeGradientSpeed,
+                                        onConnectClick = { mainViewModel.connectOrDisconnect() },
+                                        onProfileClick = { profile -> mainViewModel.selectProfile(profile.id) },
+                                        onProfileDelete = { profile -> mainViewModel.deleteProfile(profile.id, profile.name) },
+                                        onShareProfile = onShareProfile,
+                                        onQrProfile = onQrProfile,
+                                        onEditProfileJson = { profile ->
+                                            mainViewModel.setEditingProfile(null)
+                                            navController.navigate(Destination.JsonEditor.createRoute(profile.id, Destination.JsonEditor.TYPE_PROFILE))
+                                        },
+                                        onEditProfileSimple = { profile ->
+                                            mainViewModel.setEditingProfile(null)
+                                            navController.navigate(Destination.SimpleEditor.createRoute(profile.id))
+                                        },
+                                        onSubscriptionToggle = { sub -> mainViewModel.toggleSubscriptionExpanded(sub.id) },
+                                        onSubscriptionDelete = { id -> mainViewModel.deleteSubscription(id) },
+                                        onSubscriptionSpeedTest = { id -> mainViewModel.speedTestSubscription(id) },
+                                        onSubscriptionUpdate = { sub -> mainViewModel.refreshSubscription(sub) },
+                                        onEditSubscriptionJson = { sub ->
+                                            onEditSubscriptionClick(sub)
+                                        },
+                                        onClipboardClick = onClipboardClick,
+                                        onManualInputClick = onManualInputClick,
+                                        onQrScanClick = onQrScanClick,
+                                        onImportFileClick = onImportFileClick,
+                                        onBack = { mainViewModel.collapseAllSubscriptions() },
+                                        onScroll = {  },
+                                        hazeState = appHazeState
+                                    )
+                                }
                 }
 
                 composable(Destination.Servers.route) {
@@ -593,78 +593,78 @@ fun FlareApp(
                         enterDuration = ROOT_TAB_ENTER_DURATION,
                         exitDuration = ROOT_TAB_EXIT_DURATION
                     ) {
-                        ServersScreen(
-                            currentStep = wizardViewModel.composeWizardStep,
-                            selectedServerType = wizardViewModel.composeSelectedServerType,
-                            accentColor = Color(accentColor),
-                            isFreeSuccess = wizardViewModel.composeFreeSubscriptionSuccess,
-                            onFlareServersClick = { 
-                                val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.FLARE
-                                wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.FLARE 
-                                settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
-                            },
-                            onCreateServerClick = { 
-                                val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.CUSTOM
-                                wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.CUSTOM 
-                                settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
-                            },
-                            selectedTariff = wizardViewModel.composeSelectedTariff,
-                            onTariffSelect = { wizardViewModel.composeSelectedTariff = it },
-                            sshProfileName = wizardViewModel.composeSshProfileName,
-                            onSshProfileNameChange = { wizardViewModel.composeSshProfileName = it },
-                            sshIp = wizardViewModel.composeSshIp,
-                            onSshIpChange = { wizardViewModel.composeSshIp = it },
-                            sshPort = wizardViewModel.composeSshPort,
-                            onSshPortChange = { wizardViewModel.composeSshPort = it },
-                            sshUser = wizardViewModel.composeSshUser,
-                            onSshUserChange = { wizardViewModel.composeSshUser = it },
-                            sshPass = wizardViewModel.composeSshPassword,
-                            onSshPassChange = { wizardViewModel.composeSshPassword = it },
-                            onSshKeyClick = {  },
-                            selectedProtocol = wizardViewModel.composeSelectedProtocol,
-                            onProtocolXrayClick = {
-                                wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY
-                            },
-                            onProtocolHysteria2Click = {
-                                wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2
-                            },
-                            onProtocolShadowsocksClick = {
-                                wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS
-                            },
-                            xrayPort = wizardViewModel.composeXrayPort,
-                            onXrayPortChange = { wizardViewModel.composeXrayPort = it },
-                            xraySni = wizardViewModel.composeXraySni,
-                            onXraySniChange = { wizardViewModel.composeXraySni = it },
-                            setupStatus = wizardViewModel.composeSetupStatus,
-                            setupProgress = wizardViewModel.composeSetupProgress,
-                            setupError = wizardViewModel.composeSetupError,
-                            onGoHomeClick = { 
-                                wizardViewModel.reset()
+                                    ServersScreen(
+                                        currentStep = wizardViewModel.composeWizardStep,
+                                        selectedServerType = wizardViewModel.composeSelectedServerType,
+                                        accentColor = Color(accentColor),
+                                        isFreeSuccess = wizardViewModel.composeFreeSubscriptionSuccess,
+                                        onFlareServersClick = { 
+                                            val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.FLARE
+                                            wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.FLARE 
+                                            settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
+                                        },
+                                        onCreateServerClick = { 
+                                            val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.CUSTOM
+                                            wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.CUSTOM 
+                                            settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
+                                        },
+                                        selectedTariff = wizardViewModel.composeSelectedTariff,
+                                        onTariffSelect = { wizardViewModel.composeSelectedTariff = it },
+                                        sshProfileName = wizardViewModel.composeSshProfileName,
+                                        onSshProfileNameChange = { wizardViewModel.composeSshProfileName = it },
+                                        sshIp = wizardViewModel.composeSshIp,
+                                        onSshIpChange = { wizardViewModel.composeSshIp = it },
+                                        sshPort = wizardViewModel.composeSshPort,
+                                        onSshPortChange = { wizardViewModel.composeSshPort = it },
+                                        sshUser = wizardViewModel.composeSshUser,
+                                        onSshUserChange = { wizardViewModel.composeSshUser = it },
+                                        sshPass = wizardViewModel.composeSshPassword,
+                                        onSshPassChange = { wizardViewModel.composeSshPassword = it },
+                                        onSshKeyClick = {  },
+                                        selectedProtocol = wizardViewModel.composeSelectedProtocol,
+                                        onProtocolXrayClick = {
+                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY
+                                        },
+                                        onProtocolHysteria2Click = {
+                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2
+                                        },
+                                        onProtocolShadowsocksClick = {
+                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS
+                                        },
+                                        xrayPort = wizardViewModel.composeXrayPort,
+                                        onXrayPortChange = { wizardViewModel.composeXrayPort = it },
+                                        xraySni = wizardViewModel.composeXraySni,
+                                        onXraySniChange = { wizardViewModel.composeXraySni = it },
+                                        setupStatus = wizardViewModel.composeSetupStatus,
+                                        setupProgress = wizardViewModel.composeSetupProgress,
+                                        setupError = wizardViewModel.composeSetupError,
+                                        onGoHomeClick = { 
+                                            wizardViewModel.reset()
                                 navController.navigate(Destination.Home.route) 
-                            },
-                            onBack = {
-                                if (wizardViewModel.composeWizardStep == WizardStep.SUCCESS || wizardViewModel.composeWizardStep == WizardStep.FLARE_SUCCESS) {
-                                    wizardViewModel.reset()
-                                    settingsViewModel.composeBottomNavIsShrunk = false
-                                } else if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
-                                    wizardViewModel.previousStep()
-                                    if (wizardViewModel.composeWizardStep == WizardStep.CARDS) {
-                                        settingsViewModel.composeBottomNavIsShrunk = false
-                                        wizardViewModel.composeSelectedServerType = null
-                                        wizardViewModel.composeSelectedTariff = null
-                                    }
-                                } else if (wizardViewModel.composeSelectedServerType != null) {
-                                    wizardViewModel.composeSelectedServerType = null
-                                    settingsViewModel.composeBottomNavIsShrunk = false
-                                    wizardViewModel.composeSelectedTariff = null
+                                        },
+                                        onBack = {
+                                            if (wizardViewModel.composeWizardStep == WizardStep.SUCCESS || wizardViewModel.composeWizardStep == WizardStep.FLARE_SUCCESS) {
+                                                wizardViewModel.reset()
+                                                settingsViewModel.composeBottomNavIsShrunk = false
+                                            } else if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
+                                                wizardViewModel.previousStep()
+                                                if (wizardViewModel.composeWizardStep == WizardStep.CARDS) {
+                                                    settingsViewModel.composeBottomNavIsShrunk = false
+                                                    wizardViewModel.composeSelectedServerType = null
+                                                    wizardViewModel.composeSelectedTariff = null
+                                                }
+                                            } else if (wizardViewModel.composeSelectedServerType != null) {
+                                                wizardViewModel.composeSelectedServerType = null
+                                                settingsViewModel.composeBottomNavIsShrunk = false
+                                                wizardViewModel.composeSelectedTariff = null
+                                            }
+                                        },
+                                        onNextClick = { wizardViewModel.nextStep() },
+                                        isSshConfigValid = wizardViewModel.isSshConfigValid,
+                                        hazeState = appHazeState
+                                    )
                                 }
-                            },
-                            onNextClick = { wizardViewModel.nextStep() },
-                            isSshConfigValid = wizardViewModel.isSshConfigValid,
-                            hazeState = appHazeState
-                        )
-                    }
-                }
+                            }
 
                 composable(Destination.Settings.route) {
                     TransitionBlurContainer(

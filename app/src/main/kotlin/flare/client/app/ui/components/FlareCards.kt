@@ -42,6 +42,8 @@ import flare.client.app.util.GlassUtils
 import flare.client.app.data.model.PingState
 import flare.client.app.data.model.DisplayItem
 import flare.client.app.ui.theme.FlareTheme
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
 
 
 @Composable
@@ -336,8 +338,7 @@ fun SubscriptionCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 60.dp)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -398,170 +399,11 @@ fun SubscriptionCard(
                             )
                         }
                     }
-                }
 
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier.widthIn(min = 116.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .shadow(
-                                elevation = 2.dp,
-                                shape = CircleShape,
-                                clip = false
-                            )
-                            .background(
-                                brush = Brush.linearGradient(
-                                    colors = if (FlareTheme.colors.isDark) {
-                                        listOf(
-                                            Color(0xFFFFFFFF).copy(alpha = 0.08f),
-                                            Color(0xFFFFFFFF).copy(alpha = 0.03f)
-                                        )
-                                    } else {
-                                        listOf(
-                                            Color(0xFFFFFFFF).copy(alpha = 0.65f),
-                                            Color(0xFFFFFFFF).copy(alpha = 0.35f)
-                                        )
-                                    }
-                                ),
-                                shape = CircleShape
-                            )
-                            .border(
-                                width = 1.dp,
-                                brush = Brush.linearGradient(
-                                    colors = if (FlareTheme.colors.isDark) {
-                                        listOf(
-                                            Color.White.copy(alpha = 0.18f),
-                                            Color.White.copy(alpha = 0.03f)
-                                        )
-                                    } else {
-                                        listOf(
-                                            Color.White.copy(alpha = 0.55f),
-                                            Color.Black.copy(alpha = 0.05f)
-                                        )
-                                    }
-                                ),
-                                shape = CircleShape
-                            )
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .clickable(
-                                    onClick = onUpdateClick,
-                                    enabled = !isRefreshing
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isRefreshing) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = accentColor
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_refresh),
-                                    contentDescription = I18n.strings.label_update,
-                                    tint = FlareTheme.colors.textSecondary,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .width(0.5.dp)
-                                .height(16.dp)
-                                .background(
-                                    if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.12f)
-                                    else Color.Black.copy(alpha = 0.08f)
-                                )
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .clickable(onClick = onSpeedTestClick),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_speedometer),
-                                contentDescription = I18n.strings.label_speed_test,
-                                tint = FlareTheme.colors.textSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        Box(
-                            modifier = Modifier
-                                .width(0.5.dp)
-                                .height(16.dp)
-                                .background(
-                                    if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.12f)
-                                    else Color.Black.copy(alpha = 0.08f)
-                                )
-                        )
-
-                        Box {
-                            var menuExpanded by remember { mutableStateOf(false) }
-                            
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .clip(CircleShape)
-                                    .clickable(onClick = { menuExpanded = true }),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_more_vert),
-                                    contentDescription = null,
-                                    tint = FlareTheme.colors.textSecondary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            
-                            val editLabel = I18n.strings.menu_edit_subscription
-                            val deleteLabel = I18n.strings.menu_delete_subscription
-                            
-                            val items = if (isVirtual) {
-                                listOf(
-                                    flare.client.app.util.GlassUtils.MenuItem(1, deleteLabel) { 
-                                        menuExpanded = false
-                                        onDeleteClick() 
-                                    }
-                                )
-                            } else {
-                                listOf(
-                                    flare.client.app.util.GlassUtils.MenuItem(1, editLabel) { 
-                                        menuExpanded = false
-                                        onEditJsonClick() 
-                                    },
-                                    flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
-                                        menuExpanded = false
-                                        onDeleteClick() 
-                                    }
-                                )
-                            }
-                            
-                            FlareGlassMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                                items = items,
-                                hazeState = hazeState,
-                                alignment = Alignment.TopEnd
-                            )
-                        }
-                    }
                     if (expire > 0 || updateInterval > 0) {
                         Column(
-                            horizontalAlignment = Alignment.Start,
-                            modifier = Modifier.align(Alignment.End)
+                            modifier = Modifier.padding(top = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp)
                         ) {
                             if (expire > 0) {
                                 val expireMillis = if (expire > 1000000000000L) expire else expire * 1000L
@@ -571,7 +413,8 @@ fun SubscriptionCard(
                                     fontFamily = GeologicaMedium,
                                     fontSize = 9.sp,
                                     color = FlareTheme.colors.textSecondary,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             if (updateInterval > 0) {
@@ -581,7 +424,109 @@ fun SubscriptionCard(
                                     fontFamily = GeologicaMedium,
                                     fontSize = 9.sp,
                                     color = FlareTheme.colors.textSecondary,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    modifier = Modifier.widthIn(min = 116.dp)
+                ) {
+                    FlareGlassContainer(
+                        shape = CircleShape,
+                        radius = 17.dp,
+                        hazeState = hazeState,
+                        modifier = Modifier.offset(x = 6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(horizontal = 5.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val buttonTint = FlareTheme.colors.textPrimary
+
+                            FlareGlassButton(
+                                onClick = onUpdateClick,
+                                enabled = !isRefreshing
+                            ) {
+                                if (isRefreshing) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 1.5.dp,
+                                        color = accentColor
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_refresh),
+                                        contentDescription = I18n.strings.label_update,
+                                        tint = buttonTint,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(5.dp))
+
+                            FlareGlassButton(
+                                onClick = onSpeedTestClick
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_speedometer),
+                                    contentDescription = I18n.strings.label_speed_test,
+                                    tint = buttonTint,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(5.dp))
+
+                            Box {
+                                var menuExpanded by remember { mutableStateOf(false) }
+                                
+                                FlareGlassButton(
+                                    onClick = { menuExpanded = true }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_more_vert),
+                                        contentDescription = null,
+                                        tint = buttonTint,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                
+                                val editLabel = I18n.strings.menu_edit_subscription
+                                val deleteLabel = I18n.strings.menu_delete_subscription
+                                
+                                val items = if (isVirtual) {
+                                    listOf(
+                                        flare.client.app.util.GlassUtils.MenuItem(1, deleteLabel) { 
+                                            menuExpanded = false
+                                            onDeleteClick() 
+                                        }
+                                    )
+                                } else {
+                                    listOf(
+                                        flare.client.app.util.GlassUtils.MenuItem(1, editLabel) { 
+                                            menuExpanded = false
+                                            onEditJsonClick() 
+                                        },
+                                        flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
+                                            menuExpanded = false
+                                            onDeleteClick() 
+                                        }
+                                    )
+                                }
+                                
+                                FlareGlassMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false },
+                                    items = items,
+                                    hazeState = hazeState,
+                                    alignment = Alignment.TopEnd
                                 )
                             }
                         }
@@ -590,16 +535,35 @@ fun SubscriptionCard(
             }
 
             if (!description.isNullOrEmpty()) {
-                Text(
-                    text = description,
-                    fontFamily = GeologicaRegular,
-                    fontSize = 11.sp,
-                    color = FlareTheme.colors.textSecondary,
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 10.dp)
-                        .alpha(0.8f)
+                HorizontalDivider(
+                    color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 )
+
+                Box(
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 16.dp, bottom = 10.dp, top = 6.dp)
+                        .fillMaxWidth()
+                        .background(
+                            color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .border(
+                            width = 0.5.dp,
+                            color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = description,
+                        fontFamily = GeologicaRegular,
+                        fontSize = 11.sp,
+                        color = FlareTheme.colors.textSecondary,
+                        modifier = Modifier.alpha(0.8f)
+                    )
+                }
             }
         }
         

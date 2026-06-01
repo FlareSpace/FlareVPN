@@ -197,12 +197,13 @@ object PingHelper {
 
         val boxService = Libbox.newCommandServer(handler, platform)
         val clashPort = findAvailablePort()
+        val clashSecret = java.util.UUID.randomUUID().toString()
         val excludedIndices = HashSet<Int>()
         try {
             var serviceStarted = false
             var retryCount = 0
             val maxRetries = 15
-            var batchResult = buildBatchConfig(profiles, testUrl, clashPort, excludedIndices, onResult)
+            var batchResult = buildBatchConfig(profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
 
             while (!serviceStarted && retryCount < maxRetries) {
                 if (batchResult == null || excludedIndices.size >= profiles.size) {
@@ -268,7 +269,7 @@ object PingHelper {
                     }
 
                     retryCount++
-                    batchResult = buildBatchConfig(profiles, testUrl, clashPort, excludedIndices, onResult)
+                    batchResult = buildBatchConfig(profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
                 }
             }
 
@@ -283,6 +284,7 @@ object PingHelper {
                     val checkReq = Request.Builder()
                         .url("http://127.0.0.1:$clashPort/")
                         .header("Connection", "close")
+                        .header("Authorization", "Bearer $clashSecret")
                         .get()
                         .build()
                     okHttpClient.newCall(checkReq).execute().use {
@@ -309,6 +311,7 @@ object PingHelper {
                                 val url = "http://127.0.0.1:$clashPort/proxies/${java.net.URLEncoder.encode(tag, "UTF-8")}/delay?url=${java.net.URLEncoder.encode(testUrl, "UTF-8")}&timeout=4000"
                                 val request = Request.Builder()
                                     .url(url)
+                                    .header("Authorization", "Bearer $clashSecret")
                                     .get()
                                     .build()
                                 okHttpClient.newCall(request).execute().use { response ->
@@ -368,6 +371,7 @@ object PingHelper {
         profiles: List<ProfileEntity>,
         testUrl: String,
         clashPort: Int,
+        clashSecret: String,
         excludedIndices: MutableSet<Int>,
         onResult: suspend (Long, Long, String?) -> Unit
     ): Pair<JSONObject, Map<Int, Int>>? {
@@ -385,8 +389,8 @@ object PingHelper {
                     var mainProxyTag = ""
                     for (i in 0 until profileOutbounds.length()) {
                         val ob = profileOutbounds.optJSONObject(i) ?: continue
-                        val t = ob.optString("type")
-                        if (t != "direct" && t != "block" && t != "dns" && t.isNotBlank()) {
+                        val t = ob.optString("type").lowercase(java.util.Locale.ROOT)
+                        if (t != "direct" && t != "block" && t != "dns" && t != "urltest" && t != "selector" && t.isNotBlank()) {
                             mainProxyTag = ob.optString("tag")
                             break
                         }
@@ -402,8 +406,8 @@ object PingHelper {
 
                     for (i in 0 until profileOutbounds.length()) {
                         val ob = profileOutbounds.optJSONObject(i) ?: continue
-                        val t = ob.optString("type")
-                        if (t == "direct" || t == "block" || t == "dns") continue
+                        val t = ob.optString("type").lowercase(java.util.Locale.ROOT)
+                        if (t == "direct" || t == "block" || t == "dns" || t == "urltest" || t == "selector") continue
                         val oldTag = ob.optString("tag")
                         if (oldTag.isNotBlank()) {
                             ob.put("tag", if (oldTag == mainProxyTag) mainTagMapped else "$oldTag-$index")
@@ -421,8 +425,14 @@ object PingHelper {
                         }
                         if (ob.has("detour")) {
                             val detourName = ob.optString("detour")
-                            if (detourName.isNotBlank() && detourName != "direct" && detourName != "block") {
-                                ob.put("detour", if (detourName == mainProxyTag) mainTagMapped else "$detourName-$index")
+                            if (detourName.isNotBlank()) {
+                                if (detourName.equals("direct", ignoreCase = true)) {
+                                    ob.put("detour", "direct")
+                                } else if (detourName.equals("block", ignoreCase = true)) {
+                                    ob.put("detour", "block")
+                                } else {
+                                    ob.put("detour", if (detourName == mainProxyTag) mainTagMapped else "$detourName-$index")
+                                }
                             }
                         }
 
@@ -461,6 +471,7 @@ object PingHelper {
                 put("experimental", JSONObject().apply {
                     put("clash_api", JSONObject().apply {
                         put("external_controller", "127.0.0.1:$clashPort")
+                        put("secret", clashSecret)
                     })
                 })
                 put("log", JSONObject().apply { put("level", "error") })

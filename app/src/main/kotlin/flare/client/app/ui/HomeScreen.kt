@@ -127,9 +127,9 @@ fun HomeScreen(
     }
 
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val buttonSize = if (isLandscape) 170.dp else 300.dp
-    val buttonOffsetY = if (isLandscape) 10.dp else 50.dp
-    val addProfilesBottomPadding = if (isLandscape) 24.dp else 130.dp
+    val buttonSize = if (isLandscape) 170.dp else 290.dp
+    val buttonOffsetY = if (isLandscape) 10.dp else 40.dp
+    val addProfilesBottomPadding = if (isLandscape) 24.dp else 104.dp
 
     Box(
         modifier = Modifier
@@ -148,6 +148,7 @@ fun HomeScreen(
             ) {
                 FlareConnectButton(
                     connectionState = connectionState,
+                    timerText = timerText,
                     buttonSize = buttonSize,
                     onClick = {
                         if (connectionState != MainViewModel.ConnectionState.CONNECTING &&
@@ -165,58 +166,12 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = guidelineHeight)
-                    .offset(y = 13.dp)
+                    .offset(y = 1.dp)
                     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                     .hazeSource(state = hazeState), 
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 
-                val containerAlpha by animateFloatAsState(
-                    targetValue = if (isConnected || isConnecting) 1f else 0f,
-                    animationSpec = tween(400),
-                    label = "containerAlpha"
-                )
-
-                val timerContentAlpha by animateFloatAsState(
-                    targetValue = if (isConnected) 1f else 0f,
-                    animationSpec = tween(300),
-                    label = "timerContentAlpha"
-                )
-
-                val loadingContentAlpha by animateFloatAsState(
-                    targetValue = if (isConnecting) 1f else 0f,
-                    animationSpec = tween(300),
-                    label = "loadingContentAlpha"
-                )
-
-                if (containerAlpha > 0f) {
-                    val timerColor = if (FlareTheme.colors.isDark) Color(0xFFE2E5EC) else Color(0xFF1A1C1E)
-                    Box(
-                        modifier = Modifier
-                            .height(24.dp)
-                            .alpha(containerAlpha),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (loadingContentAlpha > 0f) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .alpha(loadingContentAlpha),
-                                color = timerColor,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                        if (timerContentAlpha > 0f) {
-                            RollingTimer(
-                                time = timerText,
-                                color = timerColor,
-                                fontSize = 17.sp,
-                                modifier = Modifier
-                                    .alpha(timerContentAlpha)
-                            )
-                        }
-                    }
-                }
 
                 AnimatedVisibility(
                     visible = isAnySubscriptionExpanded,

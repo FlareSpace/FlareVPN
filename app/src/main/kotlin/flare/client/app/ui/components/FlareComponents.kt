@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.focus.onFocusChanged
@@ -38,13 +39,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -62,6 +69,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import androidx.compose.foundation.LocalIndication
@@ -73,6 +81,9 @@ import androidx.compose.ui.text.ExperimentalTextApi
 import flare.client.app.R
 import flare.client.app.data.model.DisplayItem
 import flare.client.app.ui.theme.FlareTheme
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.lazy.LazyListState
+import dev.chrisbanes.haze.HazeProgressive
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -107,6 +118,10 @@ fun RollingTimer(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
+        val density = LocalDensity.current
+        val baseWidth = with(density) { fontSize.toDp() * 0.65f }
+        val colonWidth = with(density) { fontSize.toDp() * 0.35f }
+
         time.indices.forEach { i ->
             val char = time[i]
             AnimatedContent(
@@ -116,17 +131,116 @@ fun RollingTimer(
                             slideOutVertically { -it } + fadeOut())
                         .using(SizeTransform(clip = false))
                 },
+                contentAlignment = Alignment.Center,
                 label = "timer_digit_$i"
             ) { digit ->
                 Text(
                     text = digit.toString(),
-                    fontFamily = GoogleSansFlex,
+                    fontFamily = GeologicaMedium,
                     fontSize = fontSize,
                     color = color,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.width(if (digit == ':') 8.dp else 14.dp)
+                    modifier = Modifier.width(if (digit == ':') colonWidth else baseWidth)
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun FlareTopBar(
+    title: String,
+    hazeState: HazeState,
+    scrollState: ScrollState? = null,
+    lazyListState: LazyListState? = null,
+    onBack: (() -> Unit)? = null,
+    actions: @Composable (RowScope.() -> Unit)? = null
+) {
+    val isDark = FlareTheme.colors.isDark
+    
+    val scrollOffset = when {
+        scrollState != null -> scrollState.value
+        lazyListState != null -> {
+            if (lazyListState.firstVisibleItemIndex > 0) 500 else lazyListState.firstVisibleItemScrollOffset
+        }
+        else -> 0
+    }
+    
+    val density = LocalDensity.current
+    val maxScrollPx = with(density) { 30.dp.toPx() }
+    val scrollProgress = (scrollOffset / maxScrollPx).coerceIn(0f, 1f)
+    
+    val backgroundColor = if (isDark) {
+        Color.Black.copy(alpha = 0.75f * scrollProgress)
+    } else {
+        Color.White.copy(alpha = 0.65f * scrollProgress)
+    }
+    
+    val lineColor = if (isDark) {
+        Color.White.copy(alpha = 0.12f * scrollProgress)
+    } else {
+        Color.Black.copy(alpha = 0.08f * scrollProgress)
+    }
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .hazeEffect(state = hazeState) {
+                progressive = HazeProgressive.verticalGradient(
+                    startY = 0f,
+                    startIntensity = 1f,
+                    endY = Float.POSITIVE_INFINITY,
+                    endIntensity = 0.25f
+                )
+                blurRadius = 32.dp
+                alpha = scrollProgress
+            }
+            .background(backgroundColor)
+            .drawBehind {
+                if (scrollProgress > 0f) {
+                    val strokeWidth = 1.dp.toPx()
+                    val y = size.height - strokeWidth / 2
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = strokeWidth
+                    )
+                }
+            }
+            .statusBarsPadding()
+            .padding(horizontal = if (onBack != null) 8.dp else 20.dp)
+            .padding(top = 2.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            FlareGlassButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_left),
+                    contentDescription = null,
+                    tint = FlareTheme.colors.textPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        
+        Text(
+            text = title,
+            fontFamily = GeologicaMedium,
+            fontWeight = FontWeight.Medium,
+            fontSize = 22.sp,
+            color = FlareTheme.colors.textPrimary,
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (onBack != null) 8.dp else 4.dp)
+        )
+        
+        if (actions != null) {
+            actions()
         }
     }
 }
@@ -566,6 +680,104 @@ fun GlassIconContainer(
 }
 
 @Composable
+fun FlareGlassContainer(
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
+    radius: androidx.compose.ui.unit.Dp = 12.dp,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val isDark = FlareTheme.colors.isDark
+    
+    Box(
+        modifier = modifier
+            
+            .drawBehind {
+                drawIntoCanvas { canvas ->
+                    val paint = android.graphics.Paint().apply {
+                        color = android.graphics.Color.TRANSPARENT
+                        setShadowLayer(
+                            12.dp.toPx(),
+                            0f,
+                            4.dp.toPx(),
+                            android.graphics.Color.argb(if (isDark) 75 else 20, 0, 0, 0)
+                        )
+                    }
+                    val radiusPx = radius.toPx()
+                    canvas.nativeCanvas.drawRoundRect(
+                        0f,
+                        0f,
+                        size.width,
+                        size.height,
+                        radiusPx,
+                        radiusPx,
+                        paint
+                    )
+                }
+            }
+            
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) {
+                        listOf(
+                            Color.White.copy(alpha = 0.06f),
+                            Color.White.copy(alpha = 0.02f)
+                        )
+                    } else {
+                        listOf(
+                            Color(0xFFFFFFFF).copy(alpha = 0.85f),
+                            Color(0xFFF2F2F7).copy(alpha = 0.60f)
+                        )
+                    }
+                ),
+                shape = shape
+            )
+            
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    colors = if (isDark) {
+                        listOf(
+                            Color.White.copy(alpha = 0.18f),
+                            Color.White.copy(alpha = 0.03f)
+                        )
+                    } else {
+                        listOf(
+                            Color.White.copy(alpha = 0.60f),
+                            Color.Black.copy(alpha = 0.08f)
+                        )
+                    }
+                ),
+                shape = shape
+            )
+            .clip(shape)
+    ) {
+        
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = if (isDark) 0.08f else 0.18f),
+                            Color.Transparent
+                        ),
+                        startY = 0f,
+                        endY = 15f
+                    )
+                )
+        )
+        
+        Box(
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
 fun FlareSettingsItem(
     title: String,
     modifier: Modifier = Modifier,
@@ -576,6 +788,7 @@ fun FlareSettingsItem(
     showArrow: Boolean = true,
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.NONE,
     iconBgColor: Color = Color.Unspecified,
+    useGlassTooltipButton: Boolean = true,
     onClick: (android.view.View) -> Unit
 ) {
     var showTooltip by remember { mutableStateOf(false) }
@@ -650,10 +863,31 @@ fun FlareSettingsItem(
 
                     if (description != null) {
                         Box {
-                            FlareInfoIconButton(
-                                onClick = { showTooltip = true },
-                                modifier = Modifier.padding(start = 4.dp)
-                            )
+                            if (useGlassTooltipButton) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    FlareGlassButton(
+                                        onClick = { showTooltip = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_info_i),
+                                            contentDescription = null,
+                                            tint = FlareTheme.colors.textPrimary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                FlareInfoIconButton(
+                                    onClick = { showTooltip = true },
+                                    modifier = Modifier.padding(start = 4.dp)
+                                )
+                            }
                             
                             if (showTooltip && hazeState != null) {
                                 FlareGlassTooltip(
@@ -713,7 +947,8 @@ fun FlareSettingsToggleItem(
     description: String? = null,
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.NONE,
     accentColor: Color = FlareTheme.colors.accent,
-    iconBgColor: Color = Color.Unspecified
+    iconBgColor: Color = Color.Unspecified,
+    useGlassTooltipButton: Boolean = true
 ) {
     var showTooltip by remember { mutableStateOf(false) }
 
@@ -769,11 +1004,32 @@ fun FlareSettingsToggleItem(
 
                     if (description != null) {
                         Box {
-                            FlareInfoIconButton(
-                                onClick = { showTooltip = true },
-                                modifier = Modifier.padding(start = 4.dp),
-                                color = accentColor
-                            )
+                            if (useGlassTooltipButton) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    FlareGlassButton(
+                                        onClick = { showTooltip = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_info_i),
+                                            contentDescription = null,
+                                            tint = FlareTheme.colors.textPrimary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                FlareInfoIconButton(
+                                    onClick = { showTooltip = true },
+                                    modifier = Modifier.padding(start = 4.dp),
+                                    color = accentColor
+                                )
+                            }
                             
                             if (showTooltip && hazeState != null) {
                                 FlareGlassTooltip(
@@ -818,7 +1074,8 @@ fun FlareSettingsValueItem(
     description: String? = null,
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.NONE,
     accentColor: Color = FlareTheme.colors.accent,
-    iconBgColor: Color = Color.Unspecified
+    iconBgColor: Color = Color.Unspecified,
+    useGlassTooltipButton: Boolean = true
 ) {
     var showTooltip by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -883,11 +1140,32 @@ fun FlareSettingsValueItem(
 
                     if (description != null) {
                         Box {
-                            FlareInfoIconButton(
-                                onClick = { showTooltip = true },
-                                modifier = Modifier.padding(start = 4.dp),
-                                color = accentColor
-                            )
+                            if (useGlassTooltipButton) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    FlareGlassButton(
+                                        onClick = { showTooltip = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_info_i),
+                                            contentDescription = null,
+                                            tint = FlareTheme.colors.textPrimary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                FlareInfoIconButton(
+                                    onClick = { showTooltip = true },
+                                    modifier = Modifier.padding(start = 4.dp),
+                                    color = accentColor
+                                )
+                            }
                             
                             if (showTooltip && hazeState != null) {
                                 FlareGlassTooltip(
@@ -957,6 +1235,7 @@ fun FlareSettingsInputItem(
     showBorder: Boolean = false,
     keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
     iconBgColor: Color = Color.Unspecified,
+    useGlassTooltipButton: Boolean = true,
     action: @Composable (RowScope.() -> Unit)? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -1038,11 +1317,32 @@ fun FlareSettingsInputItem(
 
                     if (description != null) {
                         Box {
-                            FlareInfoIconButton(
-                                onClick = { showTooltip = true },
-                                modifier = Modifier.padding(start = 4.dp),
-                                color = accentColor
-                            )
+                            if (useGlassTooltipButton) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    FlareGlassButton(
+                                        onClick = { showTooltip = true },
+                                        modifier = Modifier.size(18.dp)
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_info_i),
+                                            contentDescription = null,
+                                            tint = FlareTheme.colors.textPrimary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                FlareInfoIconButton(
+                                    onClick = { showTooltip = true },
+                                    modifier = Modifier.padding(start = 4.dp),
+                                    color = accentColor
+                                )
+                            }
                             
                             if (showTooltip && hazeState != null) {
                                 FlareGlassTooltip(
@@ -1560,57 +1860,18 @@ fun FlareInfoIconButton(
     modifier: Modifier = Modifier,
     color: Color = FlareTheme.colors.accent
 ) {
-    val isDark = FlareTheme.colors.isDark
-    val borderAlphaStart = if (isDark) 0.35f else 0.45f
-    val borderAlphaEnd = if (isDark) 0.05f else 0.08f
-
-    IconButton(
-        onClick = onClick,
-        modifier = modifier.size(32.dp)
+    Box(
+        modifier = modifier.size(32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            color,
-                            color.copy(alpha = 0.85f)
-                        )
-                    )
-                )
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = borderAlphaStart),
-                            Color.White.copy(alpha = borderAlphaEnd),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
+        FlareGlassButton(
+            onClick = onClick,
+            modifier = Modifier.size(18.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = if (isDark) 0.15f else 0.22f),
-                                Color.Transparent
-                            ),
-                            startY = 0f,
-                            endY = 22f
-                        )
-                    )
-            )
             Icon(
                 painter = painterResource(R.drawable.ic_info_i),
                 contentDescription = null,
-                tint = Color.White,
+                tint = FlareTheme.colors.textPrimary,
                 modifier = Modifier.size(10.dp)
             )
         }
@@ -1662,35 +1923,157 @@ fun FlareButton(
 fun Modifier.fadingEdge(
     showTop: Boolean,
     showBottom: Boolean,
-    topFadeHeight: androidx.compose.ui.unit.Dp = 16.dp,
-    bottomFadeHeight: androidx.compose.ui.unit.Dp = 16.dp
-): Modifier = this
-    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-    .drawWithContent {
-        drawContent()
-        
-        val topFadeHeightPx = topFadeHeight.toPx()
-        val bottomFadeHeightPx = bottomFadeHeight.toPx()
-        
-        if (showTop && topFadeHeightPx > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, Color.Black),
-                    startY = 0f,
-                    endY = topFadeHeightPx
-                ),
-                blendMode = BlendMode.DstIn
+    topFadeHeight: androidx.compose.ui.unit.Dp = 24.dp,
+    bottomFadeHeight: androidx.compose.ui.unit.Dp = 24.dp
+): Modifier = composed {
+    val animatedTopHeight by animateDpAsState(
+        targetValue = if (showTop) topFadeHeight else 0.dp,
+        animationSpec = tween(durationMillis = 280),
+        label = "topFadeHeight"
+    )
+    val animatedBottomHeight by animateDpAsState(
+        targetValue = if (showBottom) bottomFadeHeight else 0.dp,
+        animationSpec = tween(durationMillis = 280),
+        label = "bottomFadeHeight"
+    )
+
+    this
+        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+        .drawWithContent {
+            drawContent()
+            
+            val topFadeHeightPx = animatedTopHeight.toPx()
+            val bottomFadeHeightPx = animatedBottomHeight.toPx()
+            
+            val numStops = 12
+            
+            if (topFadeHeightPx > 0.5f) {
+                val topColors = List(numStops) { i ->
+                    val progress = i.toFloat() / (numStops - 1)
+                    val alpha = progress * progress * (3f - 2f * progress)
+                    Color.Black.copy(alpha = alpha)
+                }
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = topColors,
+                        startY = 0f,
+                        endY = topFadeHeightPx
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+            
+            if (bottomFadeHeightPx > 0.5f) {
+                val bottomColors = List(numStops) { i ->
+                    val progress = i.toFloat() / (numStops - 1)
+                    val t = 1f - progress
+                    val alpha = t * t * (3f - 2f * t)
+                    Color.Black.copy(alpha = alpha)
+                }
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = bottomColors,
+                        startY = size.height - bottomFadeHeightPx,
+                        endY = size.height
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
+}
+
+
+@Composable
+fun FlareGlassButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val isDark = FlareTheme.colors.isDark
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = tween(durationMillis = 150),
+        label = "flareGlassButtonGlowAlpha"
+    )
+    
+    val buttonBgBrush = Brush.verticalGradient(
+        colors = if (isDark) {
+            listOf(
+                Color.White.copy(alpha = if (isPressed) 0.22f else 0.08f),
+                Color.White.copy(alpha = if (isPressed) 0.12f else 0.02f)
+            )
+        } else {
+            listOf(
+                Color.Black.copy(alpha = if (isPressed) 0.12f else 0.05f),
+                Color.Black.copy(alpha = if (isPressed) 0.06f else 0.02f)
             )
         }
-        
-        if (showBottom && bottomFadeHeightPx > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color.Black, Color.Transparent),
-                    startY = size.height - bottomFadeHeightPx,
-                    endY = size.height
-                ),
-                blendMode = BlendMode.DstIn
+    )
+
+    val buttonBorderBrush = Brush.verticalGradient(
+        colors = if (isDark) {
+            listOf(
+                Color.White.copy(alpha = if (isPressed) 0.45f else 0.15f),
+                if (isPressed) Color.White.copy(alpha = 0.15f) else Color.Transparent
+            )
+        } else {
+            listOf(
+                Color.Black.copy(alpha = if (isPressed) 0.22f else 0.10f),
+                Color.Black.copy(alpha = if (isPressed) 0.06f else 0.02f)
             )
         }
-    }
+    )
+
+    Box(
+        modifier = modifier
+            .size(28.dp)
+            .drawBehind {
+                if (glowAlpha > 0f) {
+                    drawIntoCanvas { canvas ->
+                        val paint = android.graphics.Paint().apply {
+                            color = android.graphics.Color.TRANSPARENT
+                            setShadowLayer(
+                                6.dp.toPx(),
+                                0f,
+                                0f,
+                                android.graphics.Color.argb(
+                                    (glowAlpha * 180).toInt(),
+                                    255,
+                                    255,
+                                    255
+                                )
+                            )
+                        }
+                        canvas.nativeCanvas.drawCircle(
+                            size.width / 2f,
+                            size.height / 2f,
+                            size.width / 2f - 0.5.dp.toPx(),
+                            paint
+                        )
+                    }
+                }
+            }
+            .background(
+                brush = buttonBgBrush,
+                shape = CircleShape
+            )
+            .border(
+                width = 0.5.dp,
+                brush = buttonBorderBrush,
+                shape = CircleShape
+            )
+            .clip(CircleShape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center,
+        content = content
+    )
+}

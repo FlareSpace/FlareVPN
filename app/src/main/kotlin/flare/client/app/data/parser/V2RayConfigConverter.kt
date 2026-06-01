@@ -132,14 +132,20 @@ object V2RayConfigConverter {
                 val xRule = xrayRules.optJSONObject(i) ?: continue
                 val outboundTag = xRule.optString("outboundTag", xRule.optString("outbound", ""))
                 val balancerTag = xRule.optString("balancerTag", "")
-                val actualOutTag = if (balancerTag.isNotEmpty() && balancerTags.containsKey(balancerTag)) {
+                val rawActualOutTag = if (balancerTag.isNotEmpty() && balancerTags.containsKey(balancerTag)) {
                     balancerTags[balancerTag] ?: balancerTag
                 } else if (balancerTag.isNotEmpty()) {
                     balancerTag
                 } else {
                     outboundTag
                 }
-                if (actualOutTag.isEmpty()) continue
+                if (rawActualOutTag.isEmpty()) continue
+                val actualOutTag = when {
+                    rawActualOutTag.equals("direct", ignoreCase = true) -> "direct"
+                    rawActualOutTag.equals("block", ignoreCase = true) -> "block"
+                    rawActualOutTag.equals("dns", ignoreCase = true) -> "dns"
+                    else -> rawActualOutTag
+                }
 
                 val sbRule = JSONObject()
                 var hasContent = false
@@ -290,72 +296,114 @@ object V2RayConfigConverter {
             }
         }
 
-        val sbDns =
-                JSONObject().apply {
-                    put(
-                            "servers",
-                            JSONArray().apply {
-                                put(
-                                        JSONObject().apply {
-                                            put("tag", "dns-remote")
-                                            put("address", primaryDns)
-                                            put("address_resolver", "dns-direct")
-                                            put("detour", findPrimaryProxyTag(sbOutbounds))
-                                        }
-                                )
-                                put(
-                                        JSONObject().apply {
-                                            put("tag", "dns-direct")
-                                            put("address", directDns)
-                                            put("detour", "direct")
-                                        }
-                                )
-                                put(
-                                        JSONObject().apply {
-                                            put("tag", "dns-block")
-                                            put("address", "rcode://success")
-                                        }
-                                )
+        val sbDnsServers = JSONArray()
+        
+        sbDnsServers.put(JSONObject().apply {
+            put("tag", "dns-remote")
+            put("address", primaryDns)
+            put("address_resolver", "dns-direct")
+            put("detour", findPrimaryProxyTag(sbOutbounds))
+        })
+        
+        sbDnsServers.put(JSONObject().apply {
+            put("tag", "dns-direct")
+            put("address", directDns)
+            put("detour", "direct")
+        })
+        
+        sbDnsServers.put(JSONObject().apply {
+            put("tag", "dns-block")
+            put("address", "rcode://success")
+        })
+
+        val sbDnsRules = JSONArray()
+
+        sbDnsRules.put(JSONObject().apply {
+            put("outbound", JSONArray().put("direct"))
+            put("server", "dns-direct")
+        })
+
+        val servers = xrayDns?.optJSONArray("servers")
+        if (servers != null) {
+            for (i in 0 until servers.length()) {
+                val s = servers.opt(i)
+                if (s is JSONObject) {
+                    val addr = s.optString("address", "").replace("+local://", "://")
+                    val port = s.optInt("port", 53)
+                    val domains = s.optJSONArray("domains")
+                    if (domains != null && domains.length() > 0) {
+                        val tag = "dns-custom-$i"
+                        sbDnsServers.put(JSONObject().apply {
+                            put("tag", tag)
+                            put("address", addr)
+                            if (port != 53 && port > 0) put("port", port)
+                            put("detour", "direct")
+                        })
+                        
+                        val dnsRule = JSONObject().apply { put("server", tag) }
+                        val dnsDomains = JSONArray()
+                        val dnsRuleSets = JSONArray()
+                        for (j in 0 until domains.length()) {
+                            val d = domains.optString(j, "")
+                            when {
+                                d.startsWith("geosite:") -> {
+                                    val gs = d.removePrefix("geosite:")
+                                    if (gs == "category-ru" || gs == "ru") {
+                                        requiredRuleSets.add("geosite-ru")
+                                        dnsRuleSets.put("geosite-ru")
+                                    }
+                                }
+                                d.startsWith("domain:") -> {
+                                    val dom = d.removePrefix("domain:")
+                                    if (dom.isNotEmpty()) dnsDomains.put(dom)
+                                }
+                                d.startsWith("full:") -> {
+                                    val dom = d.removePrefix("full:")
+                                    if (dom.isNotEmpty()) dnsDomains.put(dom)
+                                }
+                                d.isNotEmpty() -> {
+                                    dnsDomains.put(d)
+                                }
                             }
-                    )
-                    put(
-                            "rules",
-                            JSONArray().apply {
-                                put(
-                                        JSONObject().apply {
-                                            put("outbound", JSONArray().put("direct"))
-                                            put("server", "dns-direct")
-                                        }
-                                )
-                                val dnsDirectDomains = JSONArray()
-                                for (i in 0 until proxyDomains.length()) {
-                                    dnsDirectDomains.put(proxyDomains.getString(i))
-                                }
-                                for (i in 0 until directDomains.length()) {
-                                    dnsDirectDomains.put(directDomains.getString(i))
-                                }
-                                if (dnsDirectDomains.length() > 0) {
-                                    put(
-                                            JSONObject().apply {
-                                                put("domain", dnsDirectDomains)
-                                                put("server", "dns-direct")
-                                            }
-                                    )
-                                }
-                                for (rs in directRuleSets) {
-                                    put(
-                                            JSONObject().apply {
-                                                put("rule_set", rs)
-                                                put("server", "dns-direct")
-                                            }
-                                    )
-                                }
-                            }
-                    )
-                    put("final", "dns-remote")
-                    put("strategy", strategy)
-                    put("independent_cache", true)
+                        }
+                        if (dnsDomains.length() > 0) dnsRule.put("domain", dnsDomains)
+                        if (dnsRuleSets.length() > 0) dnsRule.put("rule_set", dnsRuleSets)
+                        if (dnsDomains.length() > 0 || dnsRuleSets.length() > 0) {
+                            sbDnsRules.put(dnsRule)
+                        }
+                    }
                 }
+            }
+        }
+
+        val dnsDirectDomains = JSONArray()
+        for (i in 0 until proxyDomains.length()) {
+            dnsDirectDomains.put(proxyDomains.getString(i))
+        }
+        for (i in 0 until directDomains.length()) {
+            dnsDirectDomains.put(directDomains.getString(i))
+        }
+        if (dnsDirectDomains.length() > 0) {
+            sbDnsRules.put(JSONObject().apply {
+                put("domain", dnsDirectDomains)
+                put("server", "dns-direct")
+            })
+        }
+
+        for (rs in directRuleSets) {
+            sbDnsRules.put(JSONObject().apply {
+                put("rule_set", rs)
+                put("server", "dns-direct")
+            })
+        }
+
+        val sbDns = JSONObject().apply {
+            put("servers", sbDnsServers)
+            put("rules", sbDnsRules)
+            put("final", "dns-remote")
+            put("strategy", strategy)
+            put("independent_cache", true)
+        }
         sb.put("dns", sbDns)
 
         val sbInbounds = JSONArray()
@@ -428,7 +476,13 @@ object V2RayConfigConverter {
         for (i in 0 until xrayOutbounds.length()) {
             val xrayOb = xrayOutbounds.optJSONObject(i) ?: continue
             val protocol = xrayOb.optString("protocol", "").lowercase(Locale.ROOT)
-            val tag = xrayOb.optString("tag", "outbound-$i")
+            val rawTag = xrayOb.optString("tag", "outbound-$i")
+            val tag = when {
+                rawTag.equals("direct", ignoreCase = true) -> "direct"
+                rawTag.equals("block", ignoreCase = true) -> "block"
+                rawTag.equals("dns", ignoreCase = true) -> "dns"
+                else -> rawTag
+            }
             val sbOb = JSONObject().apply { put("tag", tag) }
 
             when (protocol) {
@@ -440,6 +494,8 @@ object V2RayConfigConverter {
                 "hysteria2", "hy2" -> convertHysteria2(xrayOb, sbOb)
                 "freedom" -> sbOb.put("type", "direct")
                 "blackhole" -> sbOb.put("type", "block")
+                "socks" -> convertSocks(xrayOb, sbOb)
+                "http" -> convertHttp(xrayOb, sbOb)
                 else -> continue
             }
 
@@ -461,6 +517,21 @@ object V2RayConfigConverter {
                     )
                 }
             }
+
+            val sockopt = xrayOb.optJSONObject("streamSettings")?.optJSONObject("sockopt")
+            if (sockopt != null && sockopt.has("dialerProxy")) {
+                val proxyTag = sockopt.optString("dialerProxy")
+                if (proxyTag.isNotEmpty()) {
+                    val normProxyTag = when {
+                        proxyTag.equals("direct", ignoreCase = true) -> "direct"
+                        proxyTag.equals("block", ignoreCase = true) -> "block"
+                        proxyTag.equals("dns", ignoreCase = true) -> "dns"
+                        else -> proxyTag
+                    }
+                    sbOb.put("detour", normProxyTag)
+                }
+            }
+
             sbOutbounds.put(sbOb)
         }
         for (extra in extraOutbounds) {
@@ -627,6 +698,36 @@ object V2RayConfigConverter {
                 }
                 sbOb.put("plugin_opts", opts.joinToString(";"))
             }
+        }
+    }
+
+    private fun convertSocks(xrayOb: JSONObject, sbOb: JSONObject) {
+        sbOb.put("type", "socks")
+        val settings = xrayOb.optJSONObject("settings")
+        val server = settings?.optJSONArray("servers")?.optJSONObject(0) ?: return
+        sbOb.put("server", server.optString("address"))
+        sbOb.put("server_port", server.optInt("port"))
+        val userObj = server.optJSONArray("users")?.optJSONObject(0)
+        if (userObj != null) {
+            val user = userObj.optString("user", "")
+            val pass = userObj.optString("pass", "")
+            if (user.isNotEmpty()) sbOb.put("username", user)
+            if (pass.isNotEmpty()) sbOb.put("password", pass)
+        }
+    }
+
+    private fun convertHttp(xrayOb: JSONObject, sbOb: JSONObject) {
+        sbOb.put("type", "http")
+        val settings = xrayOb.optJSONObject("settings")
+        val server = settings?.optJSONArray("servers")?.optJSONObject(0) ?: return
+        sbOb.put("server", server.optString("address"))
+        sbOb.put("server_port", server.optInt("port"))
+        val userObj = server.optJSONArray("user")?.optJSONObject(0)
+        if (userObj != null) {
+            val user = userObj.optString("user", "")
+            val pass = userObj.optString("pass", "")
+            if (user.isNotEmpty()) sbOb.put("username", user)
+            if (pass.isNotEmpty()) sbOb.put("password", pass)
         }
     }
 
@@ -968,6 +1069,25 @@ object V2RayConfigConverter {
     }
 
     private fun findPrimaryProxyTag(outbounds: JSONArray): String {
+        val generalTags = listOf("proxy", "auto", "default", "main", "select", "selector", "urltest")
+        for (i in 0 until outbounds.length()) {
+            val ob = outbounds.optJSONObject(i) ?: continue
+            val type = ob.optString("type", "")
+            if (type == "urltest" || type == "selector") {
+                val tag = ob.optString("tag", "")
+                if (tag.isNotEmpty() && generalTags.any { tag.equals(it, ignoreCase = true) }) {
+                    return tag
+                }
+            }
+        }
+        
+        for (i in 0 until outbounds.length()) {
+            val ob = outbounds.optJSONObject(i) ?: continue
+            val tag = ob.optString("tag", "")
+            if (tag.equals("proxy", ignoreCase = true)) {
+                return tag
+            }
+        }
         
         for (i in 0 until outbounds.length()) {
             val ob = outbounds.optJSONObject(i) ?: continue

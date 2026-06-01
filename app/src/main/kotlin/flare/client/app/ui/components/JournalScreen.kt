@@ -295,74 +295,49 @@ fun JournalScreen(
             }
         }
 
-        val isDark = isSystemInDarkTheme()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
+        FlareTopBar(
+            title = I18n.strings.journal_title,
+            hazeState = hazeState,
+            lazyListState = listState,
+            onBack = onBack,
+            actions = {
+                IconButton(
+                    onClick = {
+                        val fullLogs = logsList.joinToString("\n") { it.raw }
+                        if (fullLogs.isNotEmpty()) {
+                            clipboardManager.setText(AnnotatedString(fullLogs))
+                            AppNotificationManager.showNotification(
+                                NotificationType.SUCCESS,
+                                I18n.strings.journal_copy_success,
+                                3
+                            )
+                        }
+                    },
+                    enabled = logsList.isNotEmpty()
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_copy),
+                        contentDescription = "Copy all",
+                        tint = if (logsList.isNotEmpty()) FlareTheme.colors.textPrimary else FlareTheme.colors.textSecondary.copy(alpha = 0.5f)
                     )
-                )
-                .statusBarsPadding()
-                .padding(horizontal = 8.dp)
-                .padding(top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary
-                )
-            }
-            Text(
-                text = I18n.strings.journal_title,
-                color = FlareTheme.colors.textPrimary,
-                fontSize = 20.sp,
-                modifier = Modifier.weight(1f).padding(start = 8.dp)
-            )
-
-            IconButton(
-                onClick = {
-                    val fullLogs = logsList.joinToString("\n") { it.raw }
-                    if (fullLogs.isNotEmpty()) {
-                        clipboardManager.setText(AnnotatedString(fullLogs))
-                        AppNotificationManager.showNotification(
-                            NotificationType.SUCCESS,
-                            I18n.strings.journal_copy_success,
-                            3
-                        )
-                    }
-                },
-                enabled = logsList.isNotEmpty()
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_copy),
-                    contentDescription = "Copy all",
-                    tint = if (logsList.isNotEmpty()) FlareTheme.colors.textPrimary else FlareTheme.colors.textSecondary.copy(alpha = 0.5f)
-                )
-            }
-
-            IconButton(onClick = {
-                try {
-                    if (logFile.exists()) logFile.writeText("")
-                    logsList.clear()
-                } catch (e: Exception) {
-                    e.printStackTrace()
                 }
-            }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_delete),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textSecondary
-                )
+
+                IconButton(onClick = {
+                    try {
+                        if (logFile.exists()) logFile.writeText("")
+                        logsList.clear()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_delete),
+                        contentDescription = null,
+                        tint = FlareTheme.colors.textSecondary
+                    )
+                }
             }
-        }
+        )
     }
 }
 

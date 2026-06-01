@@ -46,6 +46,10 @@ object SingBoxManager {
     var primaryProxyTag: String = "proxy"
         private set
 
+    @Volatile
+    var clashSecret: String = ""
+        private set
+
     private var setupDone = false
     private var logFile: File? = null
 
@@ -447,6 +451,7 @@ object SingBoxManager {
         }
         if (trafficJob != null) return
 
+        val secret = clashSecret
         stopTrafficStream()
         trafficJob = trafficScope.launch {
             val client = okhttp3.OkHttpClient.Builder()
@@ -455,6 +460,11 @@ object SingBoxManager {
                 .build()
             val request = okhttp3.Request.Builder()
                 .url("http://127.0.0.1:9092/traffic")
+                .apply {
+                    if (secret.isNotEmpty()) {
+                        header("Authorization", "Bearer $secret")
+                    }
+                }
                 .build()
 
             var attempt = 0
@@ -514,6 +524,7 @@ object SingBoxManager {
     
 
     fun patchConfig(configContent: String, context: Context): String {
+        clashSecret = java.util.UUID.randomUUID().toString()
         val settings = SettingsManager(context)
         val logFilePath = logFile?.absolutePath
         var patchedConfig =
@@ -574,6 +585,9 @@ object SingBoxManager {
             val experimental = obj.optJSONObject("experimental") ?: JSONObject().also { obj.put("experimental", it) }
             val clashApi = experimental.optJSONObject("clash_api") ?: JSONObject().also { experimental.put("clash_api", it) }
             clashApi.put("external_controller", "127.0.0.1:9092")
+            if (clashSecret.isNotEmpty()) {
+                clashApi.put("secret", clashSecret)
+            }
 
             val outboundsArr = obj.optJSONArray("outbounds") ?: JSONArray()
             primaryProxyTag = findPrimaryProxyTag(outboundsArr)

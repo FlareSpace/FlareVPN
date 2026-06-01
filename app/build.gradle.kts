@@ -22,12 +22,10 @@ android {
     defaultConfig {
         applicationId = "flare.client.app"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 15
-        versionName = "1.2.0"
-        renderscriptTargetApi = 31
-        renderscriptSupportModeEnabled = true
-
+        targetSdk = 36
+        versionCode = 22
+        versionName = "1.2.7"
+        
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
         }

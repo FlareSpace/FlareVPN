@@ -384,33 +384,13 @@ fun ServersScreen(
         }
 
         
-        val isDark = isSystemInDarkTheme()
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = I18n.strings.label_servers,
-                fontFamily = GeologicaMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
+        val showBackButton = currentStep != WizardStep.CARDS || selectedServerType != null
+        FlareTopBar(
+            title = I18n.strings.label_servers,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = if (showBackButton) onBack else null
+        )
     }
 }
 

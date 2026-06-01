@@ -69,6 +69,8 @@ fun PingSettingsScreen(
 
     val pingStyleDisplayValue = pingStyleOptions.find { it.second == pingStyleValue }?.first ?: pingStyleValue
 
+    val scrollState = rememberScrollState()
+
     Box(modifier = Modifier.fillMaxSize()) {
         
         
@@ -82,7 +84,7 @@ fun PingSettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .statusBarsPadding()
                     .padding(top = 80.dp, bottom = 160.dp)
                     .padding(horizontal = 20.dp)
@@ -226,43 +228,12 @@ fun PingSettingsScreen(
         }
 
         
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = I18n.strings.settings_ping_title,
-                fontFamily = GeologicaMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        FlareTopBar(
+            title = I18n.strings.settings_ping_title,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = onBack
+        )
     }
 }
 

@@ -27,6 +27,7 @@ import flare.client.app.data.model.DisplayItem
 import flare.client.app.ui.components.FlareSectionHeader
 import flare.client.app.ui.components.FlareSettingsItem
 import flare.client.app.ui.components.FlareHomeBackground
+import flare.client.app.ui.components.FlareTopBar
 import flare.client.app.ui.theme.FlareTheme
 
 
@@ -49,6 +50,7 @@ fun SettingsScreen(
     hazeState: HazeState
 ) {
     val strings = I18n.strings
+    val scrollState = rememberScrollState()
 
     Box(
         modifier = Modifier
@@ -64,7 +66,7 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .statusBarsPadding()
                     .padding(top = 67.dp, bottom = 120.dp)
                     .padding(horizontal = 20.dp)
@@ -134,32 +136,10 @@ fun SettingsScreen(
         }
 
         
-        val isDark = FlareTheme.colors.isDark
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = strings.settings_title,
-                fontFamily = GeologicaMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
+        FlareTopBar(
+            title = strings.settings_title,
+            hazeState = hazeState,
+            scrollState = scrollState
+        )
     }
 }

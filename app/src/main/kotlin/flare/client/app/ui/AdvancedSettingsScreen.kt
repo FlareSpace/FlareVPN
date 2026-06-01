@@ -309,56 +309,94 @@ fun AdvancedSettingsScreen(
                                 .clickable(enabled = !isTestingMtu) {
                                     isTestingMtu = true
                                     scope.launch {
-                                        val discoveredMtu = withContext(Dispatchers.IO) {
+                                        val discoveredMtuPair = withContext(Dispatchers.IO) {
                                             val startTime = System.currentTimeMillis()
-                                            var optimalMtu = 1280
+                                            var optimalMtu = 1420
+                                            var source = "System"
+                                            
+                                            
+                                            var osMtu = 0
                                             try {
-                                                val target = "8.8.8.8"
-                                                val payloads = listOf(1472, 1372)
-                                                var maxPayloadSucceeded = -1
-                                                for (payload in payloads) {
+                                                val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                                                val activeNetwork = connectivityManager.activeNetwork
+                                                osMtu = connectivityManager.getLinkProperties(activeNetwork)?.mtu ?: 0
+                                            } catch (e: Exception) {
+                                                
+                                            }
+
+                                            
+                                            var targetIp = "8.8.8.8"
+                                            var pingWorks = false
+                                            for (ip in listOf("1.1.1.1", "8.8.8.8")) {
+                                                try {
+                                                    val testProc = Runtime.getRuntime().exec(arrayOf("ping", "-c", "1", "-W", "1", ip))
+                                                    if (testProc.waitFor() == 0) {
+                                                        pingWorks = true
+                                                        targetIp = ip
+                                                        break
+                                                    }
+                                                } catch (e: Exception) {
+                                                    
+                                                }
+                                            }
+
+                                            
+                                            if (pingWorks) {
+                                                var low = 1252 
+                                                var high = if (osMtu > 1280) osMtu - 28 else 1472
+                                                var bestPayload = -1
+                                                
+                                                while (low <= high) {
+                                                    val mid = low + (high - low) / 2
+                                                    var success = false
                                                     var process: Process? = null
                                                     try {
                                                         process = Runtime.getRuntime().exec(
-                                                            arrayOf("ping", "-c", "1", "-W", "1", "-s", payload.toString(), "-M", "do", target)
+                                                            arrayOf("ping", "-c", "1", "-W", "1", "-s", mid.toString(), "-M", "do", targetIp)
                                                         )
-                                                        val exitCode = process.waitFor()
-                                                        if (exitCode == 0) {
-                                                            maxPayloadSucceeded = payload
-                                                            break
+                                                        if (process.waitFor() == 0) {
+                                                            success = true
                                                         }
                                                     } catch (e: Exception) {
-                                                        e.printStackTrace()
+                                                        break
                                                     } finally {
                                                         process?.destroy()
                                                     }
+                                                    
+                                                    if (success) {
+                                                        bestPayload = mid
+                                                        low = mid + 1 
+                                                    } else {
+                                                        high = mid - 1 
+                                                    }
                                                 }
-                                                if (maxPayloadSucceeded != -1) {
-                                                    val physicalMtu = maxPayloadSucceeded + 28
-                                                    optimalMtu = (physicalMtu - 80).coerceAtLeast(1280)
-                                                } else {
-                                                    throw Exception("Pings failed")
+                                                
+                                                if (bestPayload != -1) {
+                                                    
+                                                    optimalMtu = (bestPayload + 28 - 80).coerceAtLeast(1280)
+                                                    source = "Ping"
+                                                } else if (osMtu > 1280) {
+                                                    
+                                                    optimalMtu = (osMtu - 80).coerceAtLeast(1280)
+                                                    source = "System"
                                                 }
-                                            } catch (e: Exception) {
-                                                try {
-                                                    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-                                                    val activeNetwork = connectivityManager.activeNetwork
-                                                    val linkProperties = connectivityManager.getLinkProperties(activeNetwork)
-                                                    val detectedMtu = linkProperties?.mtu ?: 1500
-                                                    optimalMtu = (detectedMtu - 80).coerceAtLeast(1280)
-                                                } catch (ex: Exception) {
-                                                    optimalMtu = 1420
+                                            } else {
+                                                
+                                                if (osMtu > 1280) {
+                                                    optimalMtu = (osMtu - 80).coerceAtLeast(1280)
+                                                    source = "System"
                                                 }
                                             }
+
                                             val elapsed = System.currentTimeMillis() - startTime
-                                            if (elapsed < 1500) {
-                                                delay(1500 - elapsed)
+                                            if (elapsed < 800) {
+                                                delay(800 - elapsed)
                                             }
-                                            optimalMtu
+                                            Pair(optimalMtu, source)
                                         }
-                                        onMtuChange(discoveredMtu.toString())
+                                        onMtuChange(discoveredMtuPair.first.toString())
                                         isTestingMtu = false
-                                        val warningText = I18n.strings.mtu_auto_warning.format(discoveredMtu.toString())
+                                        val warningText = I18n.strings.mtu_auto_warning.format(discoveredMtuPair.first.toString()) + " (${discoveredMtuPair.second})"
                                         flare.client.app.ui.notification.AppNotificationManager.showNotification(
                                             type = flare.client.app.ui.notification.NotificationType.WARNING,
                                             text = warningText,
@@ -431,43 +469,11 @@ fun AdvancedSettingsScreen(
         }
 
         
-        val isDark = FlareTheme.colors.isDark
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = I18n.strings.settings_advanced_title,
-                fontFamily = flare.client.app.ui.components.GeologicaMedium,
-                fontWeight = FontWeight.Medium,
-                fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
+        FlareTopBar(
+            title = I18n.strings.settings_advanced_title,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = onBack
+        )
     }
 }
