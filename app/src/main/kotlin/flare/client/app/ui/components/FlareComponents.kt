@@ -154,6 +154,7 @@ fun FlareTopBar(
     scrollState: ScrollState? = null,
     lazyListState: LazyListState? = null,
     onBack: (() -> Unit)? = null,
+    subtitle: @Composable (() -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
     val isDark = FlareTheme.colors.isDark
@@ -171,7 +172,7 @@ fun FlareTopBar(
     val scrollProgress = (scrollOffset / maxScrollPx).coerceIn(0f, 1f)
     
     val backgroundColor = if (isDark) {
-        Color.Black.copy(alpha = 0.75f * scrollProgress)
+        FlareTheme.colors.bgItem.copy(alpha = 0.75f * scrollProgress)
     } else {
         Color.White.copy(alpha = 0.65f * scrollProgress)
     }
@@ -228,16 +229,24 @@ fun FlareTopBar(
             }
         }
         
-        Text(
-            text = title,
-            fontFamily = GeologicaMedium,
-            fontWeight = FontWeight.Medium,
-            fontSize = 22.sp,
-            color = FlareTheme.colors.textPrimary,
+        Column(
             modifier = Modifier
                 .weight(1f)
-                .padding(start = if (onBack != null) 8.dp else 4.dp)
-        )
+                .padding(start = if (onBack != null) 8.dp else 4.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                fontFamily = GeologicaMedium,
+                fontWeight = FontWeight.Medium,
+                fontSize = 22.sp,
+                color = FlareTheme.colors.textPrimary
+            )
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                subtitle()
+            }
+        }
         
         if (actions != null) {
             actions()
@@ -744,7 +753,7 @@ fun FlareGlassContainer(
                     } else {
                         listOf(
                             Color.White.copy(alpha = 0.60f),
-                            Color.Black.copy(alpha = 0.08f)
+                            Color(0x0D000000)
                         )
                     }
                 ),
@@ -1733,6 +1742,7 @@ private const val LIQUID_GLASS_AGSL = """
     uniform float is_dark_mode;
     uniform float has_outline;
     uniform float outline_thickness;
+    uniform float density;
     
     half sdfRect(half2 p, half4 r) {
       r.xy = (p.x > 0.0) ? r.xy : r.zw;
@@ -1784,12 +1794,10 @@ private const val LIQUID_GLASS_AGSL = """
         half rimLight = 0.0;
         
         if (is_dark_mode > 0.5) {
-            half thinHlMask = smoothstep(1.5, 0.0, edgeDist);
-            tlHighlight = pow(tlDir, 16.0) * thinHlMask * 0.35;
-            brHighlight = pow(brDir, 16.0) * thinHlMask * 0.15;
-            rimLight = thinHlMask * 0.05;
+            half thinHlMask = smoothstep(2.0 * density, 0.0, edgeDist);
+            tlHighlight = pow(tlDir, 8.0) * thinHlMask * 0.35;
         } else {
-            tlHighlight = pow(tlDir, 12.0) * smoothstep(3.0, 0.0, edgeDist) * 0.8;
+            tlHighlight = pow(tlDir, 8.0) * smoothstep(3.0 * density, 0.0, edgeDist) * 0.8;
             if (has_outline > 0.5) {
                 half outlineMask = smoothstep(outline_thickness, 0.0, edgeDist);
                 result.rgb = mix(result.rgb, half3(0.0), outlineMask * 0.15);
@@ -1828,7 +1836,7 @@ fun Modifier.flareGlass(
             val r = android.graphics.Color.red(fgColor) / 255f * a
             val g = android.graphics.Color.green(fgColor) / 255f * a
             val b = android.graphics.Color.blue(fgColor) / 255f * a
-
+ 
             shader.setFloatUniform("resolution", size.width, size.height)
             shader.setFloatUniform("center", size.width / 2f, size.height / 2f)
             shader.setFloatUniform("size", size.width / 2f, size.height / 2f)
@@ -1843,6 +1851,7 @@ fun Modifier.flareGlass(
             shader.setFloatUniform("is_dark_mode", if (isDark) 1f else 0f)
             shader.setFloatUniform("has_outline", if (hasOutline) 1f else 0f)
             shader.setFloatUniform("outline_thickness", outlineThickness * dp)
+            shader.setFloatUniform("density", dp)
 
             renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "img").asComposeRenderEffect()
         }
@@ -1923,8 +1932,8 @@ fun FlareButton(
 fun Modifier.fadingEdge(
     showTop: Boolean,
     showBottom: Boolean,
-    topFadeHeight: androidx.compose.ui.unit.Dp = 24.dp,
-    bottomFadeHeight: androidx.compose.ui.unit.Dp = 24.dp
+    topFadeHeight: androidx.compose.ui.unit.Dp = 16.dp,
+    bottomFadeHeight: androidx.compose.ui.unit.Dp = 16.dp
 ): Modifier = composed {
     val animatedTopHeight by animateDpAsState(
         targetValue = if (showTop) topFadeHeight else 0.dp,
@@ -1935,6 +1944,18 @@ fun Modifier.fadingEdge(
         targetValue = if (showBottom) bottomFadeHeight else 0.dp,
         animationSpec = tween(durationMillis = 280),
         label = "bottomFadeHeight"
+    )
+
+    val isDark = FlareTheme.colors.isDark
+    val animatedTopLineAlpha by animateFloatAsState(
+        targetValue = if (showTop) (if (isDark) 0.15f else 0.12f) else 0f,
+        animationSpec = tween(durationMillis = 280),
+        label = "topLineAlpha"
+    )
+    val animatedBottomLineAlpha by animateFloatAsState(
+        targetValue = if (showBottom) (if (isDark) 0.15f else 0.12f) else 0f,
+        animationSpec = tween(durationMillis = 280),
+        label = "bottomLineAlpha"
     )
 
     this
@@ -1950,7 +1971,7 @@ fun Modifier.fadingEdge(
             if (topFadeHeightPx > 0.5f) {
                 val topColors = List(numStops) { i ->
                     val progress = i.toFloat() / (numStops - 1)
-                    val alpha = progress * progress * (3f - 2f * progress)
+                    val alpha = 0.28f + 0.72f * (progress * progress * (3f - 2f * progress))
                     Color.Black.copy(alpha = alpha)
                 }
                 drawRect(
@@ -1967,7 +1988,7 @@ fun Modifier.fadingEdge(
                 val bottomColors = List(numStops) { i ->
                     val progress = i.toFloat() / (numStops - 1)
                     val t = 1f - progress
-                    val alpha = t * t * (3f - 2f * t)
+                    val alpha = 0.28f + 0.72f * (t * t * (3f - 2f * t))
                     Color.Black.copy(alpha = alpha)
                 }
                 drawRect(
@@ -1977,6 +1998,27 @@ fun Modifier.fadingEdge(
                         endY = size.height
                     ),
                     blendMode = BlendMode.DstIn
+                )
+            }
+
+            
+            if (animatedTopLineAlpha > 0f) {
+                val lineColor = if (isDark) Color.White else Color.Black
+                drawLine(
+                    color = lineColor.copy(alpha = animatedTopLineAlpha),
+                    start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                    end = androidx.compose.ui.geometry.Offset(size.width, 0f),
+                    strokeWidth = 0.5.dp.toPx()
+                )
+            }
+
+            if (animatedBottomLineAlpha > 0f) {
+                val lineColor = if (isDark) Color.White else Color.Black
+                drawLine(
+                    color = lineColor.copy(alpha = animatedBottomLineAlpha),
+                    start = androidx.compose.ui.geometry.Offset(0f, size.height),
+                    end = androidx.compose.ui.geometry.Offset(size.width, size.height),
+                    strokeWidth = 0.5.dp.toPx()
                 )
             }
         }

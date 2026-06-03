@@ -54,6 +54,7 @@ fun ProfileJsonEditor(
 
     var name by remember { mutableStateOf(initialName) }
     var content by remember { mutableStateOf(initialContent) }
+    val scrollState = rememberScrollState()
 
     Box(
         modifier = Modifier
@@ -74,7 +75,7 @@ fun ProfileJsonEditor(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .statusBarsPadding()
                     .padding(top = 80.dp, bottom = 80.dp)
                     .padding(horizontal = 16.dp)
@@ -114,71 +115,36 @@ fun ProfileJsonEditor(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
-                }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(FlareTheme.colors.headerGradientStart, FlareTheme.colors.headerGradientEnd)
-                    )
-                )
-                .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FlareGlassButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
-            ) {
-                Text(
-                    text = I18n.strings.label_config_editor,
-                    fontFamily = GeologicaMedium,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp,
-                    color = FlareTheme.colors.textPrimary,
-                    maxLines = 1
-                )
-                if (initialScheme.isNotBlank()) {
+        FlareTopBar(
+            title = I18n.strings.label_config_editor,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = onBack,
+            subtitle = if (initialScheme.isNotBlank()) {
+                {
                     JsonEditorProtocolChip(
                         scheme = initialScheme,
                         accentColor = accentColor
                     )
                 }
+            } else null,
+            actions = {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { onSave(name, content) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
-
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .clickable { onSave(name, content) },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        )
     }
 }
 

@@ -75,9 +75,12 @@ fun ProfileList(
                             onDeleteClick = { onProfileDelete(item.entity) },
                             onChainClick = { onProfileChainToggle(item.entity) }
                         ) {
+                            val protocolDisplay = remember(item.entity.id, item.entity.uri, item.entity.protocol, item.entity.serverDescription) {
+                                getProtocolDisplay(item.entity)
+                            }
                             ProfileCard(
                                 name = item.entity.name,
-                                description = getProtocolDisplay(item.entity),
+                                description = protocolDisplay,
                                 isSelected = item.isSelected,
                                 pingState = item.pingState,
                                 pingStyle = pingStyle,

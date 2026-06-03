@@ -33,6 +33,7 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
 import flare.client.app.R
 import flare.client.app.ui.theme.FlareTheme
+import flare.client.app.ui.i18n.I18n
 import android.view.WindowManager
 
 enum class OnboardingStep {
@@ -41,55 +42,55 @@ enum class OnboardingStep {
 
 fun OnboardingStep.index(): Int = ordinal
 
-private class OnboardingStrings(val isRussian: Boolean) {
-    val welcomeTitle = if (isRussian) "Добро пожаловать в Flare!" else "Welcome to Flare!"
-    val welcomeSubtitle = if (isRussian) "Хотите ли пройти первоначальную настройку?" else "Would you like to perform the initial setup?"
-    val btnYes = if (isRussian) "Да" else "Yes"
-    val btnNo = if (isRussian) "Нет" else "No"
+private class OnboardingStrings(val strings: flare.client.app.ui.i18n.FlareStrings) {
+    val welcomeTitle = strings.onboarding_welcome_title
+    val welcomeSubtitle = strings.onboarding_welcome_question
+    val btnYes = strings.option_yes
+    val btnNo = strings.option_no
     
-    val permissionsTitle = if (isRussian) "Разрешения" else "Permissions"
-    val permissionsSubtitle = if (isRussian) "Необходимые разрешения для стабильной фоновой работы" else "Required permissions for stable background operation"
+    val permissionsTitle = strings.onboarding_permissions_title
+    val permissionsSubtitle = strings.onboarding_permissions_subtitle
     
-    val permNotificationTitle = if (isRussian) "Уведомления" else "Notifications"
-    val permNotificationDesc = if (isRussian) "Нужно их включить чтобы приложение стабильно работало в фоне" else "Need to enable them for the application to work stably in the background"
+    val permNotificationTitle = strings.onboarding_notifications_title
+    val permNotificationDesc = strings.onboarding_notifications_desc
     
-    val permBatteryTitle = if (isRussian) "Энергопотребление" else "Battery Optimization"
-    val permBatteryDesc = if (isRussian) "Нужно отключить экономию энергии чтобы приложение работало стабильно" else "Need to disable energy saving for the application to work stably"
+    val permBatteryTitle = strings.onboarding_battery_title
+    val permBatteryDesc = strings.onboarding_battery_desc
     
-    val btnNext = if (isRussian) "Далее" else "Next"
+    val btnNext = strings.btn_next
     
-    val fragmentationTitle = if (isRussian) "Фрагментация" else "Fragmentation"
-    val fragmentationQuestion = if (isRussian) "Хотите ли включить фрагментацию?" else "Do you want to enable fragmentation?"
-    val fragmentationDesc = if (isRussian) "Фрагментация помогает в обходе блокировок (DPI)" else "Fragmentation helps in bypassing censorship/blocking (DPI)"
+    val fragmentationTitle = strings.onboarding_fragmentation_title
+    val fragmentationQuestion = strings.onboarding_fragmentation_question
+    val fragmentationDesc = strings.onboarding_fragmentation_desc
     
-    val muxTitle = if (isRussian) "MUX" else "MUX"
-    val muxQuestion = if (isRussian) "Хотите ли включить mux?" else "Do you want to enable mux?"
-    val muxDesc = if (isRussian) "Mux снижает задержку, но ухудшает маскировку" else "Mux reduces latency but degrades obfuscation"
+    val muxTitle = strings.onboarding_mux_title
+    val muxQuestion = strings.onboarding_mux_question
+    val muxDesc = strings.onboarding_mux_desc
     
-    val splitTitle = if (isRussian) "Раздельное туннелирование" else "Split Tunneling"
-    val splitSubtitle = if (isRussian) "Выберите режим проксирования (можно пропустить)" else "Select tunneling mode (can be skipped)"
+    val splitTitle = strings.settings_label_split_tunneling
+    val splitSubtitle = strings.onboarding_split_subtitle
     
-    val splitWhiteTitle = if (isRussian) "Белый список" else "Whitelist"
-    val splitWhiteDesc = if (isRussian) "Через прокси работают только выбранные приложения и сайты" else "Only selected apps and websites will go through the proxy"
+    val splitWhiteTitle = strings.onboarding_split_white_title
+    val splitWhiteDesc = strings.onboarding_split_white_desc
     
-    val splitBlackTitle = if (isRussian) "Черный список" else "Blacklist"
-    val splitBlackDesc = if (isRussian) "Все работает через прокси кроме выбранных сайтов и приложений" else "Everything goes through the proxy except selected apps and websites"
+    val splitBlackTitle = strings.onboarding_split_black_title
+    val splitBlackDesc = strings.onboarding_split_black_desc
     
-    val splitWhiteHeader = if (isRussian) "Белый список: Что будет работать через прокси?" else "Whitelist: What will work through proxy?"
-    val splitBlackHeader = if (isRussian) "Черный список: Что НЕ будет работать через прокси?" else "Blacklist: What will NOT work through proxy?"
+    val splitWhiteHeader = strings.onboarding_split_white_header
+    val splitBlackHeader = strings.onboarding_split_black_header
     
-    val presetRuTitle = if (isRussian) "Российские сервисы" else "Russian Services"
-    val presetRuDesc = if (isRussian) "Госуслуги, Яндекс, банки, и другое" else "Gosuslugi, Yandex, banking apps, and more"
+    val presetRuTitle = strings.onboarding_preset_ru_title
+    val presetRuDesc = strings.onboarding_preset_ru_desc
     
-    val presetSocialTitle = if (isRussian) "Соцсети" else "Social Networks"
-    val presetSocialDesc = if (isRussian) "Telegram, WhatsApp, и др" else "Telegram, WhatsApp, etc."
+    val presetSocialTitle = strings.onboarding_preset_social_title
+    val presetSocialDesc = strings.onboarding_preset_social_desc
     
-    val presetAiTitle = if (isRussian) "ИИ" else "AI Tools"
-    val presetAiDesc = if (isRussian) "Gemini, Chat GPT, Claude и др" else "Gemini, ChatGPT, Claude, etc."
+    val presetAiTitle = strings.onboarding_preset_ai_title
+    val presetAiDesc = strings.onboarding_preset_ai_desc
     
-    val successTitle = if (isRussian) "Настройка успешно завершена!" else "Setup successfully completed!"
-    val successDesc = if (isRussian) "Теперь Flare полностью настроен. Вы можете добавить профили и начать использование." else "Now Flare is fully configured. You can add profiles and start using it."
-    val btnToMain = if (isRussian) "На главную" else "Go to Main Screen"
+    val successTitle = strings.onboarding_success_title
+    val successDesc = strings.onboarding_success_desc
+    val btnToMain = strings.onboarding_btn_go_main
 }
 
 @Composable
@@ -124,10 +125,7 @@ fun OnboardingDialog(
     val geologicaRegular = FontFamily(Font(R.font.geologica_regular))
     val context = LocalContext.current
 
-    
-    val sysLang = java.util.Locale.getDefault().language.lowercase()
-    val isRussian = sysLang == "ru"
-    val strings = remember(isRussian) { OnboardingStrings(isRussian) }
+    val strings = remember(I18n.strings) { OnboardingStrings(I18n.strings) }
 
     Dialog(
         onDismissRequest = onDismissRequest,

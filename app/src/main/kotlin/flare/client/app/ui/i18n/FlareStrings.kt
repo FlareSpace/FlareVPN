@@ -141,6 +141,21 @@ interface FlareStrings {
     val onboarding_usage_title: String
     val onboarding_welcome_question: String
     val onboarding_welcome_title: String
+    val onboarding_permissions_subtitle: String
+    val onboarding_split_subtitle: String
+    val onboarding_split_white_title: String
+    val onboarding_split_white_desc: String
+    val onboarding_split_black_title: String
+    val onboarding_split_black_desc: String
+    val onboarding_split_white_header: String
+    val onboarding_split_black_header: String
+    val onboarding_preset_ru_title: String
+    val onboarding_preset_ru_desc: String
+    val onboarding_preset_social_title: String
+    val onboarding_preset_social_desc: String
+    val onboarding_preset_ai_title: String
+    val onboarding_preset_ai_desc: String
+    val onboarding_success_desc: String
     val option_disable: String
     val option_enable: String
     val option_no: String
@@ -209,6 +224,9 @@ interface FlareStrings {
     val servers_subscription_added_title: String
     val servers_subscription_failed_title: String
     val servers_tariff_title: String
+    val tariff_free_title: String
+    val tariff_plus_title: String
+    val tariff_premium_title: String
     val tariff_free_desc: String
     val tariff_free_price: String
     val tariff_plus_desc: String
@@ -483,6 +501,10 @@ interface FlareStrings {
     val error_profile_selection_required: String
     fun plural_apps(count: Int, vararg args: Any): String
     fun plural_sites(count: Int, vararg args: Any): String
+    val status_disconnected: String
+    val status_connected: String
+    val status_connecting: String
+    val status_disconnecting: String
 }
 
 object RuFlareStrings : FlareStrings {
@@ -621,6 +643,21 @@ object RuFlareStrings : FlareStrings {
     override val onboarding_usage_title: String = "Статистика использования"
     override val onboarding_welcome_question: String = "Хотите пройти первоначальную настройку?"
     override val onboarding_welcome_title: String = "Добро пожаловать в Flare!"
+    override val onboarding_permissions_subtitle: String = "Необходимые разрешения для стабильной фоновой работы"
+    override val onboarding_split_subtitle: String = "Выберите режим проксирования (можно пропустить)"
+    override val onboarding_split_white_title: String = "Белый список"
+    override val onboarding_split_white_desc: String = "Через прокси работают только выбранные приложения и сайты"
+    override val onboarding_split_black_title: String = "Черный список"
+    override val onboarding_split_black_desc: String = "Все работает через прокси кроме выбранных сайтов и приложений"
+    override val onboarding_split_white_header: String = "Белый список: Что будет работать через прокси?"
+    override val onboarding_split_black_header: String = "Черный список: Что НЕ будет работать через прокси?"
+    override val onboarding_preset_ru_title: String = "Российские сервисы"
+    override val onboarding_preset_ru_desc: String = "Госуслуги, Яндекс, банки, и другое"
+    override val onboarding_preset_social_title: String = "Соцсети"
+    override val onboarding_preset_social_desc: String = "Telegram, WhatsApp, и др"
+    override val onboarding_preset_ai_title: String = "ИИ"
+    override val onboarding_preset_ai_desc: String = "Gemini, Chat GPT, Claude и др"
+    override val onboarding_success_desc: String = "Теперь Flare полностью настроен. Вы можете добавить профили и начать использование."
     override val option_disable: String = "Отключить"
     override val option_enable: String = "Включить"
     override val option_no: String = "Нет"
@@ -690,6 +727,9 @@ object RuFlareStrings : FlareStrings {
     override val servers_subscription_added_title: String = "Подписка добавлена"
     override val servers_subscription_failed_title: String = "Ошибка добавления"
     override val servers_tariff_title: String = "Выберите план"
+    override val tariff_free_title: String = "Free"
+    override val tariff_plus_title: String = "Plus"
+    override val tariff_premium_title: String = "Premium"
     override val tariff_free_desc: String = "Средняя скорость, обеспечивает базовый доступ ко многим сервисам"
     override val tariff_free_price: String = "0р/мес"
     override val tariff_plus_desc: String = "Высокая скорость, низкая задержка, доступ ко всем сервисам, обход белых списков"
@@ -977,6 +1017,10 @@ object RuFlareStrings : FlareStrings {
         }
         return res.format(*args)
     }
+    override val status_disconnected: String = "Отключено"
+    override val status_connected: String = "Подключено"
+    override val status_connecting: String = "Подключение..."
+    override val status_disconnecting: String = "Отключение..."
 }
 
 object EnFlareStrings : FlareStrings {
@@ -1115,6 +1159,21 @@ object EnFlareStrings : FlareStrings {
     override val onboarding_usage_title: String = "Usage Statistics"
     override val onboarding_welcome_question: String = "Do you want to run initial setup?"
     override val onboarding_welcome_title: String = "Welcome to Flare!"
+    override val onboarding_permissions_subtitle: String = "Required permissions for stable background operation"
+    override val onboarding_split_subtitle: String = "Select tunneling mode (can be skipped)"
+    override val onboarding_split_white_title: String = "Whitelist"
+    override val onboarding_split_white_desc: String = "Only selected apps and websites will go through the proxy"
+    override val onboarding_split_black_title: String = "Blacklist"
+    override val onboarding_split_black_desc: String = "Everything goes through the proxy except selected apps and websites"
+    override val onboarding_split_white_header: String = "Whitelist: What will work through proxy?"
+    override val onboarding_split_black_header: String = "Blacklist: What will NOT work through proxy?"
+    override val onboarding_preset_ru_title: String = "Russian Services"
+    override val onboarding_preset_ru_desc: String = "Gosuslugi, Yandex, banking apps, and more"
+    override val onboarding_preset_social_title: String = "Social Networks"
+    override val onboarding_preset_social_desc: String = "Telegram, WhatsApp, etc."
+    override val onboarding_preset_ai_title: String = "AI Tools"
+    override val onboarding_preset_ai_desc: String = "Gemini, ChatGPT, Claude, etc."
+    override val onboarding_success_desc: String = "Now Flare is fully configured. You can add profiles and start using it."
     override val option_disable: String = "Disable"
     override val option_enable: String = "Enable"
     override val option_no: String = "No"
@@ -1183,6 +1242,9 @@ object EnFlareStrings : FlareStrings {
     override val servers_subscription_added_title: String = "Subscription Added"
     override val servers_subscription_failed_title: String = "Setup Failed"
     override val servers_tariff_title: String = "Select Plan"
+    override val tariff_free_title: String = "Free"
+    override val tariff_plus_title: String = "Plus"
+    override val tariff_premium_title: String = "Premium"
     override val tariff_free_desc: String = "Average speed, provides basic access to many services"
     override val tariff_free_price: String = "0$/mon"
     override val tariff_plus_desc: String = "High speed, security, access to all services"
@@ -1469,6 +1531,10 @@ object EnFlareStrings : FlareStrings {
         }
         return res.format(*args)
     }
+    override val status_disconnected: String = "Disconnected"
+    override val status_connected: String = "Connected"
+    override val status_connecting: String = "Connecting..."
+    override val status_disconnecting: String = "Disconnecting..."
 }
 
 object I18n {
@@ -1486,5 +1552,10 @@ object I18n {
             "en" -> EnFlareStrings
             else -> EnFlareStrings
         }
+    }
+
+    fun isMyServers(name: String?): Boolean {
+        if (name == null) return false
+        return name == RuFlareStrings.sub_my_servers || name == EnFlareStrings.sub_my_servers
     }
 }

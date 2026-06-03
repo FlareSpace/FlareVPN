@@ -315,26 +315,29 @@ object PingHelper {
                                     .get()
                                     .build()
                                 okHttpClient.newCall(request).execute().use { response ->
-                                    if (response.isSuccessful) {
-                                        val body = response.body.string()
+                                    val body = response.body.string()
+                                    if (response.isSuccessful && body.isNotEmpty()) {
                                         val json = JSONObject(body)
                                         rtt = json.optLong("delay", -1L)
                                         if (rtt == -1L) errMsg = "Timeout"
                                     } else {
-                                        val body = response.body.string()
-                                        errMsg = try {
-                                            val msg = JSONObject(body).optString("message", "")
-                                            when {
-                                                msg.contains("timeout", ignoreCase = true) -> "Timeout"
-                                                msg.contains("TLS", ignoreCase = true) -> "TLS Failed"
-                                                msg.contains("unreachable", ignoreCase = true) -> "Unreachable"
-                                                msg.contains("connection refused", ignoreCase = true) -> "Refused"
-                                                msg.contains("error occurred", ignoreCase = true) -> "Failed"
-                                                msg.length > 20 -> msg.substring(0, 17) + ".."
-                                                msg.isNotBlank() -> msg
-                                                else -> "${response.code}"
+                                        errMsg = if (body.isNotEmpty()) {
+                                            try {
+                                                val msg = JSONObject(body).optString("message", "")
+                                                when {
+                                                    msg.contains("timeout", ignoreCase = true) -> "Timeout"
+                                                    msg.contains("TLS", ignoreCase = true) -> "TLS Failed"
+                                                    msg.contains("unreachable", ignoreCase = true) -> "Unreachable"
+                                                    msg.contains("connection refused", ignoreCase = true) -> "Refused"
+                                                    msg.contains("error occurred", ignoreCase = true) -> "Failed"
+                                                    msg.length > 20 -> msg.substring(0, 17) + ".."
+                                                    msg.isNotBlank() -> msg
+                                                    else -> "${response.code}"
+                                                }
+                                            } catch (_: Exception) {
+                                                "${response.code}"
                                             }
-                                        } catch (_: Exception) {
+                                        } else {
                                             "${response.code}"
                                         }
                                     }

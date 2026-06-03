@@ -63,10 +63,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private const val VIRTUAL_SUB_ID = -1L
     }
 
-    private val _connectionTimerText = MutableStateFlow("")
-    val connectionTimerText: StateFlow<String> = _connectionTimerText.asStateFlow()
-
-    private var timerJob: kotlinx.coroutines.Job? = null
     private var selectionJob: kotlinx.coroutines.Job? = null
     private val expandedSubs = MutableStateFlow<Set<Long>>(emptySet())
     private val _refreshingSubs = MutableStateFlow<Set<Long>>(emptySet())
@@ -154,7 +150,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 if (connected) {
                     _connectionState.value = ConnectionState.CONNECTED
-                    startTimer()
                     startHealthCheckJob()
                 } else {
                     
@@ -163,7 +158,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         return
                     }
                     _connectionState.value = ConnectionState.DISCONNECTED
-                    stopTimer()
                     handleDisconnection()
                     if (hasError) {
                         val settings = SettingsManager(context)
@@ -240,7 +234,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             if (flare.client.app.singbox.SingBoxManager.isRunning) {
                 _connectionState.value = ConnectionState.CONNECTED
-                startTimer()
                 startHealthCheckJob()
             } else if (settings.isAutostartEnabled) {
                 shouldAutostart = true
@@ -504,7 +497,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             I18n.strings.sub_single_profiles
         } else {
             val rawName = displayItems.value.filterIsInstance<DisplayItem.SubscriptionItem>().find { it.entity.id == subId }?.entity?.name ?: I18n.strings.label_unknown
-            if (rawName == "Мои сервера" || rawName == "My servers") {
+            if (I18n.isMyServers(rawName)) {
                 I18n.strings.sub_my_servers
             } else {
                 rawName
@@ -627,6 +620,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun connectOrDisconnect() = if (_connectionState.value != ConnectionState.DISCONNECTED) stopVpn(true) else startVpn()
     fun startVpnFromUi() = startVpn()
+    fun stopVpnFromUi(cancelRecovery: Boolean = true) = stopVpn(cancelRecovery)
+
+    fun pingCurrentSubscription() {
+        viewModelScope.launch {
+            ensureInitialized()
+            val selectedProfile = repository.getSelectedProfile()
+            val subId = selectedProfile?.subscriptionId ?: VIRTUAL_SUB_ID
+            speedTestSubscription(subId)
+        }
+    }
+
+    fun selectBestProfileFromUi() {
+        viewModelScope.launch {
+            ensureInitialized()
+            selectBestProfile()
+        }
+    }
 
     fun toggleProfileInChain(profileId: Long) {
         viewModelScope.launch {
@@ -732,7 +742,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             val vpnIntent = VpnService.prepare(app)
             if (vpnIntent != null) { _importEvent.emit(ImportEvent.NeedPermission(vpnIntent)); return@launch }
-            stopTimer()
             _connectionState.value = ConnectionState.CONNECTING
             val intent = Intent(app, FlareVpnService::class.java).apply {
                 action = FlareVpnService.ACTION_START
@@ -745,25 +754,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun stopVpn(cancelRecovery: Boolean = false) {
         if (cancelRecovery) recoveryJob?.cancel()
-        stopTimer()
         _connectionState.value = ConnectionState.DISCONNECTING
         handleDisconnection()
         val app = getApplication<Application>()
         app.startService(Intent(app, FlareVpnService::class.java).apply { action = FlareVpnService.ACTION_STOP })
     }
-    private fun startTimer() {
-        timerJob?.cancel()
-        timerJob = viewModelScope.launch {
-            val baseTime = flare.client.app.singbox.SingBoxManager.startTime
-            val start = if (baseTime > 0) baseTime else SystemClock.elapsedRealtime()
-            while (true) {
-                _connectionTimerText.value = formatDuration(SystemClock.elapsedRealtime() - start)
-                delay(1000)
-            }
-        }
-    }
-    private fun stopTimer() { timerJob?.cancel(); timerJob = null; _connectionTimerText.value = "" }
-    private fun formatDuration(ms: Long): String = String.format("%02d:%02d:%02d", ms/(3600000), (ms/60000)%60, (ms/1000)%60)
+
 
     private fun buildDisplayList(subs: List<SubscriptionEntity>, standalone: List<ProfileSummary>, profilesBySub: Map<Long?, List<ProfileSummary>>, expanded: Set<Long>, selId: Long?, pings: Map<Long, PingState>, refreshing: Set<Long>): List<DisplayItem> {
         val actualExpanded = mutableSetOf<Long>()
@@ -1064,7 +1060,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val selectedId = _selectedProfileId.value ?: return
         val allProfiles = repository.getAllProfiles().first()
         val selectedProfile = allProfiles.find { it.id == selectedId } ?: return
-        val subId = selectedProfile.subscriptionId ?: return
+        val subId = selectedProfile.subscriptionId
 
         val profiles = allProfiles.filter { it.subscriptionId == subId }
         if (profiles.size <= 1) return
@@ -1290,7 +1286,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val app = getApplication<Application>()
             val subName = I18n.strings.sub_my_servers
             val allSubs = repository.getAllSubscriptions().first()
-            var sub = allSubs.find { it.name == "Мои сервера" || it.name == "My servers" }
+            var sub = allSubs.find { I18n.isMyServers(it.name) }
             if (sub == null) {
                 val newSub = SubscriptionEntity(
                     name = subName,

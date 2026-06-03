@@ -257,12 +257,12 @@ fun FlareBottomNav(
                             colors = if (isDarkTheme) {
                                 listOf(
                                     Color.White.copy(alpha = 0.15f),
-                                    Color.White.copy(alpha = 0.05f)
+                                    Color.White.copy(alpha = 0.09f)
                                 )
                             } else {
                                 listOf(
                                     Color.White.copy(alpha = 0.65f),
-                                    Color.Black.copy(alpha = 0.08f)
+                                    Color(0x09000000)
                                 )
                             }
                         ),
@@ -323,7 +323,7 @@ fun FlareBottomNav(
             ) {
                 Icon(
                     painter = painterResource(
-                        id = if (isShrunkToHome) R.drawable.ic_nav_home else R.drawable.ic_arrow_right
+                        id = if (isShrunkToHome || selectedIndex == 1) R.drawable.ic_nav_home else R.drawable.ic_arrow_right
                     ),
                     contentDescription = null,
                     tint = FlareTheme.colors.navIconTint,

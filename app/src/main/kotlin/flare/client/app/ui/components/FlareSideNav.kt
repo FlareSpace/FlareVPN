@@ -139,7 +139,7 @@ fun FlareSideNav(
                             colors = if (isDarkTheme) {
                                 listOf(
                                     Color.White.copy(alpha = 0.15f),
-                                    Color.White.copy(alpha = 0.05f)
+                                    Color.White.copy(alpha = 0.09f)
                                 )
                             } else {
                                 listOf(

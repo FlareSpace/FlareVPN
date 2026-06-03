@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -70,8 +71,7 @@ fun SwipeToReveal(
             }
         }
 
-        val revealProgressLeft = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtMost(0f)) / revealWidthPx else 0f
-        val revealProgressRight = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtLeast(0f)) / revealWidthPx else 0f
+        val isRevealed by remember { derivedStateOf { dragOffset.value != 0f } }
 
         fun snapToOffset(targetOffset: Float) {
             coroutineScope.launch {
@@ -95,7 +95,10 @@ fun SwipeToReveal(
                     .fillMaxHeight()
                     .align(Alignment.CenterEnd)
                     .width(actionButtonWidthDp)
-                    .alpha(revealProgressLeft)
+                    .graphicsLayer {
+                        val progress = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtMost(0f)) / revealWidthPx else 0f
+                        alpha = progress
+                    }
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
@@ -116,8 +119,12 @@ fun SwipeToReveal(
                     tint = Color.White,
                     modifier = Modifier
                         .size(24.dp)
-                        .scale(0.5f + 0.5f * revealProgressLeft)
-                        .alpha(revealProgressLeft)
+                        .graphicsLayer {
+                            val progress = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtMost(0f)) / revealWidthPx else 0f
+                            scaleX = 0.5f + 0.5f * progress
+                            scaleY = 0.5f + 0.5f * progress
+                            alpha = progress
+                        }
                 )
             }
 
@@ -129,7 +136,10 @@ fun SwipeToReveal(
                         .fillMaxHeight()
                         .align(Alignment.CenterStart)
                         .width(actionButtonWidthDp)
-                        .alpha(revealProgressRight)
+                        .graphicsLayer {
+                            val progress = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtLeast(0f)) / revealWidthPx else 0f
+                            alpha = progress
+                        }
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
@@ -150,8 +160,12 @@ fun SwipeToReveal(
                         tint = Color.White,
                         modifier = Modifier
                             .size(24.dp)
-                            .scale(0.5f + 0.5f * revealProgressRight)
-                            .alpha(revealProgressRight)
+                            .graphicsLayer {
+                                val progress = if (revealWidthPx > 0f) kotlin.math.abs(dragOffset.value.coerceAtLeast(0f)) / revealWidthPx else 0f
+                                scaleX = 0.5f + 0.5f * progress
+                                scaleY = 0.5f + 0.5f * progress
+                                alpha = progress
+                            }
                     )
                 }
             }
@@ -186,7 +200,7 @@ fun SwipeToReveal(
             content()
 
             
-            if (dragOffset.value != 0f) {
+            if (isRevealed) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()

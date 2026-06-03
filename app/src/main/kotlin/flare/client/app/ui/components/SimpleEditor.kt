@@ -71,6 +71,7 @@ fun ProfileSimpleEditor(
     hazeState: HazeState
 ) {
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
 
     var scheme by remember { mutableStateOf("vless") }
     var tag by remember { mutableStateOf(profile.name) }
@@ -491,7 +492,7 @@ fun ProfileSimpleEditor(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .statusBarsPadding()
                     .padding(top = 84.dp, bottom = 32.dp)
                     .padding(horizontal = 20.dp)
@@ -1201,63 +1202,30 @@ fun ProfileSimpleEditor(
         }
 
         
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .hazeEffect(state = hazeState) {
-                    blurRadius = 24.dp
+        FlareTopBar(
+            title = I18n.strings.simple_editor_title,
+            hazeState = hazeState,
+            scrollState = scrollState,
+            onBack = onBack,
+            subtitle = if (scheme.isNotBlank()) {
+                {
+                    ProtocolChip(scheme = scheme, accentColor = accentColor)
                 }
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            FlareTheme.colors.headerGradientStart,
-                            FlareTheme.colors.headerGradientEnd
-                        )
+            } else null,
+            actions = {
+                IconButton(
+                    onClick = { handleSave() },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
                     )
-                )
-                .statusBarsPadding()
-                .padding(start = 8.dp, end = 16.dp)
-                .padding(top = 2.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FlareGlassButton(
-                onClick = onBack,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_left),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
+                }
             }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 8.dp)
-            ) {
-                Text(
-                    text = I18n.strings.simple_editor_title,
-                    fontFamily = GeologicaMedium,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp,
-                    color = FlareTheme.colors.textPrimary
-                )
-                ProtocolChip(scheme = scheme, accentColor = accentColor)
-            }
-            IconButton(
-                onClick = { handleSave() },
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check),
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
+        )
     }
 }
 

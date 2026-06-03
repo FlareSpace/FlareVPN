@@ -5,6 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import flare.client.app.data.SettingsManager
 import flare.client.app.data.model.DisplayItem
 import flare.client.app.ui.manager.ThemeManager
@@ -17,9 +20,19 @@ class SettingsViewModel : ViewModel() {
     var composeBottomNavIsShrunkToHome by mutableStateOf(false)
     var composeBottomNavIsVisible by mutableStateOf(true)
     var composeAppLanguage by mutableStateOf("auto")
+    var composeIsSwipeDismissing by mutableStateOf(false)
+
+    fun startSwipeDismiss() {
+        composeIsSwipeDismissing = true
+        viewModelScope.launch {
+            delay(500)
+            composeIsSwipeDismissing = false
+        }
+    }
 
     
     var composeThemeMode by mutableStateOf(0)
+    var composeSystemIsDark by mutableStateOf(false)
     var composeIsGradientEnabled by mutableStateOf(true)
     var composeIsAnimationEnabled by mutableStateOf(true)
     var composeGradientSpeed by mutableStateOf(1.0f)

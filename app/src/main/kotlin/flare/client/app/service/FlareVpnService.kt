@@ -225,7 +225,12 @@ class FlareVpnService : VpnService() {
     }
 
     private suspend fun stopVpnInternal(startId: Int = -1) {
-        if (isDeinitialized) return
+        if (isDeinitialized) {
+            Log.i(TAG, "stopVpnInternal: already deinitialized (startId=$startId), ensuring stopSelf and broadcast")
+            stopSelf()
+            broadcastState(false)
+            return
+        }
         isDeinitialized = true
         Log.i(TAG, "stopVpnInternal: begin (startId=$startId)")
         statsJob?.cancel()
@@ -235,7 +240,6 @@ class FlareVpnService : VpnService() {
             SingBoxManager.stop()
         }
         Log.i(TAG, "stopVpnInternal: engine stopped")
-        broadcastState(false)
         stopSelf()
     }
 
@@ -244,7 +248,12 @@ class FlareVpnService : VpnService() {
         errorMessage: String? = null,
         permissionRequired: Boolean = false
     ) {
-        if (isDeinitialized) return
+        if (isDeinitialized) {
+            Log.i(TAG, "stopVpnOnError: already deinitialized (startId=$startId), ensuring stopSelf and broadcast")
+            stopSelf()
+            broadcastState(false, error = true, permissionRequired = permissionRequired, errorMessage = errorMessage)
+            return
+        }
         isDeinitialized = true
         Log.i(TAG, "stopVpnOnError: startId=$startId, error=$errorMessage, permission=$permissionRequired")
         statsJob?.cancel()

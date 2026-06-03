@@ -45,14 +45,14 @@ fun LanguageSettingsScreen(
     onBack: () -> Unit,
     hazeState: HazeState
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = FlareTheme.colors.isDark
     val strings = I18n.strings
     val scrollState = rememberScrollState()
 
     val options = listOf(
-        strings.language_auto,
-        "English",
-        "Русский"
+        "auto" to strings.language_auto,
+        "en" to "English",
+        "ru" to "Русский"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -85,8 +85,8 @@ fun LanguageSettingsScreen(
                     title = strings.settings_label_language,
                     value = currentLanguageDisplay,
                     menuItems = options.mapIndexed { i, opt ->
-                        flare.client.app.util.GlassUtils.MenuItem(i, opt) {
-                            onLanguageSelected(opt)
+                        flare.client.app.util.GlassUtils.MenuItem(i, opt.second) {
+                            onLanguageSelected(opt.first)
                         }
                     },
                     hazeState = hazeState,

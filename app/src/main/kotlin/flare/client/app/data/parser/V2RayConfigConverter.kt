@@ -558,6 +558,9 @@ object V2RayConfigConverter {
             flow = "xtls-rprx-vision"
             pe = "xudp"
         }
+        if (pe.isNotEmpty() && pe != "xudp" && pe != "packetaddr") {
+            pe = "xudp"
+        }
         sbOb.put("flow", flow)
         sbOb.put("packet_encoding", pe)
         xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
@@ -1191,6 +1194,10 @@ object V2RayConfigConverter {
                     val flow = ob.optString("flow", "")
                     if (flow == "xtls-rprx-vision-udp443") {
                         ob.put("flow", "xtls-rprx-vision")
+                        ob.put("packet_encoding", "xudp")
+                    }
+                    val pe = ob.optString("packet_encoding", "")
+                    if (pe.isNotEmpty() && pe != "xudp" && pe != "packetaddr") {
                         ob.put("packet_encoding", "xudp")
                     }
                 }

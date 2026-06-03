@@ -284,7 +284,7 @@ fun ServersScreen(
                                     modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
                                 )
                                 TariffCard(
-                                    title = "Free",
+                                    title = I18n.strings.tariff_free_title,
                                     description = I18n.strings.tariff_free_desc,
                                     price = I18n.strings.tariff_free_price,
                                     isSelected = selectedTariff == TariffType.FREE,
@@ -293,7 +293,7 @@ fun ServersScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 TariffCard(
-                                    title = "Plus",
+                                    title = I18n.strings.tariff_plus_title,
                                     description = I18n.strings.tariff_plus_desc,
                                     price = I18n.strings.tariff_plus_price,
                                     isSelected = selectedTariff == TariffType.PLUS,
@@ -302,7 +302,7 @@ fun ServersScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 TariffCard(
-                                    title = "Premium",
+                                    title = I18n.strings.tariff_premium_title,
                                     description = I18n.strings.tariff_premium_desc,
                                     price = I18n.strings.tariff_premium_price,
                                     isSelected = selectedTariff == TariffType.PREMIUM,

@@ -295,7 +295,7 @@ fun ProfileCard(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth(),
                 thickness = 0.5.dp,
-                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f)
+                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f)
             )
         }
     }
@@ -365,12 +365,13 @@ fun SubscriptionCard(
                     )
                     
                     if (!trafficInfo.isNullOrEmpty()) {
-                        Box(
+                        BoxWithConstraints(
                             modifier = Modifier
                                     .fillMaxWidth()
                                     .height(16.dp)
                                     .padding(top = 4.dp)
                         ) {
+                            val maxWidth = maxWidth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -383,7 +384,7 @@ fun SubscriptionCard(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxHeight()
-                                        .fillMaxWidth(trafficProgress)
+                                        .fillMaxWidth(trafficProgress.coerceIn(0f, 1f))
                                         .background(
                                             color = accentColor,
                                             shape = CircleShape
@@ -395,8 +396,30 @@ fun SubscriptionCard(
                                 modifier = Modifier.align(Alignment.Center),
                                 fontFamily = GeologicaMedium,
                                 fontSize = 10.sp,
-                                color = FlareTheme.colors.trafficTextColor
+                                color = FlareTheme.colors.textPrimary
                             )
+                            if (trafficProgress > 0f) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .fillMaxWidth(trafficProgress.coerceIn(0f, 1f))
+                                        .clip(CircleShape)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .requiredWidth(maxWidth)
+                                            .fillMaxHeight(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = trafficInfo,
+                                            fontFamily = GeologicaMedium,
+                                            fontSize = 10.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -536,7 +559,7 @@ fun SubscriptionCard(
 
             if (!description.isNullOrEmpty()) {
                 HorizontalDivider(
-                    color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f),
+                    color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
                     thickness = 0.5.dp,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                 )
@@ -569,7 +592,7 @@ fun SubscriptionCard(
         
         if (cornerType != DisplayItem.CornerType.BOTTOM && cornerType != DisplayItem.CornerType.ALL) {
             HorizontalDivider(
-                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
+                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f),
                 thickness = 0.5.dp,
                 modifier = Modifier.fillMaxWidth()
             )

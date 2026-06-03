@@ -3,9 +3,8 @@ package flare.client.app.ui
 import flare.client.app.ui.i18n.I18n
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -27,17 +26,11 @@ import flare.client.app.data.model.ProfileSummary
 import flare.client.app.data.model.SubscriptionEntity
 import flare.client.app.ui.components.*
 import flare.client.app.ui.MainViewModel
-import flare.client.app.ui.components.RollingTimer
 import androidx.compose.foundation.isSystemInDarkTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.hazeEffect
 import flare.client.app.ui.theme.FlareTheme
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -45,17 +38,17 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.lerp
 
 
 @Composable
 fun HomeScreen(
     connectionState: MainViewModel.ConnectionState,
-    timerText: String,
     profiles: List<DisplayItem>,
     chainedProfileIds: List<Long> = emptyList(),
     onProfileChainToggle: (ProfileSummary) -> Unit = {},
@@ -66,6 +59,7 @@ fun HomeScreen(
     isGradientEnabled: Boolean,
     isAnimationEnabled: Boolean,
     animationSpeed: Float,
+    isCustomColorEnabled: Boolean = false,
     listState: LazyListState = rememberLazyListState(),
     onConnectClick: () -> Unit,
     onProfileClick: (ProfileSummary) -> Unit,
@@ -146,9 +140,16 @@ fun HomeScreen(
                     .height(guidelineHeight),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                FlareConnectButton(
+                StatusIndicatorRow(
                     connectionState = connectionState,
-                    timerText = timerText,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 8.dp)
+                )
+
+                FlareFireworkButton(
+                    connectionState = connectionState,
                     buttonSize = buttonSize,
                     onClick = {
                         if (connectionState != MainViewModel.ConnectionState.CONNECTING &&
@@ -291,7 +292,8 @@ fun HomeScreen(
                             onQrScanClick = onQrScanClick,
                             onImportFileClick = onImportFileClick,
                             hazeState = hazeState,
-                            accentColor = Color(accentColor)
+                            accentColor = Color(accentColor),
+                            isCustomColorEnabled = isCustomColorEnabled
                         )
                     }
                 }
@@ -361,6 +363,137 @@ fun HomeScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StatusIndicatorRow(
+    connectionState: MainViewModel.ConnectionState,
+    modifier: Modifier = Modifier
+) {
+    val isDark = FlareTheme.colors.isDark
+    
+    val baseColor = when (connectionState) {
+        MainViewModel.ConnectionState.CONNECTED -> Color(0xFF34C759)
+        MainViewModel.ConnectionState.DISCONNECTED -> Color(0xFF8E8E93)
+        MainViewModel.ConnectionState.CONNECTING -> if (isDark) Color(0xFF4A4A4A) else Color(0xFFBBBBBB)
+        MainViewModel.ConnectionState.DISCONNECTING -> if (isDark) Color(0xFF4A4A4A) else Color(0xFFBBBBBB)
+    }
+
+    val animatedBaseColor by animateColorAsState(
+        targetValue = baseColor,
+        animationSpec = tween(durationMillis = 500),
+        label = "indicatorBaseColor"
+    )
+
+    
+    val isPulsing = connectionState == MainViewModel.ConnectionState.CONNECTING ||
+            connectionState == MainViewModel.ConnectionState.DISCONNECTING
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseProgress by if (isPulsing) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.2f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "pulseProgress"
+        )
+    } else {
+        remember { mutableStateOf(0f) }
+    }
+
+    val overlayActiveProgress by animateFloatAsState(
+        targetValue = if (isPulsing) 1f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "overlayActive"
+    )
+
+    val statusText = when (connectionState) {
+        MainViewModel.ConnectionState.CONNECTED -> I18n.strings.status_connected
+        MainViewModel.ConnectionState.DISCONNECTED -> I18n.strings.status_disconnected
+        MainViewModel.ConnectionState.CONNECTING -> I18n.strings.status_connecting
+        MainViewModel.ConnectionState.DISCONNECTING -> I18n.strings.status_disconnecting
+    }
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        
+        Box(
+            modifier = Modifier
+                .size(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2, size.height / 2)
+                val dotRadius = 4.dp.toPx() 
+                val glowRadius = 8.dp.toPx() 
+
+                
+                val auraColor = when (connectionState) {
+                    MainViewModel.ConnectionState.CONNECTED -> Color(0xFF34C759)
+                    MainViewModel.ConnectionState.CONNECTING -> Color(0xFF34C759)
+                    MainViewModel.ConnectionState.DISCONNECTING -> Color(0xFFFF3B30)
+                    else -> Color.Transparent
+                }
+
+                if (connectionState != MainViewModel.ConnectionState.DISCONNECTED) {
+                    val currentPulse = if (isPulsing) pulseProgress else 1f
+                    drawCircle(
+                        color = auraColor,
+                        radius = glowRadius * (0.85f + 0.15f * currentPulse),
+                        center = center,
+                        alpha = 0.25f * (if (isPulsing) currentPulse else 0.7f)
+                    )
+                }
+
+                
+                drawCircle(
+                    color = animatedBaseColor,
+                    radius = dotRadius,
+                    center = center
+                )
+
+                
+                if (overlayActiveProgress > 0f) {
+                    val overlayColor = if (connectionState == MainViewModel.ConnectionState.CONNECTING) {
+                        Color(0xFF34C759)
+                    } else {
+                        Color(0xFFFF3B30)
+                    }
+                    drawCircle(
+                        color = overlayColor,
+                        radius = dotRadius,
+                        center = center,
+                        alpha = pulseProgress * overlayActiveProgress
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        
+        AnimatedContent(
+            targetState = statusText,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(350)) + slideInVertically(animationSpec = tween(350)) { -it / 2 }) togetherWith
+                (fadeOut(animationSpec = tween(350)) + slideOutVertically(animationSpec = tween(350)) { it / 2 })
+            },
+            label = "statusTextTransition"
+        ) { text ->
+            Text(
+                text = text,
+                fontFamily = flare.client.app.ui.components.GeologicaMedium,
+                fontSize = 15.sp,
+                color = FlareTheme.colors.textPrimary
+            )
         }
     }
 }

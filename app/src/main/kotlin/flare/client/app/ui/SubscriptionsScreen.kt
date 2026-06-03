@@ -54,7 +54,7 @@ fun SubscriptionsScreen(
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: HazeState
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = FlareTheme.colors.isDark
 
     val standardUserAgents = listOf("Happ/3.21.1", "FlareVPN/1.2.0", "v2rayNG/2.1.5", "v2rayTUN/5.23.73", "sing-box")
 

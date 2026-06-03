@@ -158,7 +158,7 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val startTime = System.currentTimeMillis()
             val allSubs = profileRepository.getAllSubscriptions().first()
-            val oldSub = allSubs.find { it.name == "✨FlareVPN Free" }
+            val oldSub = allSubs.find { it.name == "✨ FlareVPN Free" }
             if (oldSub != null) {
                 profileRepository.deleteSubscription(oldSub)
             }
@@ -288,7 +288,7 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
             if (vlessUri != null) {
                 val subName = strings.sub_my_servers
                 val allSubs = profileRepository.getAllSubscriptions().first()
-                var sub = allSubs.find { it.name == "Мои сервера" || it.name == "My servers" }
+                var sub = allSubs.find { I18n.isMyServers(it.name) }
                 if (sub == null) {
                     val newSub = SubscriptionEntity(
                         name = subName,

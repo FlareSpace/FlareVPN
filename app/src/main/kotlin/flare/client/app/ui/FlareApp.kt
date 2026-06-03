@@ -17,8 +17,15 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,6 +70,7 @@ import androidx.compose.ui.unit.IntSize
 import dev.chrisbanes.haze.rememberHazeState
 import dev.chrisbanes.haze.hazeSource
 import flare.client.app.ui.components.JournalScreen
+import flare.client.app.ui.components.SwipeToDismissScreen
 import flare.client.app.ui.HomeScreen
 import flare.client.app.ui.ServersScreen
 import flare.client.app.ui.SettingsScreen
@@ -287,6 +295,10 @@ private fun SettingsDetailContainer(
     morphRequest: SettingsMorphRequest?,
     onMorphFinished: () -> Unit,
     settingsViewModel: SettingsViewModel,
+    onBack: () -> Unit = {},
+    backgroundContentRight: (@Composable () -> Unit)? = null,
+    onDismissLeft: (() -> Unit)? = null,
+    backgroundContentLeft: (@Composable () -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     LaunchedEffect(morphRequest) {
@@ -294,12 +306,20 @@ private fun SettingsDetailContainer(
             onMorphFinished()
         }
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(FlareTheme.colors.gradientBase),
-        content = content
-    )
+    SwipeToDismissScreen(
+        onDismissRight = onBack,
+        onDismissLeft = onDismissLeft,
+        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
+        backgroundContentRight = backgroundContentRight,
+        backgroundContentLeft = backgroundContentLeft
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(FlareTheme.colors.gradientBase),
+            content = content
+        )
+    }
 }
 
 @Composable
@@ -348,60 +368,228 @@ fun FlareApp(
         accentEndColor = Color(accentEndColor)
     ) {
         val navController = rememberNavController()
+        val rootPagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
+        val coroutineScope = rememberCoroutineScope()
         val rootView = LocalView.current
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-        val isAnySubscriptionExpanded by mainViewModel.isAnySubscriptionExpanded.collectAsState(false)
-        var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
-        var showDataManagementDialog by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+        var isGestureNav by remember { mutableStateOf(false) }
 
-
-    LaunchedEffect(currentRoute, wizardViewModel.composeWizardStep) {
-        if (currentRoute != Destination.Servers.route) {
-                settingsViewModel.composeBottomNavIsShrunk = false
-                settingsViewModel.composeBottomNavIsShrunkToHome = false
-            } else {
-                settingsViewModel.composeBottomNavIsShrunkToHome = false
-                if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
-                    settingsViewModel.composeBottomNavIsShrunk = true
+        DisposableEffect(context) {
+            fun checkGestureNav(): Boolean {
+                var gestureEnabled = false
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    try {
+                        val mode = android.provider.Settings.Secure.getInt(
+                            context.contentResolver,
+                            "navigation_mode"
+                        )
+                        gestureEnabled = (mode == 2)
+                    } catch (_: Exception) {}
                 }
+                if (!gestureEnabled) {
+                    try {
+                        val resources = context.resources
+                        val resourceId = resources.getIdentifier(
+                            "config_navBarInteractionMode",
+                            "integer",
+                            "android"
+                        )
+                        if (resourceId > 0) {
+                            gestureEnabled = (resources.getInteger(resourceId) == 2)
+                        }
+                    } catch (_: Exception) {}
+                }
+                return gestureEnabled
+            }
+
+            isGestureNav = checkGestureNav()
+
+            val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    super.onChange(selfChange)
+                    isGestureNav = checkGestureNav()
+                }
+            }
+
+            try {
+                context.contentResolver.registerContentObserver(
+                    android.provider.Settings.Secure.getUriFor("navigation_mode"),
+                    false,
+                    observer
+                )
+            } catch (_: Exception) {}
+
+            onDispose {
+                try {
+                    context.contentResolver.unregisterContentObserver(observer)
+                } catch (_: Exception) {}
             }
         }
 
+        val bottomPadding = if (isGestureNav) 22.dp else 38.dp
+        val isAnySubscriptionExpanded by mainViewModel.isAnySubscriptionExpanded.collectAsState()
+        var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
+        var showDataManagementDialog by remember { mutableStateOf(false) }
+        val sharedBasicSettingsScrollState = androidx.compose.foundation.rememberScrollState()
+        val homeListState = rememberLazyListState()
+
+        
+        
+        val settingsBackground: @Composable () -> Unit = {
+            SettingsScreen(
+                onBaseSettingsClick = {},
+                onAdvancedSettingsClick = {},
+                onRoutingSettingsClick = {},
+                onPingSettingsClick = {},
+                onSubscriptionsSettingsClick = {},
+                onThemeSettingsClick = {},
+                onLanguageSettingsClick = {},
+                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                isAnimationEnabled = false,
+                gradientSpeed = settingsViewModel.composeGradientSpeed,
+                hazeState = appHazeState
+            )
+        }
+
+        val basicSettingsBackground: @Composable () -> Unit = {
+            BasicSettingsScreen(
+                isSplitTunnelingEnabled = settingsViewModel.composeIsSplitTunnelingEnabled,
+                onSplitTunnelingChange = {},
+                splitTunnelingDesc = settingsViewModel.composeSplitTunnelingDesc,
+                onChangeAppsClick = {},
+                isChangeAppsLoading = settingsViewModel.composeIsChangeAppsLoading,
+                isAutostartEnabled = settingsViewModel.composeIsAutostartEnabled,
+                onAutostartChange = {},
+                isStatusNotificationEnabled = settingsViewModel.composeIsStatusNotificationEnabled,
+                onStatusNotificationChange = {},
+                isNotificationSpeedEnabled = settingsViewModel.composeIsNotificationSpeedEnabled,
+                onNotificationSpeedChange = {},
+                isBestProfileNotifEnabled = settingsViewModel.composeIsBestProfileNotifEnabled,
+                onBestProfileNotifChange = {},
+                isCoreLogEnabled = settingsViewModel.composeIsCoreLogEnabled,
+                onCoreLogChange = {},
+                coreLogLevel = settingsViewModel.composeCoreLogLevel,
+                onLogLevelClick = {},
+                onViewJournalClick = {},
+                isBestProfileEnabled = settingsViewModel.composeIsBestProfileEnabled,
+                onBestProfileChange = {},
+                bestProfileInterval = settingsViewModel.composeBestProfileInterval,
+                onBestProfileIntervalChange = {},
+                isBestProfileOnlyConnected = settingsViewModel.composeIsBestProfileOnlyConnected,
+                onBestProfileOnlyConnectedClick = {},
+                isAdaptiveTunnelEnabled = settingsViewModel.composeIsAdaptiveTunnelEnabled,
+                onAdaptiveTunnelChange = {},
+                isUpdateCheckEnabled = settingsViewModel.composeIsUpdateCheckEnabled,
+                onUpdateCheckChange = {},
+                updateFrequency = settingsViewModel.composeUpdateFrequency,
+                onUpdateFrequencyClick = {},
+                onDataManagementClick = {},
+                scrollState = sharedBasicSettingsScrollState,
+                accentColor = Color(accentColor),
+                onBack = {},
+                hazeState = appHazeState
+            )
+        }
+
+        val homeBackgroundContent: @Composable () -> Unit = {
+            val connectionState by mainViewModel.connectionState.collectAsState()
+            val profiles by mainViewModel.displayItems.collectAsState()
+            val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
+            val backgroundListState = rememberLazyListState(
+                initialFirstVisibleItemIndex = homeListState.firstVisibleItemIndex,
+                initialFirstVisibleItemScrollOffset = homeListState.firstVisibleItemScrollOffset
+            )
+
+            HomeScreen(
+                connectionState = connectionState,
+                profiles = profiles,
+                chainedProfileIds = chainedProfileIds,
+                onProfileChainToggle = {},
+                isClipboardLoading = isClipboardLoading,
+                isAnySubscriptionExpanded = isAnySubscriptionExpanded,
+                accentColor = accentColor,
+                pingStyle = settingsViewModel.composePingStyle,
+                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                isAnimationEnabled = false,
+                animationSpeed = settingsViewModel.composeGradientSpeed,
+                isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
+                listState = backgroundListState,
+                onConnectClick = {},
+                onProfileClick = {},
+                onProfileDelete = {},
+                onShareProfile = {},
+                onQrProfile = {},
+                onEditProfileJson = {},
+                onEditProfileSimple = {},
+                onSubscriptionToggle = {},
+                onSubscriptionDelete = {},
+                onSubscriptionSpeedTest = {},
+                onSubscriptionUpdate = {},
+                onEditSubscriptionJson = {},
+                onClipboardClick = {},
+                onManualInputClick = {},
+                onQrScanClick = {},
+                onImportFileClick = {},
+                onBack = {},
+                onScroll = {},
+                hazeState = appHazeState
+            )
+        }
+
+
+    LaunchedEffect(currentRoute, rootPagerState.currentPage, wizardViewModel.composeWizardStep) {
+        val isOnServersScreen = currentRoute == Destination.Home.route && rootPagerState.currentPage == 2
+        if (!isOnServersScreen) {
+            settingsViewModel.composeBottomNavIsShrunk = false
+            settingsViewModel.composeBottomNavIsShrunkToHome = false
+        } else {
+            settingsViewModel.composeBottomNavIsShrunkToHome = false
+            if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
+                settingsViewModel.composeBottomNavIsShrunk = true
+            }
+        }
+    }
+
 
     
-        val selectedIndex = when {
-        isSettingsRoute(currentRoute) -> 0
-        currentRoute == Destination.Home.route -> 1
-            currentRoute == Destination.Servers.route -> 2
-            else -> 1
+        val selectedIndex = if (currentRoute == Destination.Home.route) {
+            rootPagerState.currentPage
+        } else if (isSettingsDetailRoute(currentRoute)) {
+            0
+        } else {
+            1
         }
 
     
     val isBottomNavVisible = when (currentRoute) {
-        Destination.Home.route, Destination.Settings.route -> true
-        Destination.Servers.route -> {
-                    when (wizardViewModel.composeWizardStep) {
-                        WizardStep.CARDS -> true
-                        WizardStep.SSH_CONFIG -> wizardViewModel.isSshConfigValid
-                        WizardStep.PROTOCOL -> true
-                        WizardStep.XRAY_CONFIG -> wizardViewModel.isXrayConfigValid
-                        WizardStep.PROGRESS -> wizardViewModel.composeSetupProgress >= 100f
-                        WizardStep.SUCCESS -> false
-                        WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff == TariffType.FREE
-                        WizardStep.FLARE_PROGRESS -> false
-                        WizardStep.FLARE_SUCCESS -> false
-                    }
+        Destination.Home.route -> {
+            if (rootPagerState.currentPage == 2) {
+                when (wizardViewModel.composeWizardStep) {
+                    WizardStep.CARDS -> true
+                    WizardStep.SSH_CONFIG -> wizardViewModel.isSshConfigValid
+                    WizardStep.PROTOCOL -> true
+                    WizardStep.XRAY_CONFIG -> wizardViewModel.isXrayConfigValid
+                    WizardStep.PROGRESS -> wizardViewModel.composeSetupProgress >= 100f
+                    WizardStep.SUCCESS -> false
+                    WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff == TariffType.FREE
+                    WizardStep.FLARE_PROGRESS -> false
+                    WizardStep.FLARE_SUCCESS -> false
+                }
+            } else {
+                true
+            }
         }
         Destination.AdvancedSettings.route, Destination.PingSettings.route, 
         Destination.RoutingSettings.route, Destination.BasicSettings.route,
         Destination.SubscriptionsSettings.route, Destination.ThemeSettings.route,
         Destination.LanguageSettings.route -> true
         Destination.JsonEditor.route, Destination.SimpleEditor.route -> false
-            else -> settingsViewModel.composeBottomNavIsVisible
-        }
+        else -> settingsViewModel.composeBottomNavIsVisible
+    }
 
     
         LaunchedEffect(isBottomNavVisible) {
@@ -434,24 +622,17 @@ fun FlareApp(
 
         LaunchedEffect(requestedRootTabNonce) {
             val requestedIndex = requestedRootTabIndex ?: return@LaunchedEffect
-        val dest = when (requestedIndex) {
-            0 -> Destination.Settings.route
-            1 -> Destination.Home.route
-            2 -> Destination.Servers.route
-            else -> Destination.Home.route
-        }
-        navController.navigate(dest) {
-                popUpTo(navController.graph.startDestinationId) { saveState = true }
-                launchSingleTop = true
-                restoreState = true
+            if (currentRoute != Destination.Home.route) {
+                navController.popBackStack(Destination.Home.route, inclusive = false)
             }
+            rootPagerState.scrollToPage(requestedIndex)
             onRootTabRequestHandled()
         }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FlareHomeBackground(
             isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.Home.route || currentRoute == Destination.Servers.route),
+            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && currentRoute == Destination.Home.route && (rootPagerState.currentPage == 1 || rootPagerState.currentPage == 2),
             animationSpeed = settingsViewModel.composeGradientSpeed,
             modifier = Modifier
                 .fillMaxSize()
@@ -473,12 +654,7 @@ fun FlareApp(
                     .padding(start = contentPaddingStart),
                 enterTransition = {
                     when {
-                        rootTabIndexForRoute(initialState.destination.route) != null &&
-                            rootTabIndexForRoute(targetState.destination.route) != null &&
-                            rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabEnterTransition(initialState, targetState, isLandscape)
-                        targetState.destination.route?.let(::isSettingsDetailRoute) == true &&
-                            initialState.destination.route?.let(::isSettingsRoute) == true ->
+                        targetState.destination.route?.let(::isSettingsDetailRoute) == true ->
                             settingsForwardEnterTransition()
                         targetState.destination.route?.let(::isEditorRoute) == true ->
                             settingsForwardEnterTransition()
@@ -487,12 +663,7 @@ fun FlareApp(
                 },
                 exitTransition = {
                     when {
-                        rootTabIndexForRoute(initialState.destination.route) != null &&
-                            rootTabIndexForRoute(targetState.destination.route) != null &&
-                            rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabExitTransition(initialState, targetState, isLandscape)
-                        initialState.destination.route?.let(::isSettingsRoute) == true &&
-                            targetState.destination.route?.let(::isSettingsDetailRoute) == true ->
+                        targetState.destination.route?.let(::isSettingsDetailRoute) == true ->
                             settingsForwardExitTransition()
                         targetState.destination.route?.let(::isEditorRoute) == true ->
                             settingsForwardExitTransition()
@@ -501,29 +672,51 @@ fun FlareApp(
                 },
                 popEnterTransition = {
                     when {
-                        rootTabIndexForRoute(initialState.destination.route) != null &&
-                            rootTabIndexForRoute(targetState.destination.route) != null &&
-                            rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabEnterTransition(initialState, targetState, isLandscape)
-                        initialState.destination.route?.let(::isSettingsDetailRoute) == true &&
-                            targetState.destination.route?.let(::isSettingsRoute) == true ->
-                            settingsBackEnterTransition()
-                        initialState.destination.route?.let(::isEditorRoute) == true ->
-                            settingsBackEnterTransition()
+                        initialState.destination.route?.let(::isSettingsDetailRoute) == true -> {
+                            if (settingsViewModel.composeIsSwipeDismissing) {
+                                androidx.compose.animation.fadeIn(
+                                    initialAlpha = 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(100)
+                                )
+                            } else {
+                                settingsBackEnterTransition()
+                            }
+                        }
+                        initialState.destination.route?.let(::isEditorRoute) == true -> {
+                            if (settingsViewModel.composeIsSwipeDismissing) {
+                                androidx.compose.animation.fadeIn(
+                                    initialAlpha = 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(100)
+                                )
+                            } else {
+                                settingsBackEnterTransition()
+                            }
+                        }
                         else -> EnterTransition.None
                     }
                 },
                 popExitTransition = {
                     when {
-                        rootTabIndexForRoute(initialState.destination.route) != null &&
-                            rootTabIndexForRoute(targetState.destination.route) != null &&
-                            rootTabIndexForRoute(initialState.destination.route) != rootTabIndexForRoute(targetState.destination.route) ->
-                            rootTabExitTransition(initialState, targetState, isLandscape)
-                        initialState.destination.route?.let(::isSettingsDetailRoute) == true &&
-                            targetState.destination.route?.let(::isSettingsRoute) == true ->
-                            settingsBackExitTransition()
-                        initialState.destination.route?.let(::isEditorRoute) == true ->
-                            settingsBackExitTransition()
+                        initialState.destination.route?.let(::isSettingsDetailRoute) == true -> {
+                            if (settingsViewModel.composeIsSwipeDismissing) {
+                                androidx.compose.animation.fadeOut(
+                                    targetAlpha = 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(100)
+                                )
+                            } else {
+                                settingsBackExitTransition()
+                            }
+                        }
+                        initialState.destination.route?.let(::isEditorRoute) == true -> {
+                            if (settingsViewModel.composeIsSwipeDismissing) {
+                                androidx.compose.animation.fadeOut(
+                                    targetAlpha = 1f,
+                                    animationSpec = androidx.compose.animation.core.tween(100)
+                                )
+                            } else {
+                                settingsBackExitTransition()
+                            }
+                        }
                         else -> ExitTransition.None
                     }
                 }
@@ -536,14 +729,34 @@ fun FlareApp(
                         enterDuration = ROOT_TAB_ENTER_DURATION,
                         exitDuration = ROOT_TAB_EXIT_DURATION
                     ) {
-                        val connectionState by mainViewModel.connectionState.collectAsState()
-                        val timerText by mainViewModel.connectionTimerText.collectAsState()
-                        val profiles by mainViewModel.displayItems.collectAsState(emptyList())
-                        val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
+                        HorizontalPager(
+                            state = rootPagerState,
+                            modifier = Modifier.fillMaxSize(),
+                            userScrollEnabled = true
+                        ) { page ->
+                            when (page) {
+                                0 -> {
+                                    SettingsScreen(
+                                        onBaseSettingsClick = { navigateToSettingsDetail(Destination.BasicSettings.route, it) },
+                                        onAdvancedSettingsClick = { navigateToSettingsDetail(Destination.AdvancedSettings.route, it) },
+                                        onRoutingSettingsClick = { navigateToSettingsDetail(Destination.RoutingSettings.route, it) },
+                                        onPingSettingsClick = { navigateToSettingsDetail(Destination.PingSettings.route, it) },
+                                        onSubscriptionsSettingsClick = { navigateToSettingsDetail(Destination.SubscriptionsSettings.route, it) },
+                                        onThemeSettingsClick = { navigateToSettingsDetail(Destination.ThemeSettings.route, it) },
+                                        onLanguageSettingsClick = { navigateToSettingsDetail(Destination.LanguageSettings.route, it) },
+                                        isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 0,
+                                        gradientSpeed = settingsViewModel.composeGradientSpeed,
+                                        hazeState = appHazeState
+                                    )
+                                }
+                                1 -> {
+                                    val connectionState by mainViewModel.connectionState.collectAsState()
+                                    val profiles by mainViewModel.displayItems.collectAsState()
+                                    val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
 
                                     HomeScreen(
                                         connectionState = connectionState,
-                                        timerText = timerText,
                                         profiles = profiles,
                                         chainedProfileIds = chainedProfileIds,
                                         onProfileChainToggle = { profile -> mainViewModel.toggleProfileInChain(profile.id) },
@@ -552,8 +765,10 @@ fun FlareApp(
                                         accentColor = accentColor,
                                         pingStyle = settingsViewModel.composePingStyle,
                                         isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
+                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 1,
                                         animationSpeed = settingsViewModel.composeGradientSpeed,
+                                        isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
+                                        listState = homeListState,
                                         onConnectClick = { mainViewModel.connectOrDisconnect() },
                                         onProfileClick = { profile -> mainViewModel.selectProfile(profile.id) },
                                         onProfileDelete = { profile -> mainViewModel.deleteProfile(profile.id, profile.name) },
@@ -571,9 +786,7 @@ fun FlareApp(
                                         onSubscriptionDelete = { id -> mainViewModel.deleteSubscription(id) },
                                         onSubscriptionSpeedTest = { id -> mainViewModel.speedTestSubscription(id) },
                                         onSubscriptionUpdate = { sub -> mainViewModel.refreshSubscription(sub) },
-                                        onEditSubscriptionJson = { sub ->
-                                            onEditSubscriptionClick(sub)
-                                        },
+                                        onEditSubscriptionJson = { sub -> onEditSubscriptionClick(sub) },
                                         onClipboardClick = onClipboardClick,
                                         onManualInputClick = onManualInputClick,
                                         onQrScanClick = onQrScanClick,
@@ -583,16 +796,7 @@ fun FlareApp(
                                         hazeState = appHazeState
                                     )
                                 }
-                }
-
-                composable(Destination.Servers.route) {
-                    TransitionBlurContainer(
-                        isActive = currentRoute == Destination.Servers.route,
-                        enterBlur = ROOT_TAB_BLUR,
-                        exitBlur = ROOT_TAB_BLUR,
-                        enterDuration = ROOT_TAB_ENTER_DURATION,
-                        exitDuration = ROOT_TAB_EXIT_DURATION
-                    ) {
+                                2 -> {
                                     ServersScreen(
                                         currentStep = wizardViewModel.composeWizardStep,
                                         selectedServerType = wizardViewModel.composeSelectedServerType,
@@ -622,15 +826,9 @@ fun FlareApp(
                                         onSshPassChange = { wizardViewModel.composeSshPassword = it },
                                         onSshKeyClick = {  },
                                         selectedProtocol = wizardViewModel.composeSelectedProtocol,
-                                        onProtocolXrayClick = {
-                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY
-                                        },
-                                        onProtocolHysteria2Click = {
-                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2
-                                        },
-                                        onProtocolShadowsocksClick = {
-                                            wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS
-                                        },
+                                        onProtocolXrayClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY },
+                                        onProtocolHysteria2Click = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2 },
+                                        onProtocolShadowsocksClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS },
                                         xrayPort = wizardViewModel.composeXrayPort,
                                         onXrayPortChange = { wizardViewModel.composeXrayPort = it },
                                         xraySni = wizardViewModel.composeXraySni,
@@ -640,7 +838,7 @@ fun FlareApp(
                                         setupError = wizardViewModel.composeSetupError,
                                         onGoHomeClick = { 
                                             wizardViewModel.reset()
-                                navController.navigate(Destination.Home.route) 
+                                            coroutineScope.launch { rootPagerState.animateScrollToPage(1) }
                                         },
                                         onBack = {
                                             if (wizardViewModel.composeWizardStep == WizardStep.SUCCESS || wizardViewModel.composeWizardStep == WizardStep.FLARE_SUCCESS) {
@@ -665,28 +863,7 @@ fun FlareApp(
                                     )
                                 }
                             }
-
-                composable(Destination.Settings.route) {
-                    TransitionBlurContainer(
-                        isActive = currentRoute == Destination.Settings.route,
-                        enterBlur = ROOT_TAB_BLUR,
-                        exitBlur = ROOT_TAB_BLUR,
-                        enterDuration = ROOT_TAB_ENTER_DURATION,
-                        exitDuration = SETTINGS_EXIT_DURATION
-                    ) {
-                        SettingsScreen(
-                            onBaseSettingsClick = { navigateToSettingsDetail(Destination.BasicSettings.route, it) },
-                            onAdvancedSettingsClick = { navigateToSettingsDetail(Destination.AdvancedSettings.route, it) },
-                            onRoutingSettingsClick = { navigateToSettingsDetail(Destination.RoutingSettings.route, it) },
-                            onPingSettingsClick = { navigateToSettingsDetail(Destination.PingSettings.route, it) },
-                            onSubscriptionsSettingsClick = { navigateToSettingsDetail(Destination.SubscriptionsSettings.route, it) },
-                            onThemeSettingsClick = { navigateToSettingsDetail(Destination.ThemeSettings.route, it) },
-                            onLanguageSettingsClick = { navigateToSettingsDetail(Destination.LanguageSettings.route, it) },
-                            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.Settings.route),
-                            gradientSpeed = settingsViewModel.composeGradientSpeed,
-                            hazeState = appHazeState
-                        )
+                        }
                     }
                 }
 
@@ -696,7 +873,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                     BasicSettingsScreen(
                         isSplitTunnelingEnabled = settingsViewModel.composeIsSplitTunnelingEnabled,
@@ -770,6 +954,7 @@ fun FlareApp(
                         updateFrequency = settingsViewModel.composeUpdateFrequency,
                         onUpdateFrequencyClick = onUpdateFrequencyClick,
                         onDataManagementClick = { showDataManagementDialog = true },
+                        scrollState = sharedBasicSettingsScrollState,
                         accentColor = Color(accentColor),
                         onBack = { navController.popBackStack() },
                         hazeState = appHazeState
@@ -783,7 +968,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                     AdvancedSettingsScreen(
                         isFragmentationEnabled = settingsViewModel.composeIsFragmentationEnabled,
@@ -854,7 +1046,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                 PingSettingsScreen(
                     pingType = settingsViewModel.composePingType,
@@ -882,7 +1081,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                     val routingRules by mainViewModel.routingRules.collectAsState()
                     RoutingScreen(
@@ -905,7 +1111,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                 SubscriptionsScreen(
                     isSubIntervalEnabled = settingsViewModel.composeIsSubIntervalEnabled,
@@ -954,7 +1167,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                 ThemeSettingsScreen(
                     themeMode = settingsViewModel.composeThemeMode,
@@ -997,7 +1217,14 @@ fun FlareApp(
                     currentRoute = currentRoute,
                     morphRequest = pendingSettingsMorph,
                     onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = settingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                 LanguageSettingsScreen(
                     currentLanguage = settingsViewModel.composeAppLanguage,
@@ -1009,13 +1236,20 @@ fun FlareApp(
                 }
             }
             
-            composable(Destination.Journal.route) {
+                composable(Destination.Journal.route) {
                 SettingsDetailContainer(
                     route = Destination.Journal.route,
                     currentRoute = currentRoute,
                     morphRequest = null,
                     onMorphFinished = {},
-                    settingsViewModel = settingsViewModel
+                    settingsViewModel = settingsViewModel,
+                    onBack = { navController.popBackStack() },
+                    backgroundContentRight = basicSettingsBackground,
+                    onDismissLeft = {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
+                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
+                        },
+                    backgroundContentLeft = homeBackgroundContent
                 ) {
                     JournalScreen(
                         logFile = java.io.File(navController.context.filesDir, "sing-box.log"),
@@ -1037,45 +1271,54 @@ fun FlareApp(
                         }
                     }
 
-                    Box(
-                        modifier = Modifier.fillMaxSize()
+                    SwipeToDismissScreen(
+                        onDismissRight = {
+                            mainViewModel.setEditingProfile(null)
+                            navController.popBackStack()
+                        },
+                        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
+                        backgroundContentRight = homeBackgroundContent
                     ) {
-                        FlareHomeBackground(
-                            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.JsonEditor.route),
-                            animationSpeed = settingsViewModel.composeGradientSpeed,
+                        Box(
                             modifier = Modifier.fillMaxSize()
-                        )
-                        profile?.let { p ->
-                            val profileScheme = p.protocol?.takeIf { it.isNotBlank() }
-                                ?: try {
-                                    val outbounds = org.json.JSONObject(p.configJson).optJSONArray("outbounds")
-                                    outbounds?.optJSONObject(0)?.optString("type")
-                                } catch (_: Exception) { null }?.takeIf { it.isNotBlank() }
-                                ?: runCatching {
-                                    java.net.URI(p.uri).scheme ?: ""
-                                }.getOrDefault("")
-                            ProfileJsonEditor(
-                                initialName = p.name,
-                                initialContent = p.configJson,
-                                accentColor = Color(accentColor),
-                                initialScheme = profileScheme,
-                                onSave = { name: String, json: String ->
-                                    mainViewModel.updateProfile(p.id, name, json)
-                                    mainViewModel.setEditingProfile(null)
-                                    AppNotificationManager.showNotification(
-                                        NotificationType.SUCCESS,
-                                        I18n.strings.notif_profile_changed,
-                                        3
-                                    )
-                                    navController.popBackStack()
-                                },
-                                onBack = {
-                                    mainViewModel.setEditingProfile(null)
-                                    navController.popBackStack()
-                                },
-                                hazeState = appHazeState
+                        ) {
+                            FlareHomeBackground(
+                                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.JsonEditor.route),
+                                animationSpeed = settingsViewModel.composeGradientSpeed,
+                                modifier = Modifier.fillMaxSize()
                             )
+                            profile?.let { p ->
+                                val profileScheme = p.protocol?.takeIf { it.isNotBlank() }
+                                    ?: try {
+                                        val outbounds = org.json.JSONObject(p.configJson).optJSONArray("outbounds")
+                                        outbounds?.optJSONObject(0)?.optString("type")
+                                    } catch (_: Exception) { null }?.takeIf { it.isNotBlank() }
+                                    ?: runCatching {
+                                        java.net.URI(p.uri).scheme ?: ""
+                                    }.getOrDefault("")
+                                ProfileJsonEditor(
+                                    initialName = p.name,
+                                    initialContent = p.configJson,
+                                    accentColor = Color(accentColor),
+                                    initialScheme = profileScheme,
+                                    onSave = { name: String, json: String ->
+                                        mainViewModel.updateProfile(p.id, name, json)
+                                        mainViewModel.setEditingProfile(null)
+                                        AppNotificationManager.showNotification(
+                                            NotificationType.SUCCESS,
+                                            I18n.strings.notif_profile_changed,
+                                            3
+                                        )
+                                        navController.popBackStack()
+                                    },
+                                    onBack = {
+                                        mainViewModel.setEditingProfile(null)
+                                        navController.popBackStack()
+                                    },
+                                    hazeState = appHazeState
+                                )
+                            }
                         }
                     }
                 }
@@ -1090,34 +1333,44 @@ fun FlareApp(
                         }
                     }
 
-                    Box(
-                        modifier = Modifier.fillMaxSize()
+                    SwipeToDismissScreen(
+                        onDismissRight = {
+                            mainViewModel.setEditingProfile(null)
+                            navController.popBackStack()
+                        },
+                        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
+                        backgroundContentRight = homeBackgroundContent
                     ) {
-                        FlareHomeBackground(
-                            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.SimpleEditor.route),
-                            animationSpeed = settingsViewModel.composeGradientSpeed,
+                        Box(
                             modifier = Modifier.fillMaxSize()
-                        )
-                        profile?.let { p ->
-                            ProfileSimpleEditor(
-                                profile = p,
-                                onSave = { updatedProfile ->
-                                    mainViewModel.updateProfileFull(updatedProfile)
-                                    mainViewModel.setEditingProfile(null)
-                                    AppNotificationManager.showNotification(
-                                        NotificationType.SUCCESS,
-                                        I18n.strings.notif_profile_changed,
-                                        3
-                                    )
-                                    navController.popBackStack()
-                                },
-                                onBack = {
-                                    mainViewModel.setEditingProfile(null)
-                                    navController.popBackStack()
-                                },
-                                hazeState = appHazeState
+                        ) {
+                            FlareHomeBackground(
+                                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.SimpleEditor.route),
+                                animationSpeed = settingsViewModel.composeGradientSpeed,
+                                modifier = Modifier.fillMaxSize()
                             )
+                            profile?.let { p ->
+                                ProfileSimpleEditor(
+                                    profile = p,
+                                    onSave = { updatedProfile ->
+                                        mainViewModel.updateProfileFull(updatedProfile)
+                                        mainViewModel.setEditingProfile(null)
+                                        AppNotificationManager.showNotification(
+                                            NotificationType.SUCCESS,
+                                            I18n.strings.notif_profile_changed,
+                                            3
+                                        )
+                                        navController.popBackStack()
+                                    },
+                                    onBack = {
+                                        mainViewModel.setEditingProfile(null)
+                                        navController.popBackStack()
+                                    },
+                                    accentColor = Color(accentColor),
+                                    hazeState = appHazeState
+                                )
+                            }
                         }
                     }
                 }
@@ -1134,22 +1387,45 @@ fun FlareApp(
         if (dimmingAlpha > 0.01f) {
             val isDark = FlareTheme.colors.isDark
             val dimmingColor = FlareTheme.colors.bgDark
-            val endColorAlpha = if (isDark) 0.9f else 0.95f
+            
+            
+            val dimmingHeight = bottomPadding + 74.dp
+            
+            val (baseBrush, glowBrush) = if (isDark) {
+                
+                val base = Brush.verticalGradient(
+                    0.0f to Color.Transparent,
+                    0.45f to dimmingColor.copy(alpha = 0.45f),
+                    1.0f to dimmingColor.copy(alpha = 0.88f)
+                )
+                val glow = Brush.verticalGradient(
+                    0.0f to Color.Transparent,
+                    1.0f to Color.White.copy(alpha = 0.05f) 
+                )
+                base to glow
+            } else {
+                val base = Brush.verticalGradient(
+                    0.0f to Color.Transparent,
+                    0.4f to dimmingColor.copy(alpha = 0.4f),
+                    1.0f to dimmingColor.copy(alpha = 0.95f)
+                )
+                base to null
+            }
+
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(dimmingHeight)
                     .graphicsLayer { alpha = dimmingAlpha }
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                dimmingColor.copy(alpha = endColorAlpha * 0.4f),
-                                dimmingColor.copy(alpha = endColorAlpha)
-                            )
-                        )
-                    )
+                    .background(brush = baseBrush)
+                    .let {
+                        if (glowBrush != null) {
+                            it.background(brush = glowBrush)
+                        } else {
+                            it
+                        }
+                    }
             )
         }
 
@@ -1159,16 +1435,15 @@ fun FlareApp(
                     modifier = Modifier.align(Alignment.CenterStart),
                     selectedIndex = selectedIndex,
                     onTabSelected = { index ->
-                        val dest = when (index) {
-                            0 -> Destination.Settings.route
-                            1 -> Destination.Home.route
-                            2 -> Destination.Servers.route
-                            else -> Destination.Home.route
+                        if (currentRoute != Destination.Home.route) {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
                         }
-                        navController.navigate(dest) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        coroutineScope.launch { 
+                            if (kotlin.math.abs(rootPagerState.currentPage - index) > 1) {
+                                rootPagerState.scrollToPage(index)
+                            } else {
+                                rootPagerState.animateScrollToPage(index)
+                            }
                         }
                     },
                     isVisible = isBottomNavVisible,
@@ -1184,63 +1459,6 @@ fun FlareApp(
                     hazeState = appHazeState
                 )
             } else {
-                val context = LocalContext.current
-                var isGestureNav by remember { mutableStateOf(false) }
-
-                DisposableEffect(context) {
-                    fun checkGestureNav(): Boolean {
-                        var gestureEnabled = false
-                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                            try {
-                                val mode = android.provider.Settings.Secure.getInt(
-                                    context.contentResolver,
-                                    "navigation_mode"
-                                )
-                                gestureEnabled = (mode == 2)
-                            } catch (_: Exception) {}
-                        }
-                        if (!gestureEnabled) {
-                            try {
-                                val resources = context.resources
-                                val resourceId = resources.getIdentifier(
-                                    "config_navBarInteractionMode",
-                                    "integer",
-                                    "android"
-                                )
-                                if (resourceId > 0) {
-                                    gestureEnabled = (resources.getInteger(resourceId) == 2)
-                                }
-                            } catch (_: Exception) {}
-                        }
-                        return gestureEnabled
-                    }
-
-                    isGestureNav = checkGestureNav()
-
-                    val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
-                        override fun onChange(selfChange: Boolean) {
-                            super.onChange(selfChange)
-                            isGestureNav = checkGestureNav()
-                        }
-                    }
-
-                    try {
-                        context.contentResolver.registerContentObserver(
-                            android.provider.Settings.Secure.getUriFor("navigation_mode"),
-                            false,
-                            observer
-                        )
-                    } catch (_: Exception) {}
-
-                    onDispose {
-                        try {
-                            context.contentResolver.unregisterContentObserver(observer)
-                        } catch (_: Exception) {}
-                    }
-                }
-
-                val bottomPadding = if (isGestureNav) 22.dp else 38.dp
-
                 FlareBottomNav(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -1248,16 +1466,15 @@ fun FlareApp(
                         .padding(bottom = bottomPadding),
                     selectedIndex = selectedIndex,
                     onTabSelected = { index ->
-                        val dest = when (index) {
-                            0 -> Destination.Settings.route
-                            1 -> Destination.Home.route
-                            2 -> Destination.Servers.route
-                            else -> Destination.Home.route
+                        if (currentRoute != Destination.Home.route) {
+                            navController.popBackStack(Destination.Home.route, inclusive = false)
                         }
-                        navController.navigate(dest) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+                        coroutineScope.launch { 
+                            if (kotlin.math.abs(rootPagerState.currentPage - index) > 1) {
+                                rootPagerState.scrollToPage(index)
+                            } else {
+                                rootPagerState.animateScrollToPage(index)
+                            }
                         }
                     },
                     isVisible = isBottomNavVisible,

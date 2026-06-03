@@ -244,7 +244,7 @@ fun JournalScreen(
                 .align(Alignment.BottomEnd)
                 .padding(end = 24.dp, bottom = 104.dp)
         ) {
-            val isDarkTheme = isSystemInDarkTheme()
+            val isDarkTheme = FlareTheme.colors.isDark
             Box(
                 modifier = Modifier
                     .size(40.dp)

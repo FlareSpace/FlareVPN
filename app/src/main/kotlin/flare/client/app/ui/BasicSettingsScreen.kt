@@ -86,13 +86,11 @@ fun BasicSettingsScreen(
     onUpdateFrequencyClick: (String) -> Unit,
     
     onDataManagementClick: () -> Unit,
-    
+    scrollState: androidx.compose.foundation.ScrollState = androidx.compose.foundation.rememberScrollState(),
     accentColor: Color,
     onBack: () -> Unit,
     hazeState: HazeState
 ) {
-    val scrollState = rememberScrollState()
-
     val logLevelOptions = listOf("debug", "info", "warn", "error", "fatal", "none")
     
     val bestProfileOnlyConnectedOptions = listOf(

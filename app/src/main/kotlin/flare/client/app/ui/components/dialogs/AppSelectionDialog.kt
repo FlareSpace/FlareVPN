@@ -119,7 +119,7 @@ fun AppSelectionDialog(
                 pillHeight = 32f * dpPx,
                 accentColor = Color(accentColor),
                 accentEndColor = Color(if (accentEndColor != 0) accentEndColor else accentColor),
-                isDark = androidx.compose.foundation.isSystemInDarkTheme(),
+                isDark = FlareTheme.colors.isDark,
                 modifier = Modifier
                     .fillMaxSize()
                     .align(Alignment.Center)

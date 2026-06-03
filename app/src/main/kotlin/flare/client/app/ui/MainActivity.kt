@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
             val isDark = when (settingsViewModel.composeThemeMode) {
                 1 -> false
                 2 -> true
-                else -> androidx.compose.foundation.isSystemInDarkTheme()
+                else -> settingsViewModel.composeSystemIsDark
             }
 
             FlareTheme(
@@ -362,12 +362,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     },
-                    onLanguageSelected = { lang ->
-                        val langCode = when (lang) {
-                            "English" -> "en"
-                            "Русский" -> "ru"
-                            else -> "auto"
-                        }
+                    onLanguageSelected = { langCode ->
                         if (settings.appLanguage != langCode) {
                             settings.appLanguage = langCode
                             settingsViewModel.composeAppLanguage = langCode
@@ -480,7 +475,7 @@ class MainActivity : AppCompatActivity() {
 
                 if (showEditSubscriptionDialogState && editSubscriptionTarget != null) {
                     val sub = editSubscriptionTarget!!
-                    val initialName = if (sub.name == "Мои сервера" || sub.name == "My servers") {
+                    val initialName = if (I18n.isMyServers(sub.name)) {
                         I18n.strings.sub_my_servers
                     } else {
                         sub.name
@@ -609,7 +604,7 @@ class MainActivity : AppCompatActivity() {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Image(
-                                            bitmap = item.icon.toBitmap().asImageBitmap(),
+                                            bitmap = item.icon,
                                             contentDescription = null,
                                             modifier = Modifier.size(42.dp)
                                         )
@@ -761,6 +756,7 @@ class MainActivity : AppCompatActivity() {
     private fun initializeMainUI() {
         I18n.updateLocale(settings.appLanguage)
         settingsViewModel.syncAll(settings)
+        settingsViewModel.composeSystemIsDark = (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
 
         val isDark = when (settings.themeMode) {
@@ -820,6 +816,38 @@ class MainActivity : AppCompatActivity() {
             ) == true
         ) {
             hasPendingTriggerVpnPermissionRequest = true
+        }
+
+        val uri = intent?.data ?: return
+        if (uri.scheme?.equals("flarevpn", ignoreCase = true) == true) {
+            val host = uri.host?.lowercase()
+            when (host) {
+                "open" -> {
+                    viewModel.startVpnFromUi()
+                }
+                "close" -> {
+                    viewModel.stopVpnFromUi()
+                }
+                "ping" -> {
+                    viewModel.pingCurrentSubscription()
+                }
+                "best" -> {
+                    viewModel.selectBestProfileFromUi()
+                }
+                "add" -> {
+                    var targetUrl = uri.getQueryParameter("url")
+                    if (targetUrl.isNullOrBlank()) {
+                        val uriString = uri.toString()
+                        val prefix = "flarevpn://add/"
+                        if (uriString.startsWith(prefix, ignoreCase = true)) {
+                            targetUrl = Uri.decode(uriString.substring(prefix.length))
+                        }
+                    }
+                    if (!targetUrl.isNullOrBlank()) {
+                        viewModel.importFromClipboard(targetUrl)
+                    }
+                }
+            }
         }
     }
 
@@ -958,7 +986,7 @@ class MainActivity : AppCompatActivity() {
     data class AppListItem(
             val packageName: String,
             val name: String,
-            val icon: android.graphics.drawable.Drawable,
+            val icon: androidx.compose.ui.graphics.ImageBitmap,
             var isSelected: Boolean
     )
 
@@ -969,6 +997,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
+        val systemIsDark = (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        settingsViewModel.composeSystemIsDark = systemIsDark
         val newUiMode = newConfig.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
         if (ThemeManager.lastUiMode != -1 && ThemeManager.lastUiMode != newUiMode) {
             ThemeManager.lastUiMode = newUiMode
@@ -986,7 +1016,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleThemeModeChange(newMode: Int, view: android.view.View) {
-        val currentIsNight = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val currentIsNight = when (settings.themeMode) {
+            1 -> false
+            2 -> true
+            else -> (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        }
         val targetIsNight = when (newMode) {
             1 -> false
             2 -> true
@@ -1028,6 +1062,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        settingsViewModel.composeSystemIsDark = (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         if (settings.isBackgroundGradientEnabled && settings.isGradientAnimationEnabled) {
             startGradientAnimation()
         }
@@ -1155,8 +1190,9 @@ class MainActivity : AppCompatActivity() {
                 ) {
                     val name = appInfo.loadLabel(pm).toString()
                     val packageName = appInfo.packageName
-                    val icon = appInfo.loadIcon(pm)
-                    AppListItem(packageName, name, icon, settings.splitTunnelingApps.contains(packageName))
+                    val iconDrawable = appInfo.loadIcon(pm)
+                    val iconBitmap = iconDrawable.toBitmap().asImageBitmap()
+                    AppListItem(packageName, name, iconBitmap, settings.splitTunnelingApps.contains(packageName))
                 } else null
             }.sortedBy { it.name }
 

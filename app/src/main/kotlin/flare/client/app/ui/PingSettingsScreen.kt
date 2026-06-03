@@ -59,7 +59,7 @@ fun PingSettingsScreen(
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: HazeState
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = FlareTheme.colors.isDark
 
     val pingStyleOptions = listOf(
         I18n.strings.settings_ping_style_time to "time",

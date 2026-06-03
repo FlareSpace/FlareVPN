@@ -204,7 +204,7 @@ fun NotificationCard(
         }
     }
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = FlareTheme.colors.isDark
     val bgBase = FlareTheme.colors.bgNotificationBar
 
     Box(

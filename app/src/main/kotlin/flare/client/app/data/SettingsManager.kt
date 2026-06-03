@@ -87,7 +87,7 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("mux_enabled", value).apply()
 
     var muxProtocol: String
-        get() = prefs.getString("mux_protocol", "smux") ?: "smux"
+        get() = prefs.getString("mux_protocol", "smux") ?: "h2mux"
         set(value) = prefs.edit().putString("mux_protocol", value).apply()
 
     var muxMaxStreams: String
