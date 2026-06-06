@@ -229,7 +229,8 @@ private fun getProtocolDisplay(entity: ProfileSummary): String {
                 "ws" -> "WS"
                 "grpc" -> "gRPC"
                 "httpupgrade" -> "HTTPUpgrade"
-                "h2", "http" -> "H2"
+                "h2" -> "H2"
+                "http", "xhttp" -> "HTTP"
                 "quic" -> "QUIC"
                 "kcp" -> "KCP"
                 else -> typeVal.uppercase()

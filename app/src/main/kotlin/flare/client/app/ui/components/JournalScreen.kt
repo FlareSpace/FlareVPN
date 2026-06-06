@@ -222,7 +222,7 @@ fun JournalScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 68.dp,
-                            bottom = 120.dp
+                            bottom = 112.dp
                         )
                     ) {
                         itemsIndexed(
@@ -242,7 +242,7 @@ fun JournalScreen(
             exit = fadeOut() + scaleOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 24.dp, bottom = 104.dp)
+                .padding(end = 24.dp, bottom = 96.dp)
         ) {
             val isDarkTheme = FlareTheme.colors.isDark
             Box(

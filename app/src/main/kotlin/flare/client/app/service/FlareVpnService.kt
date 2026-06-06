@@ -51,6 +51,8 @@ class FlareVpnService : VpnService() {
     private var profileName: String = "Flare Profile"
     @Volatile
     private var isDeinitialized = false
+    @Volatile
+    private var latestStartId = -1
 
     override fun onCreate() {
         super.onCreate()
@@ -68,6 +70,8 @@ class FlareVpnService : VpnService() {
         val configJson = intent.getStringExtra(EXTRA_CONFIG)
         val name = intent.getStringExtra(EXTRA_PROFILE_NAME) ?: "Flare Profile"
 
+        latestStartId = startId
+
         if (action == ACTION_START) {
             android.widget.Toast.makeText(this, I18n.strings.vpn_starting, android.widget.Toast.LENGTH_SHORT).show()
         } else if (action == ACTION_STOP) {
@@ -76,6 +80,10 @@ class FlareVpnService : VpnService() {
 
         serviceScope.launch {
             commandMutex.withLock {
+                if (action == ACTION_START && startId != latestStartId) {
+                    Log.i(TAG, "Skipping obsolete ACTION_START (startId=$startId, latest=$latestStartId)")
+                    return@withLock
+                }
                 when (action) {
                     ACTION_START -> {
                         val vpnIntent = VpnService.prepare(this@FlareVpnService)
@@ -109,18 +117,29 @@ class FlareVpnService : VpnService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.i(TAG, "onDestroy called")
         val wasDeinitialized = isDeinitialized
+        isDeinitialized = true
         broadcastState(false)
+        
+        serviceScope.cancel()
+        
         CoroutineScope(Dispatchers.IO).launch {
             commandMutex.withLock {
-                if (!wasDeinitialized && !isDeinitialized) {
-                    stopVpnInternal()
+                if (!wasDeinitialized) {
+                    kotlinx.coroutines.withTimeoutOrNull(5000) {
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                            SingBoxManager.stop()
+                        }
+                    }
                 }
-                SingBoxManager.destroy()
-                isDeinitialized = true
+                kotlinx.coroutines.withTimeoutOrNull(5000) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                        SingBoxManager.destroy()
+                    }
+                }
             }
         }
-        serviceScope.cancel()
     }
 
     private suspend fun startVpnInternal(configJson: String, startId: Int) {
@@ -133,6 +152,11 @@ class FlareVpnService : VpnService() {
             GeoFileManager.ensureGeoFiles(this)
             SingBoxManager.ensureSetup(this)
             
+            if (startId != latestStartId) {
+                Log.i(TAG, "Aborting startVpnInternal before config patch (startId=$startId, latest=$latestStartId)")
+                return
+            }
+
             try {
                 val patchedConfig = SingBoxManager.patchConfig(configJson, this)
                 Libbox.checkConfig(patchedConfig)
@@ -143,9 +167,19 @@ class FlareVpnService : VpnService() {
                 return
             }
 
+            if (startId != latestStartId) {
+                Log.i(TAG, "Aborting startVpnInternal before tunnel stop (startId=$startId, latest=$latestStartId)")
+                return
+            }
+
             if (SingBoxManager.isRunning) {
                 Log.i(TAG, "Stopping active tunnel for configuration switch/reload")
                 SingBoxManager.stop()
+            }
+
+            if (startId != latestStartId) {
+                Log.i(TAG, "Aborting startVpnInternal before engine start (startId=$startId, latest=$latestStartId)")
+                return
             }
 
             val started = try {
@@ -236,10 +270,18 @@ class FlareVpnService : VpnService() {
         statsJob?.cancel()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIF_ID)
-        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
-            SingBoxManager.stop()
-        }
+        
+        kotlinx.coroutines.withTimeoutOrNull(5000) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                SingBoxManager.stop()
+            }
+        } ?: Log.e(TAG, "SingBoxManager.stop() timed out inside FlareVpnService!")
+        
         Log.i(TAG, "stopVpnInternal: engine stopped")
+        
+        
+        broadcastState(false)
+        
         stopSelf()
     }
 
@@ -276,6 +318,11 @@ class FlareVpnService : VpnService() {
                     `package` = packageName
                 }
         )
+        try {
+            flare.client.app.widget.FlareWidgetProvider.updateAllWidgets(this)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating widgets in broadcastState: ${e.message}")
+        }
     }
 
     private fun buildNotification(upStr: String? = null, downStr: String? = null): Notification {

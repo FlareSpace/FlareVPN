@@ -68,7 +68,8 @@ fun AdvancedSettingsScreen(
     muxPadding: Boolean,
     onMuxPaddingClick: (Boolean) -> Unit,
 
-    
+    remoteDnsMode: String,
+    onRemoteDnsModeClick: (String) -> Unit,
     remoteDnsUrl: String,
     onRemoteDnsUrlChange: (String) -> Unit,
 
@@ -86,6 +87,13 @@ fun AdvancedSettingsScreen(
 
     isResetChainOnDisconnect: Boolean,
     onResetChainOnDisconnectChange: (Boolean) -> Unit,
+
+    isTlsSpoofEnabled: Boolean,
+    onTlsSpoofChange: (Boolean) -> Unit,
+    tlsSpoofDomain: String,
+    onTlsSpoofDomainChange: (String) -> Unit,
+    tlsSpoofMethod: String,
+    onTlsSpoofMethodClick: (String) -> Unit,
 
     accentColor: Color,
     onBack: () -> Unit,
@@ -112,6 +120,16 @@ fun AdvancedSettingsScreen(
         I18n.strings.settings_label_stack.format("mixed") to "mixed",
         I18n.strings.settings_label_stack.format("gvisor") to "gvisor",
         I18n.strings.settings_label_stack.format("system") to "system"
+    )
+
+    val tlsSpoofMethodOptions = listOf("wrong-ack", "wrong-md5", "wrong-timestamp")
+
+    val remoteDnsModeOptions = listOf(
+        I18n.strings.option_auto to "auto",
+        I18n.strings.dns_preset_cloudflare to "cloudflare_doh",
+        I18n.strings.dns_preset_adguard to "adguard_doh",
+        I18n.strings.dns_preset_google to "google_dot",
+        I18n.strings.option_custom to "custom"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -239,17 +257,87 @@ fun AdvancedSettingsScreen(
                     modifier = Modifier.padding(top = 8.dp, bottom = 24.dp, start = 4.dp)
                 )
 
+                FlareSectionHeader(I18n.strings.settings_label_tls_spoof)
+                Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
+                    FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_tls_spoof,
+                        checked = isTlsSpoofEnabled,
+                        onCheckedChange = onTlsSpoofChange,
+                        hazeState = hazeState,
+                        accentColor = accentColor,
+                        cornerType = if (isTlsSpoofEnabled) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                    )
+
+                    AnimatedVisibility(visible = isTlsSpoofEnabled) {
+                        Column {
+                            FlareSettingsInputItem(
+                                title = I18n.strings.settings_label_tls_spoof_domain,
+                                value = tlsSpoofDomain,
+                                onValueChange = onTlsSpoofDomainChange,
+                                hazeState = hazeState,
+                                accentColor = accentColor,
+                                cornerType = DisplayItem.CornerType.NONE
+                            )
+
+                            FlareSettingsValueItem(
+                                title = I18n.strings.settings_label_tls_spoof_method,
+                                value = tlsSpoofMethod,
+                                menuItems = tlsSpoofMethodOptions.mapIndexed { i, opt ->
+                                    flare.client.app.util.GlassUtils.MenuItem(i, opt) {
+                                        onTlsSpoofMethodClick(opt)
+                                    }
+                                },
+                                hazeState = hazeState,
+                                accentColor = accentColor,
+                                cornerType = DisplayItem.CornerType.BOTTOM
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = I18n.strings.settings_desc_tls_spoof,
+                    fontFamily = flare.client.app.ui.components.GeologicaRegular,
+                    fontSize = 12.sp,
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp, bottom = 24.dp, start = 4.dp)
+                )
+
                 
                 FlareSectionHeader(I18n.strings.settings_label_remote_dns)
-                FlareSettingsInputItem(
-                    title = I18n.strings.settings_label_dns_url,
-                    value = remoteDnsUrl,
-                    onValueChange = onRemoteDnsUrlChange,
-                    hazeState = hazeState,
-                    hint = I18n.strings.settings_hint_dns_url,
-                    accentColor = accentColor,
-                    cornerType = DisplayItem.CornerType.ALL
-                )
+                Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
+                    val currentDnsModeLabel = when (remoteDnsMode) {
+                        "auto" -> I18n.strings.option_auto
+                        "cloudflare_doh" -> I18n.strings.dns_preset_cloudflare
+                        "adguard_doh" -> I18n.strings.dns_preset_adguard
+                        "google_dot" -> I18n.strings.dns_preset_google
+                        "custom" -> I18n.strings.option_custom
+                        else -> I18n.strings.option_auto
+                    }
+                    FlareSettingsValueItem(
+                        title = I18n.strings.settings_label_remote_dns,
+                        value = currentDnsModeLabel,
+                        menuItems = remoteDnsModeOptions.mapIndexed { i, opt ->
+                            flare.client.app.util.GlassUtils.MenuItem(i, opt.first) {
+                                onRemoteDnsModeClick(opt.second)
+                            }
+                        },
+                        hazeState = hazeState,
+                        accentColor = accentColor,
+                        cornerType = if (remoteDnsMode == "custom") DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                    )
+                    
+                    AnimatedVisibility(visible = remoteDnsMode == "custom") {
+                        FlareSettingsInputItem(
+                            title = I18n.strings.settings_label_dns_url,
+                            value = remoteDnsUrl,
+                            onValueChange = onRemoteDnsUrlChange,
+                            hazeState = hazeState,
+                            hint = I18n.strings.settings_hint_dns_url,
+                            accentColor = accentColor,
+                            cornerType = DisplayItem.CornerType.BOTTOM
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(24.dp))
 
                 

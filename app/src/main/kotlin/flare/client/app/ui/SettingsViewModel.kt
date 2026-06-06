@@ -67,10 +67,14 @@ class SettingsViewModel : ViewModel() {
     var composeMuxMaxStreams by mutableStateOf("8")
     var composeMuxPadding by mutableStateOf(false)
     var composeRemoteDnsUrl by mutableStateOf("")
+    var composeRemoteDnsMode by mutableStateOf("auto")
     var composeIsFakeIpEnabled by mutableStateOf(false)
     var composeMtu by mutableStateOf("1500")
     var composeTunStack by mutableStateOf("system")
     var composeIsResetChainOnDisconnect by mutableStateOf(false)
+    var composeIsTlsSpoofEnabled by mutableStateOf(false)
+    var composeTlsSpoofDomain by mutableStateOf("google.com")
+    var composeTlsSpoofMethod by mutableStateOf("wrong-ack")
 
     
     var composePingType by mutableStateOf("via proxy GET")
@@ -119,10 +123,14 @@ class SettingsViewModel : ViewModel() {
         composeMuxMaxStreams = settings.muxMaxStreams
         composeMuxPadding = settings.muxPadding
         composeRemoteDnsUrl = settings.remoteDnsUrl
+        composeRemoteDnsMode = settings.remoteDnsMode
         composeIsFakeIpEnabled = settings.isFakeIpEnabled
         composeMtu = settings.mtu
         composeTunStack = settings.tunStack
         composeIsResetChainOnDisconnect = settings.isResetChainOnDisconnect
+        composeIsTlsSpoofEnabled = settings.isTlsSpoofEnabled
+        composeTlsSpoofDomain = settings.tlsSpoofDomain
+        composeTlsSpoofMethod = settings.tlsSpoofMethod
     }
 
     fun syncPing(settings: SettingsManager) {

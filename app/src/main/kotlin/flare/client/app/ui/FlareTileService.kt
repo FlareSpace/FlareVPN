@@ -14,6 +14,7 @@ import flare.client.app.service.FlareVpnService
 import flare.client.app.singbox.SingBoxManager
 import flare.client.app.data.db.AppDatabase
 import flare.client.app.data.SettingsManager
+import flare.client.app.R
 import kotlinx.coroutines.*
 
 class FlareTileService : TileService() {
@@ -48,6 +49,7 @@ class FlareTileService : TileService() {
         val isRunning = SingBoxManager.isRunning
         tile.state = if (isRunning) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = "Flare VPN"
+        tile.icon = android.graphics.drawable.Icon.createWithResource(this, R.drawable.ic_tile_flare)
         tile.updateTile()
     }
 

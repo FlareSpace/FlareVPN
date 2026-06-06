@@ -1008,6 +1008,12 @@ fun FlareApp(
                         },
                         muxPadding = settingsViewModel.composeMuxPadding,
                         onMuxPaddingClick = onMuxPaddingClick,
+                        remoteDnsMode = settingsViewModel.composeRemoteDnsMode,
+                        onRemoteDnsModeClick = {
+                            settings.remoteDnsMode = it
+                            settingsViewModel.composeRemoteDnsMode = it
+                            onRestartRequired()
+                        },
                         remoteDnsUrl = settingsViewModel.composeRemoteDnsUrl,
                         onRemoteDnsUrlChange = {
                             settings.remoteDnsUrl = it
@@ -1032,6 +1038,24 @@ fun FlareApp(
                         onResetChainOnDisconnectChange = {
                             settings.isResetChainOnDisconnect = it
                             settingsViewModel.composeIsResetChainOnDisconnect = it
+                        },
+                        isTlsSpoofEnabled = settingsViewModel.composeIsTlsSpoofEnabled,
+                        onTlsSpoofChange = {
+                            settings.isTlsSpoofEnabled = it
+                            settingsViewModel.composeIsTlsSpoofEnabled = it
+                            onRestartRequired()
+                        },
+                        tlsSpoofDomain = settingsViewModel.composeTlsSpoofDomain,
+                        onTlsSpoofDomainChange = {
+                            settings.tlsSpoofDomain = it
+                            settingsViewModel.composeTlsSpoofDomain = it
+                            onRestartRequired()
+                        },
+                        tlsSpoofMethod = settingsViewModel.composeTlsSpoofMethod,
+                        onTlsSpoofMethodClick = {
+                            settings.tlsSpoofMethod = it
+                            settingsViewModel.composeTlsSpoofMethod = it
+                            onRestartRequired()
                         },
                         accentColor = settingsViewModel.composeAccentColor,
                         onBack = { navController.popBackStack() },
@@ -1389,7 +1413,7 @@ fun FlareApp(
             val dimmingColor = FlareTheme.colors.bgDark
             
             
-            val dimmingHeight = bottomPadding + 74.dp
+            val dimmingHeight = bottomPadding + 66.dp
             
             val (baseBrush, glowBrush) = if (isDark) {
                 

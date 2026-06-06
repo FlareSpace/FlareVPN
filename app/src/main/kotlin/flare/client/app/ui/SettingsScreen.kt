@@ -68,7 +68,7 @@ fun SettingsScreen(
                     .background(Color.Transparent)
                     .verticalScroll(scrollState)
                     .statusBarsPadding()
-                    .padding(top = 67.dp, bottom = 120.dp)
+                    .padding(top = 67.dp, bottom = 112.dp)
                     .padding(horizontal = 20.dp)
             ) {
                 FlareSectionHeader(text = strings.settings_header_vpn)

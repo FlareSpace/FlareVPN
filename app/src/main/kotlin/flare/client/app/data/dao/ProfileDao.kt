@@ -14,6 +14,9 @@ interface ProfileDao {
     @Query("SELECT * FROM profiles WHERE subscriptionId IS NULL ORDER BY id ASC")
     fun getStandaloneProfiles(): Flow<List<ProfileEntity>>
 
+    @Query("SELECT * FROM profiles WHERE uri = 'internal://json' OR uri = '' OR uri LIKE 'internal://json%'")
+    suspend fun getJsonProfiles(): List<ProfileEntity>
+
     @Query("SELECT * FROM profiles WHERE subscriptionId = :subId ORDER BY id ASC")
     fun getProfilesBySubscription(subId: Long): Flow<List<ProfileEntity>>
 

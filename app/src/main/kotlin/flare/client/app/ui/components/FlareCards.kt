@@ -365,13 +365,12 @@ fun SubscriptionCard(
                     )
                     
                     if (!trafficInfo.isNullOrEmpty()) {
-                        BoxWithConstraints(
+                        Box(
                             modifier = Modifier
                                     .fillMaxWidth()
                                     .height(16.dp)
                                     .padding(top = 4.dp)
                         ) {
-                            val maxWidth = maxWidth
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -401,23 +400,16 @@ fun SubscriptionCard(
                             if (trafficProgress > 0f) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(trafficProgress.coerceIn(0f, 1f))
-                                        .clip(CircleShape)
+                                        .fillMaxSize()
+                                        .clip(ProgressClipShape(trafficProgress))
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .requiredWidth(maxWidth)
-                                            .fillMaxHeight(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = trafficInfo,
-                                            fontFamily = GeologicaMedium,
-                                            fontSize = 10.sp,
-                                            color = Color.White
-                                        )
-                                    }
+                                    Text(
+                                        text = trafficInfo,
+                                        modifier = Modifier.align(Alignment.Center),
+                                        fontFamily = GeologicaMedium,
+                                        fontSize = 10.sp,
+                                        color = Color.White
+                                    )
                                 }
                             }
                         }
@@ -712,5 +704,30 @@ private fun formatUpdateInterval(seconds: Long): String {
         else -> {
             if (isRussian) "${mins} мин." else "${mins} m"
         }
+    }
+}
+
+private class ProgressClipShape(private val progress: Float) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(
+        size: androidx.compose.ui.geometry.Size,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection,
+        density: androidx.compose.ui.unit.Density
+    ): androidx.compose.ui.graphics.Outline {
+        val clipWidth = size.width * progress.coerceIn(0f, 1f)
+        val radius = size.height / 2f
+        return androidx.compose.ui.graphics.Outline.Rounded(
+            androidx.compose.ui.geometry.RoundRect(
+                rect = androidx.compose.ui.geometry.Rect(
+                    left = 0f,
+                    top = 0f,
+                    right = clipWidth,
+                    bottom = size.height
+                ),
+                topLeft = androidx.compose.ui.geometry.CornerRadius(radius),
+                topRight = androidx.compose.ui.geometry.CornerRadius(radius),
+                bottomRight = androidx.compose.ui.geometry.CornerRadius(radius),
+                bottomLeft = androidx.compose.ui.geometry.CornerRadius(radius)
+            )
+        )
     }
 }

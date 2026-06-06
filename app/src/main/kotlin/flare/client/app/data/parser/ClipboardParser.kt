@@ -408,15 +408,20 @@ object ClipboardParser {
             return ProfileEntity(name = name, uri = "internal://json", configJson = configJson, serverDescription = desc, subscriptionId = subscriptionId, protocol = protocol)
         }
 
-        val parsed = URI(uri)
+        var processedUri = uri
+        if (processedUri.contains("type=xhttp")) {
+            processedUri = processedUri.replace("type=xhttp", "type=http")
+        }
+
+        val parsed = URI(processedUri)
         val scheme = parsed.scheme?.lowercase() ?: ""
-        val displayName = extractDisplayName(uri)
+        val displayName = extractDisplayName(processedUri)
         val params = parseQuery(parsed.rawQuery)
 
         var vmessJson: JSONObject? = null
         val proxyServer = when (scheme) {
             "vmess" -> {
-                val b64 = uri.removePrefix("vmess://").trim()
+                val b64 = processedUri.removePrefix("vmess://").trim()
                 try {
                     val decoded = String(android.util.Base64.decode(b64, android.util.Base64.DEFAULT))
                     val json = JSONObject(decoded)
@@ -429,8 +434,8 @@ object ClipboardParser {
 
         val xrayOutbound = when (scheme) {
             "vless" -> buildVlessOutbound(parsed, params)
-            "vmess" -> buildVmessOutbound(uri, vmessJson)
-            "ss", "shadowsocks" -> buildShadowsocksOutbound(uri)
+            "vmess" -> buildVmessOutbound(processedUri, vmessJson)
+            "ss", "shadowsocks" -> buildShadowsocksOutbound(processedUri)
             "trojan" -> buildTrojanOutbound(parsed, params)
             "hysteria", "hy" -> buildHysteriaOutbound(parsed, params)
             "hysteria2", "hy2" -> buildHysteria2Outbound(parsed, params)
@@ -438,7 +443,7 @@ object ClipboardParser {
             else -> throw IllegalArgumentException("Protocol $scheme not supported")
         }
         val proxyOutbounds = if (scheme == "wireguard" || scheme == "wg") {
-            listOf(buildWireGuardOutbound(uri, parsed, params))
+            listOf(buildWireGuardOutbound(processedUri, parsed, params))
         } else {
             val sbOutbounds = V2RayConfigConverter.convertOutboundsPublic(JSONArray().put(xrayOutbound))
             val list = mutableListOf<JSONObject>()
@@ -453,7 +458,7 @@ object ClipboardParser {
 
         val protocol = if (scheme == "wg" || scheme == "wireguard") "wireguard" else scheme
         val configJson = buildMinimalSingBoxConfig(proxyOutbounds, proxyServer)
-        return ProfileEntity(name = displayName, uri = uri, configJson = configJson, subscriptionId = subscriptionId, protocol = protocol)
+        return ProfileEntity(name = displayName, uri = processedUri, configJson = configJson, subscriptionId = subscriptionId, protocol = protocol)
     }
 
     private fun buildMinimalSingBoxConfig(proxyOutbounds: List<JSONObject>, proxyServer: String): String {
@@ -471,19 +476,18 @@ object ClipboardParser {
             put("servers", JSONArray().apply {
                 put(JSONObject().apply {
                     put("tag", "dns-remote")
-                    put("address", "https://1.1.1.1/dns-query")
-                    put("address_resolver", "dns-direct")
+                    put("type", "https")
+                    put("server", "1.1.1.1")
+                    put("path", "/dns-query")
+                    put("domain_resolver", "dns-direct")
                     put("detour", "proxy")
                 })
                 put(JSONObject().apply {
                     put("tag", "dns-direct")
-                    put("address", "8.8.8.8")
-                    put("detour", "direct")
+                    put("type", "udp")
+                    put("server", "8.8.8.8")
                 })
-                put(JSONObject().apply {
-                    put("tag", "dns-block")
-                    put("address", "rcode://success")
-                })
+
             })
             put("rules", JSONArray().apply {
                 put(JSONObject().apply {
@@ -597,14 +601,19 @@ object ClipboardParser {
                     }))
                 }))
             })
-            val stream = JSONObject().apply {
-                put("network", json.optString("net", "tcp"))
-                put("security", json.optString("tls"))
-                if (json.optString("tls") == "tls") {
-                    put("tlsSettings", JSONObject().apply { put("serverName", json.optString("sni", json.optString("add"))) })
-                }
-            }
-            put("streamSettings", stream)
+            val params = mutableMapOf<String, String>()
+            params["security"] = json.optString("tls").takeIf { it.isNotBlank() } ?: "none"
+            params["type"] = json.optString("net").takeIf { it.isNotBlank() } ?: "tcp"
+            params["path"] = json.optString("path", "")
+            params["host"] = json.optString("host", "")
+            params["sni"] = json.optString("sni", "")
+            params["pbk"] = json.optString("pbk", "")
+            params["sid"] = json.optString("sid", "")
+            params["fp"] = json.optString("fp", "")
+            params["insecure"] = json.optString("insecure", "")
+            params["allowInsecure"] = json.optString("allowInsecure", "")
+
+            put("streamSettings", buildStreamSettings(json.optString("add"), params))
         }
     }
 
@@ -958,6 +967,15 @@ object ClipboardParser {
                 put("httpSettings", JSONObject().apply {
                     put("path", params["path"] ?: "/")
                     put("host", params["host"] ?: "")
+                })
+            }
+            "xhttp" -> {
+                put("xhttpSettings", JSONObject().apply {
+                    put("path", params["path"] ?: "/")
+                    val hostVal = params["host"] ?: ""
+                    if (hostVal.isNotEmpty()) {
+                        put("host", hostVal)
+                    }
                 })
             }
             "quic" -> {

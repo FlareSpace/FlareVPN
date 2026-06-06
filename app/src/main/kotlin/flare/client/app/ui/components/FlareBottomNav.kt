@@ -7,6 +7,9 @@ import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.EaseInQuad
+import androidx.compose.animation.core.EaseOutQuad
+import androidx.compose.animation.core.EaseInOutCubic
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
@@ -58,6 +61,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import android.os.Build
 import flare.client.app.ui.theme.FlareTheme
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.geometry.Offset
 
 
 tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
@@ -218,12 +224,26 @@ fun FlareBottomNav(
         val currentWidthDp = with(density) { currentWpx.toDp() }
 
         
+        val pillPressed = remember { mutableStateOf(false) }
+        val panelScale by animateFloatAsState(
+            targetValue = if (pillPressed.value) 1.04f else 1.0f,
+            animationSpec = tween(
+                durationMillis = 200,
+                easing = Easing { OvershootInterpolator(1.2f).getInterpolation(it) }
+            ),
+            label = "panelScale"
+        )
+
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 4.dp)
+                .padding(bottom = 2.dp)
                 .width(currentWidthDp)
-                .height(64.dp)
+                .height(60.dp)
+                .graphicsLayer {
+                    scaleX = panelScale
+                    scaleY = panelScale
+                }
                 .bottomNavSoftShadow(isDarkTheme),
             contentAlignment = Alignment.Center
         ) {
@@ -238,7 +258,7 @@ fun FlareBottomNav(
                         glassHeight = 0.5f,
                         thickness = 5f,
                         hasOutline = false
-                    )
+                      )
                     .let {
                         if (hazeState != null) {
                             it.hazeEffect(state = hazeState) {
@@ -287,7 +307,8 @@ fun FlareBottomNav(
                     accentStart = accentColorStart,
                     accentEnd = accentColorEnd,
                     isNightMode = isDarkTheme,
-                    isShrunk = isShrunk
+                    isShrunk = isShrunk,
+                    onPillPressed = { pillPressed.value = it }
                 )
             }
         }
@@ -297,8 +318,8 @@ fun FlareBottomNav(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 4.dp)
-                    .size(64.dp)
+                    .padding(bottom = 2.dp)
+                    .size(60.dp)
                     .graphicsLayer { 
                         alpha = arrowAlpha
                         scaleX = arrowScale
@@ -323,12 +344,12 @@ fun FlareBottomNav(
             ) {
                 Icon(
                     painter = painterResource(
-                        id = if (isShrunkToHome || selectedIndex == 1) R.drawable.ic_nav_home else R.drawable.ic_arrow_right
+                        id = if (isShrunkToHome || selectedIndex == 1) R.drawable.ic_nav_spark else R.drawable.ic_arrow_right
                     ),
                     contentDescription = null,
                     tint = FlareTheme.colors.navIconTint,
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(60.dp)
                         .padding(16.dp)
                 )
             }
@@ -347,7 +368,8 @@ private fun LiquidPillCanvas(
     accentStart: Color,
     accentEnd: Color,
     isNightMode: Boolean,
-    isShrunk: Boolean
+    isShrunk: Boolean,
+    onPillPressed: (Boolean) -> Unit
 ) {
     val density = LocalDensity.current
     val dp = density.density
@@ -355,30 +377,81 @@ private fun LiquidPillCanvas(
     var containerWidthPx  by remember { mutableStateOf(0f) }
     var containerHeightPx by remember { mutableStateOf(0f) }
 
-    
     val pillHeight by derivedStateOf {
-        if (containerHeightPx > 0f) containerHeightPx - 14f * dp
-        else 50f * dp
+        if (containerHeightPx > 0f) containerHeightPx - 10f * dp
+        else 46f * dp
     }
 
     val leftFrac  = remember { Animatable(selectedIndex / 3f) }
     val rightFrac = remember { Animatable((selectedIndex + 1) / 3f) }
     val scope = rememberCoroutineScope()
 
-    
+    val tapScale = remember { Animatable(1f) }
+    var isTapped by remember { mutableStateOf(false) }
+    var useTappedDrawFracs by remember { mutableStateOf(false) }
+    var leftDrawFracOverride by remember { mutableStateOf(0f) }
+    var rightDrawFracOverride by remember { mutableStateOf(0f) }
+
     var lastIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(selectedIndex) {
         val newL = selectedIndex / 3f
         val newR = (selectedIndex + 1) / 3f
         val animate = lastIndex >= 0 && lastIndex != selectedIndex
         if (animate) {
-            val spec = tween<Float>(
-                durationMillis = (340 * 1.2f).toInt(),
-                easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
-            )
-            launch { leftFrac.animateTo(newL, spec) }
-            launch { rightFrac.animateTo(newR, spec) }
+            if (isTapped) {
+                isTapped = false
+                
+                
+                val oldL = lastIndex.coerceAtLeast(0) / 3f
+                val oldR = (lastIndex.coerceAtLeast(0) + 1) / 3f
+                leftDrawFracOverride = oldL
+                rightDrawFracOverride = oldR
+                useTappedDrawFracs = true
+
+                
+                
+                val iconTransitionSpec = tween<Float>(
+                    durationMillis = 100,
+                    easing = EaseInOutCubic
+                )
+                launch { leftFrac.animateTo(newL, iconTransitionSpec) }
+                launch { rightFrac.animateTo(newR, iconTransitionSpec) }
+
+                
+                tapScale.animateTo(
+                    targetValue = 0f,
+                    animationSpec = tween(
+                        durationMillis = 100,
+                        easing = EaseInOutCubic
+                    )
+                )
+                
+                
+                leftDrawFracOverride = newL
+                rightDrawFracOverride = newR
+                
+                
+                tapScale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = 200,
+                        easing = EaseInOutCubic
+                    )
+                )
+                
+                
+                useTappedDrawFracs = false
+            } else {
+                useTappedDrawFracs = false
+                val spec = tween<Float>(
+                    durationMillis = (340 * 1.2f).toInt(),
+                    easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
+                )
+                launch { leftFrac.animateTo(newL, spec) }
+                launch { rightFrac.animateTo(newR, spec) }
+            }
         } else {
+            useTappedDrawFracs = false
             leftFrac.snapTo(newL)
             rightFrac.snapTo(newR)
         }
@@ -387,8 +460,8 @@ private fun LiquidPillCanvas(
 
     val glowAlpha = remember { Animatable(0f) }
     val expansion = remember { Animatable(0f) }
+    val dragGlowAlpha = remember { Animatable(0f) }
 
-    
     val latestOnTabSelected  = rememberUpdatedState(onTabSelected)
     val latestOnDoubleTap    = rememberUpdatedState(onDoubleTapPill)
     val latestSelectedIndex  = rememberUpdatedState(selectedIndex)
@@ -401,27 +474,22 @@ private fun LiquidPillCanvas(
                 containerWidthPx  = it.size.width.toFloat()
                 containerHeightPx = it.size.height.toFloat()
             }
-            
-            
-            
             .pointerInput(isShrunk) {
                 if (isShrunk) return@pointerInput
                 var lastTapMs = 0L
                 awaitEachGesture {
                     val down   = awaitFirstDown(requireUnconsumed = false)
                     val cw = containerWidthPx
-                    if (cw <= 0f) return@awaitEachGesture
+                      if (cw <= 0f) return@awaitEachGesture
 
                     val startX = down.position.x
 
-                    
                     val touchedTab = when {
                         startX < cw / 3f       -> 0
                         startX < 2f * cw / 3f  -> 1
                         else                   -> 2
                     }
 
-                    
                     val pad      = 8f * dp
                     val curLeft  = leftFrac.value  * cw + pad
                     val curRight = rightFrac.value * cw - pad
@@ -432,15 +500,8 @@ private fun LiquidPillCanvas(
                     val dragThreshold      = 10f * dp
                     var dragIntercepted    = false
 
-                    
                     if (onPill) {
-                        scope.launch {
-                            launch { glowAlpha.animateTo(1f, tween(120)) }
-                            launch {
-                                expansion.animateTo(5f, tween(200,
-                                    easing = Easing { OvershootInterpolator(1.4f).getInterpolation(it) }))
-                            }
-                        }
+                        onPillPressed(true)
                     }
 
                     do {
@@ -452,6 +513,9 @@ private fun LiquidPillCanvas(
 
                         if (!dragIntercepted && abs(delta) > dragThreshold && onPill) {
                             dragIntercepted = true
+                            scope.launch {
+                                dragGlowAlpha.animateTo(1f, tween(150))
+                            }
                         }
 
                         if (dragIntercepted) {
@@ -476,19 +540,15 @@ private fun LiquidPillCanvas(
                     } while (true)
 
                     if (dragIntercepted) {
-                        
                         val centerFrac = (leftFrac.value + rightFrac.value) / 2f
                         val newTab = when {
                             centerFrac < 1f / 3f -> 0
                             centerFrac < 2f / 3f -> 1
                             else                 -> 2
                         }
+                        onPillPressed(false)
                         scope.launch {
-                            launch { glowAlpha.animateTo(0f, tween(200)) }
-                            launch {
-                                expansion.animateTo(0f, tween(300,
-                                    easing = Easing { OvershootInterpolator(1.4f).getInterpolation(it) }))
-                            }
+                            launch { dragGlowAlpha.animateTo(0f, tween(250)) }
                             val spec = tween<Float>(
                                 durationMillis = (340 * 1.2f).toInt(),
                                 easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
@@ -498,45 +558,124 @@ private fun LiquidPillCanvas(
                         }
                         latestOnTabSelected.value(newTab)
                     } else {
-                        
+                        onPillPressed(false)
                         scope.launch {
-                            launch { glowAlpha.animateTo(0f, tween(100)) }
-                            launch { expansion.animateTo(0f, tween(150)) }
+                            dragGlowAlpha.animateTo(0f, tween(150))
                         }
                         val now = System.currentTimeMillis()
                         if (touchedTab == 1 && latestSelectedIndex.value == 1 && now - lastTapMs < 350L) {
-                            
                             lastTapMs = 0L
                             latestOnDoubleTap.value()
                         } else {
                             lastTapMs = now
+                            if (touchedTab != latestSelectedIndex.value) {
+                                isTapped = true
+                            }
                             latestOnTabSelected.value(touchedTab)
                         }
                     }
                 }
             }
-
     ) {
-        
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (size.width <= 0f || pillHeight <= 0f) return@Canvas
 
+            val cy    = size.height / 2f
             
-            val cy    = size.height - 32f * dp
-            val halfH = (pillHeight / 2f) + (expansion.value * dp)
+            val scaleVal = if (useTappedDrawFracs) {
+                tapScale.value
+            } else {
+                1.0f
+            }
+
+            val sizeScale = if (useTappedDrawFracs) {
+                
+                0.95f + 0.05f * tapScale.value
+            } else {
+                1.0f
+            }
+
+            val halfH = ((pillHeight / 2f) + (expansion.value * dp)) * sizeScale
             val radius = halfH
 
             val pad = 8f * dp
             val cw = size.width
-            val curLeft = leftFrac.value * cw + pad
-            val curRight = rightFrac.value * cw - pad
-            val rect = Rect(curLeft, cy - halfH, curRight, cy + halfH)
+            val curLeft = (if (useTappedDrawFracs) leftDrawFracOverride else leftFrac.value) * cw + pad
+            val curRight = (if (useTappedDrawFracs) rightDrawFracOverride else rightFrac.value) * cw - pad
+            val centerX = (curLeft + curRight) / 2f
+            val rawWidth = curRight - curLeft
+            val halfW = rawWidth * 0.47f * sizeScale
+            val rect = Rect(centerX - halfW, cy - halfH, centerX + halfW, cy + halfH)
 
             drawIntoCanvas { canvas ->
                 val nc          = canvas.nativeCanvas
                 val glow        = glowAlpha.value
                 val effGlow     = 0.05f + glow * 0.95f
                 val ambMargin   = 22f * dp
+
+                
+                val glowAlphaVal = dragGlowAlpha.value
+                if (glowAlphaVal > 0.01f) {
+                    val panelPath = Path().apply {
+                        addRoundRect(
+                            androidx.compose.ui.geometry.RoundRect(
+                                rect = Rect(0f, 0f, size.width, size.height),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx(), 28.dp.toPx())
+                            )
+                        )
+                    }
+                    clipPath(panelPath) {
+                        if (rect.width > 0.1f) {
+                            val glareWidth = rect.width * 1.5f
+                            val glareHeight = 3.dp.toPx()
+                            val glareColor = Color.White.copy(alpha = 0.9f * glowAlphaVal)
+                            val glareAccentTop = accentStart.copy(alpha = 0.6f * glowAlphaVal)
+                            val glareAccentBottom = accentEnd.copy(alpha = 0.6f * glowAlphaVal)
+
+                            
+                            drawOval(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, glareAccentTop, Color.Transparent),
+                                    startX = centerX - glareWidth / 2,
+                                    endX = centerX + glareWidth / 2
+                                ),
+                                topLeft = Offset(centerX - glareWidth / 2, -glareHeight),
+                                size = androidx.compose.ui.geometry.Size(glareWidth, glareHeight * 2)
+                            )
+                            
+                            drawOval(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, glareColor, Color.Transparent),
+                                    startX = centerX - glareWidth / 4,
+                                    endX = centerX + glareWidth / 4
+                                ),
+                                topLeft = Offset(centerX - glareWidth / 4, -glareHeight / 2),
+                                size = androidx.compose.ui.geometry.Size(glareWidth / 2, glareHeight)
+                            )
+
+                            
+                            drawOval(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, glareAccentBottom, Color.Transparent),
+                                    startX = centerX - glareWidth / 2,
+                                    endX = centerX + glareWidth / 2
+                                ),
+                                topLeft = Offset(centerX - glareWidth / 2, size.height - glareHeight),
+                                size = androidx.compose.ui.geometry.Size(glareWidth, glareHeight * 2)
+                            )
+                            
+                            drawOval(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Transparent, glareColor, Color.Transparent),
+                                    startX = centerX - glareWidth / 4,
+                                    endX = centerX + glareWidth / 4
+                                ),
+                                topLeft = Offset(centerX - glareWidth / 4, size.height - glareHeight / 2),
+                                size = androidx.compose.ui.geometry.Size(glareWidth / 2, glareHeight)
+                            )
+                        }
+                    }
+                }
 
                 val aEndR = (accentEnd.red   * 255).toInt()
                 val aEndG = (accentEnd.green * 255).toInt()
@@ -545,13 +684,12 @@ private fun LiquidPillCanvas(
                 val aStG  = (accentStart.green * 255).toInt()
                 val aStB  = (accentStart.blue  * 255).toInt()
 
-                
                 val ambPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     shader = android.graphics.RadialGradient(
                         rect.center.x, rect.center.y,
                         ((rect.width + ambMargin * 2) * 0.6f).coerceAtLeast(1f),
                         intArrayOf(
-                            android.graphics.Color.argb((50 * effGlow).toInt(), aEndR, aEndG, aEndB),
+                            android.graphics.Color.argb((50 * effGlow * scaleVal).toInt(), aEndR, aEndG, aEndB),
                             android.graphics.Color.TRANSPARENT
                         ),
                         null, android.graphics.Shader.TileMode.CLAMP
@@ -563,7 +701,6 @@ private fun LiquidPillCanvas(
                     radius + ambMargin, radius + ambMargin, ambPaint
                 )
 
-                
                 if (glow > 0.01f) {
                     val coreM = 10f * dp
                     val corePaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
@@ -571,7 +708,7 @@ private fun LiquidPillCanvas(
                             rect.center.x, rect.center.y,
                             ((rect.width + coreM * 2) * 0.5f).coerceAtLeast(1f),
                             intArrayOf(
-                                android.graphics.Color.argb((180 * glow).toInt(), aStR, aStG, aStB),
+                                android.graphics.Color.argb((180 * glow * scaleVal).toInt(), aStR, aStG, aStB),
                                 android.graphics.Color.argb(0, aEndR, aEndG, aEndB)
                             ),
                             null, android.graphics.Shader.TileMode.CLAMP
@@ -584,7 +721,6 @@ private fun LiquidPillCanvas(
                     )
                 }
 
-                
                 val pillPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     if (isNightMode) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
@@ -595,80 +731,74 @@ private fun LiquidPillCanvas(
                     shader = android.graphics.LinearGradient(
                         0f, rect.top, 0f, rect.bottom,
                         intArrayOf(
-                            android.graphics.Color.argb(255, aStR, aStG, aStB),
-                            android.graphics.Color.argb(255, aEndR, aEndG, aEndB)
+                            android.graphics.Color.argb((45 * scaleVal).toInt(), aStR, aStG, aStB),
+                            android.graphics.Color.argb((45 * scaleVal).toInt(), aEndR, aEndG, aEndB)
                         ),
                         null, android.graphics.Shader.TileMode.CLAMP
                     )
                 }
                 nc.drawRoundRect(rect.left, rect.top, rect.right, rect.bottom, radius, radius, pillPaint)
-
-                
-                val innerGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    style = android.graphics.Paint.Style.STROKE
-                    strokeWidth = 1.0f * dp
-                    shader = android.graphics.LinearGradient(
-                        0f, rect.top, 0f, rect.bottom,
-                        intArrayOf(
-                            android.graphics.Color.argb(100, 255, 255, 255),
-                            android.graphics.Color.argb(0,   255, 255, 255)
-                        ),
-                        null, android.graphics.Shader.TileMode.CLAMP
-                    )
-                }
-                val innerB = 1.0f * dp
-                nc.drawRoundRect(
-                    rect.left + innerB, rect.top + innerB,
-                    rect.right - innerB, rect.bottom - innerB,
-                    radius - innerB, radius - innerB, innerGlow
-                )
-
-                
-                val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    style       = android.graphics.Paint.Style.STROKE
-                    strokeWidth = 1.5f * dp
-                    shader = if (isNightMode) {
-                        android.graphics.LinearGradient(
-                            0f, rect.top, 0f, rect.bottom,
-                            intArrayOf(
-                                android.graphics.Color.argb(200, 255, 255, 255),
-                                android.graphics.Color.argb(40,  255, 255, 255),
-                                android.graphics.Color.argb(80,  aEndR, aEndG, aEndB)
-                            ),
-                            floatArrayOf(0f, 0.45f, 1f),
-                            android.graphics.Shader.TileMode.CLAMP
-                        )
-                    } else {
-                        android.graphics.LinearGradient(
-                            0f, rect.top, 0f, rect.bottom,
-                            intArrayOf(
-                                android.graphics.Color.argb(180, aStR, aStG, aStB),
-                                android.graphics.Color.argb(60,  aEndR, aEndG, aEndB),
-                                android.graphics.Color.argb(100, aEndR, aEndG, aEndB)
-                            ),
-                            floatArrayOf(0f, 0.45f, 1f),
-                            android.graphics.Shader.TileMode.CLAMP
-                        )
-                    }
-                }
-                val b = 0.65f * dp
-                nc.drawRoundRect(
-                    rect.left + b, rect.top + b, rect.right - b, rect.bottom - b,
-                    radius - b, radius - b, borderPaint
-                )
             }
         }
 
-        
+        val centerFrac = (leftFrac.value + rightFrac.value) / 2f
+        val influence0 = if (useTappedDrawFracs) {
+            when {
+                0 == lastIndex && tapScale.targetValue == 0f -> tapScale.value
+                0 == selectedIndex && tapScale.targetValue == 1f -> tapScale.value
+                else -> 0f
+            }
+        } else {
+            (1f - abs(centerFrac - 1f / 6f) / (1f / 3f)).coerceIn(0f, 1f)
+        }
+
+        val influence1 = if (useTappedDrawFracs) {
+            when {
+                1 == lastIndex && tapScale.targetValue == 0f -> tapScale.value
+                1 == selectedIndex && tapScale.targetValue == 1f -> tapScale.value
+                else -> 0f
+            }
+        } else {
+            (1f - abs(centerFrac - 0.5f) / (1f / 3f)).coerceIn(0f, 1f)
+        }
+
+        val influence2 = if (useTappedDrawFracs) {
+            when {
+                2 == lastIndex && tapScale.targetValue == 0f -> tapScale.value
+                2 == selectedIndex && tapScale.targetValue == 1f -> tapScale.value
+                else -> 0f
+            }
+        } else {
+            (1f - abs(centerFrac - 5f / 6f) / (1f / 3f)).coerceIn(0f, 1f)
+        }
+
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(60.dp)
         ) {
-            NavTabIcon(R.drawable.ic_nav_settings, selectedIndex == 0, Modifier.weight(1f))
-            NavTabIcon(R.drawable.ic_nav_home,     selectedIndex == 1, Modifier.weight(1f))
-            NavTabIcon(R.drawable.ic_nav_servers,  selectedIndex == 2, Modifier.weight(1f))
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_settings,
+                filledRes = R.drawable.ic_nav_settings_filled,
+                influence = influence0,
+                accentColor = accentStart,
+                modifier = Modifier.weight(1f)
+            )
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_spark,
+                filledRes = R.drawable.ic_nav_spark_filled,
+                influence = influence1,
+                accentColor = accentStart,
+                modifier = Modifier.weight(1f)
+            )
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_servers,
+                filledRes = R.drawable.ic_nav_servers_filled,
+                influence = influence2,
+                accentColor = accentStart,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
@@ -677,35 +807,55 @@ private fun LiquidPillCanvas(
 
 @Composable
 private fun NavTabIcon(
-    iconRes: Int,
-    isSelected: Boolean,
+    outlineRes: Int,
+    filledRes: Int,
+    influence: Float,
+    accentColor: Color,
     modifier: Modifier
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.45f,
-        animationSpec = tween(220), label = "iconAlpha"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.88f,
-        animationSpec = tween(220), label = "iconScale"
+    val scale = 0.88f + 0.12f * influence
+    val filledAlpha = influence
+    val outlineAlpha = 0.45f * (1f - influence)
+
+    val iconColor = androidx.compose.ui.graphics.lerp(
+        start = FlareTheme.colors.navIconTint,
+        stop = accentColor,
+        fraction = influence
     )
 
     Box(
         modifier = modifier.fillMaxHeight(),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = painterResource(id = iconRes),
-            contentDescription = null,
-            tint = FlareTheme.colors.navIconTint,
+        Box(
             modifier = Modifier
-                .size(64.dp)
-                .padding(20.dp)
+                .size(56.dp)
+                .padding(16.dp)
                 .graphicsLayer {
-                    this.alpha  = alpha
                     this.scaleX = scale
                     this.scaleY = scale
                 }
-        )
+        ) {
+            if (outlineAlpha > 0.01f) {
+                Icon(
+                    painter = painterResource(id = outlineRes),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = outlineAlpha }
+                )
+            }
+            if (filledAlpha > 0.01f) {
+                Icon(
+                    painter = painterResource(id = filledRes),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = filledAlpha }
+                )
+            }
+        }
     }
 }

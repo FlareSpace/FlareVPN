@@ -205,6 +205,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isReceiverRegistered = true
             }
 
+            try {
+                val jsonProfiles = repository.getJsonProfiles()
+                for (profile in jsonProfiles) {
+                    val currentDesc = profile.serverDescription
+                    val newDesc = flare.client.app.data.parser.ProfileParsingHelper.parseTransportAndSecurityFromJson(profile.configJson)
+                    if (newDesc != currentDesc) {
+                        repository.updateProfile(profile.id, profile.name, profile.configJson, profile.protocol, newDesc)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to auto-repair JSON profiles server description: ${e.message}")
+            }
+
             displayItemsJob?.cancel()
             displayItemsJob = combine(
                 repository.getAllSubscriptions(),
@@ -487,7 +500,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.selectProfile(profileId)
             _selectedProfileId.value = profileId
             
-            if (_connectionState.value != ConnectionState.DISCONNECTED) {
+            val app = getApplication<Application>()
+            try {
+                flare.client.app.widget.FlareWidgetProvider.updateAllWidgets(app)
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Failed to update widget: ${e.message}")
+            }
+            
+            if (_connectionState.value == ConnectionState.CONNECTED || _connectionState.value == ConnectionState.CONNECTING) {
+                delay(300)
                 startVpn()
             }
         }
@@ -753,6 +774,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun stopVpn(cancelRecovery: Boolean = false) {
+        selectionJob?.cancel()
         if (cancelRecovery) recoveryJob?.cancel()
         _connectionState.value = ConnectionState.DISCONNECTING
         handleDisconnection()

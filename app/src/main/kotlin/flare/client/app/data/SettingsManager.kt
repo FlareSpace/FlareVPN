@@ -102,6 +102,18 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("remote_dns_url", "") ?: ""
         set(value) = prefs.edit().putString("remote_dns_url", value).apply()
 
+    var remoteDnsMode: String
+        get() = prefs.getString("dns_mode", "auto") ?: "auto"
+        set(value) = prefs.edit().putString("dns_mode", value).apply()
+
+    var lastWidgetPing: String
+        get() = prefs.getString("last_widget_ping", "--") ?: "--"
+        set(value) = prefs.edit().putString("last_widget_ping", value).apply()
+
+    var lastWidgetPingProfileId: Long
+        get() = prefs.getLong("last_widget_ping_profile_id", -1L)
+        set(value) = prefs.edit().putLong("last_widget_ping_profile_id", value).apply()
+
     var isFakeIpEnabled: Boolean
         get() = prefs.getBoolean("fake_ip_enabled", false)
         set(value) = prefs.edit().putBoolean("fake_ip_enabled", value).apply()
@@ -320,6 +332,18 @@ class SettingsManager(context: Context) {
     var chainedProfileIdsString: String
         get() = prefs.getString("chained_profile_ids", "") ?: ""
         set(value) = prefs.edit().putString("chained_profile_ids", value).apply()
+
+    var isTlsSpoofEnabled: Boolean
+        get() = prefs.getBoolean("tls_spoof_enabled", false)
+        set(value) = prefs.edit().putBoolean("tls_spoof_enabled", value).apply()
+
+    var tlsSpoofDomain: String
+        get() = prefs.getString("tls_spoof_domain", "google.com") ?: "google.com"
+        set(value) = prefs.edit().putString("tls_spoof_domain", value).apply()
+
+    var tlsSpoofMethod: String
+        get() = prefs.getString("tls_spoof_method", "wrong-ack") ?: "wrong-ack"
+        set(value) = prefs.edit().putString("tls_spoof_method", value).apply()
 }
 
 

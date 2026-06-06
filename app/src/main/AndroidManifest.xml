@@ -86,13 +86,27 @@
         <service
             android:name=".ui.FlareTileService"
             android:exported="true"
-            android:icon="@drawable/ic_cloud"
+            android:icon="@drawable/ic_tile_flare"
             android:label="Flare VPN"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".widget.FlareWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="flare.client.app.VPN_STATE" />
+                <action android:name="flare.client.app.WIDGET_TOGGLE_VPN" />
+                <action android:name="flare.client.app.WIDGET_PING_PROFILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/flare_widget_info" />
+        </receiver>
 
     </application>
 

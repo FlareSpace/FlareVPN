@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@drawable/bg_widget_liquid_glass">
+
+    
+    <FrameLayout
+        android:id="@+id/btn_action_container"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_centerVertical="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginStart="8dp">
+
+        <ImageView
+            android:id="@+id/btn_connect"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_widget_button"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_power"
+            android:padding="16dp"
+            android:contentDescription="Toggle VPN"
+            android:focusable="true"
+            android:clickable="true" />
+    </FrameLayout>
+
+    
+    <LinearLayout
+        android:id="@+id/info_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/btn_action_container"
+        android:layout_toStartOf="@id/ping_container"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="12dp"
+        android:orientation="vertical">
+
+        
+        <TextView
+            android:id="@+id/txt_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Flare VPN"
+            android:textColor="#FFFFFFFF"
+            android:textSize="18sp"
+            android:fontFamily="@font/geologica_medium"
+            android:textStyle="bold" />
+
+        
+        <TextView
+            android:id="@+id/txt_profile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Profile: Not Selected"
+            android:textColor="#E0E0E0"
+            android:textSize="13sp"
+            android:fontFamily="@font/geologica_regular"
+            android:ellipsize="end"
+            android:singleLine="true" />
+
+        
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:id="@+id/img_status_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:src="@drawable/widget_dot"
+                android:contentDescription="Status indicator dot" />
+
+            <TextView
+                android:id="@+id/txt_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="Disconnected"
+                android:textColor="#B0B0B0"
+                android:textSize="12sp"
+                android:fontFamily="@font/geologica_regular" />
+        </LinearLayout>
+    </LinearLayout>
+
+    
+    <LinearLayout
+        android:id="@+id/ping_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_centerVertical="true"
+        android:layout_marginEnd="8dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ImageView
+            android:id="@+id/btn_ping"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_widget_button"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_lightning"
+            android:padding="10dp"
+            android:contentDescription="Ping current profile"
+            android:focusable="true"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/txt_ping"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="--"
+            android:textColor="#E0E0E0"
+            android:textSize="12sp"
+            android:fontFamily="@font/geologica_regular"
+            android:singleLine="true" />
+    </LinearLayout>
+
+</RelativeLayout>

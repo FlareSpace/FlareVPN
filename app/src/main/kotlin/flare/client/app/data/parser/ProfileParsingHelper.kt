@@ -20,7 +20,8 @@ object ProfileParsingHelper {
                     "ws" -> "WS"
                     "grpc" -> "gRPC"
                     "httpupgrade" -> "HTTPUpgrade"
-                    "h2", "http" -> "H2"
+                    "h2" -> "H2"
+                    "http", "xhttp" -> "HTTP"
                     "quic" -> "QUIC"
                     "kcp" -> "KCP"
                     else -> transportType.uppercase()
@@ -34,6 +35,11 @@ object ProfileParsingHelper {
                     }
                 } else if (plugin == "shadowtls") {
                     transport = "TCP"
+                } else {
+                    val type = outbound.optString("type").lowercase()
+                    if (type == "vless" || type == "vmess" || type == "trojan" || type == "shadowsocks" || type == "shadowtls" || type == "socks" || type == "http") {
+                        transport = "TCP"
+                    }
                 }
             }
 

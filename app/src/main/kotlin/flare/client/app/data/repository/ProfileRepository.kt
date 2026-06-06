@@ -15,6 +15,7 @@ class ProfileRepository(
 
     fun getAllProfiles(): Flow<List<ProfileSummary>> = profileDao.getAllProfiles()
     fun getStandaloneProfiles(): Flow<List<ProfileEntity>> = profileDao.getStandaloneProfiles()
+    suspend fun getJsonProfiles(): List<ProfileEntity> = profileDao.getJsonProfiles()
     fun getAllSubscriptions(): Flow<List<SubscriptionEntity>> = subscriptionDao.getAllSubscriptions()
     fun getProfilesBySubscription(subId: Long): Flow<List<ProfileEntity>> =
         profileDao.getProfilesBySubscription(subId)

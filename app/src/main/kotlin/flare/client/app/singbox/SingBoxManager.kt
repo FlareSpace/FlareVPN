@@ -10,6 +10,7 @@ import android.util.Log
 import flare.client.app.data.SettingsManager
 import flare.client.app.data.db.AppDatabase
 import flare.client.app.data.repository.ProfileRepository
+import flare.client.app.data.parser.V2RayConfigConverter
 import io.nekohasekai.libbox.*
 import java.io.BufferedReader
 import java.io.File
@@ -75,6 +76,7 @@ object SingBoxManager {
                         tempPath = context.cacheDir.absolutePath
                         fixAndroidStack = true
                         logMaxLines = 500
+                        crashReportSource = "core"
                     }
             Libbox.setup(options)
 
@@ -89,12 +91,6 @@ object SingBoxManager {
             
             if (shouldWriteCoreLogs) {
                 Log.i(TAG, "sing-box log file: ${lf.absolutePath}")
-                try {
-                    Libbox.redirectStderr(lf.absolutePath)
-                    Log.i(TAG, "sing-box stderr redirected")
-                } catch (e: Exception) {
-                    Log.w(TAG, "redirectStderr failed (non-fatal): ${e.message}")
-                }
             }
 
             setupDone = true
@@ -139,6 +135,8 @@ object SingBoxManager {
                                 override fun writeDebugMessage(message: String?) {
                                     if (!message.isNullOrBlank()) Log.i(TAG, "[sb] $message")
                                 }
+                                override fun triggerNativeCrash() {}
+                                override fun connectSSHAgent(): Int = 0
                             }
 
                     val platform =
@@ -225,20 +223,25 @@ object SingBoxManager {
                                             }
 
                                             if (opts.autoRoute) {
-                                                val dnsAddr =
-                                                        try {
-                                                            opts.dnsServerAddress?.value
-                                                        } catch (e: Exception) {
-                                                            null
+                                                try {
+                                                    val dnsServers = opts.dnsServerAddress
+                                                    if (dnsServers != null && dnsServers.hasNext()) {
+                                                        while (dnsServers.hasNext()) {
+                                                            val dnsAddr = dnsServers.next()
+                                                            if (!dnsAddr.isNullOrBlank()) {
+                                                                builder.addDnsServer(dnsAddr as String)
+                                                                Log.d(TAG, "openTun: added DNS server $dnsAddr")
+                                                            }
                                                         }
-                                                Log.i(TAG, "openTun: dnsServerAddress=$dnsAddr")
-                                                if (!dnsAddr.isNullOrBlank()) {
-                                                    builder.addDnsServer(dnsAddr)
-                                                } else {
-                                                    Log.w(
-                                                            TAG,
-                                                            "openTun: dnsServerAddress is null/empty, using 1.1.1.1 fallback"
-                                                    )
+                                                    } else {
+                                                        Log.w(
+                                                                TAG,
+                                                                "openTun: dnsServerAddress is empty, using 1.1.1.1 fallback"
+                                                        )
+                                                        builder.addDnsServer("1.1.1.1")
+                                                    }
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Failed to get dnsServerAddress, using 1.1.1.1 fallback: ${e.message}")
                                                     builder.addDnsServer("1.1.1.1")
                                                 }
 
@@ -317,6 +320,24 @@ object SingBoxManager {
                                     }
                                 }
 
+                                override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
+                                override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
+                                override fun registerMyInterface(name: String?) {}
+                                override fun usePlatformShell(): Boolean = false
+                                override fun checkPlatformShell() {}
+                                override fun openShellSession(
+                                    user: PlatformUser?,
+                                    command: String?,
+                                    environ: StringIterator?,
+                                    term: String?,
+                                    rows: Int,
+                                    cols: Int
+                                ): ShellSession? = null
+                                override fun lookupUser(username: String?): PlatformUser? = null
+                                override fun lookupSFTPServer(): String? = null
+                                override fun readSystemSSHHostKey(): String? = null
+                                override fun tailscaleHostname(): String = ""
+
                                 override fun readWIFIState(): WIFIState? = null
                                 override fun sendNotification(notification: Notification?) {}
                                 override fun startDefaultInterfaceMonitor(
@@ -383,7 +404,11 @@ object SingBoxManager {
                 Log.i(TAG, "Stopping sing-box engine...")
                 stopTrafficStream()
                 
-                boxService?.closeService()
+                
+                kotlinx.coroutines.withTimeoutOrNull(3000) {
+                    boxService?.closeService()
+                } ?: Log.w(TAG, "boxService.closeService() timed out, ignoring...")
+
                 
                 try {
                     tunPfd?.close()
@@ -419,14 +444,16 @@ object SingBoxManager {
             if (bs != null) {
                 if (isRunning) {
                     try {
-                        bs.closeService()
+                        kotlinx.coroutines.withTimeoutOrNull(3000) {
+                            bs.closeService()
+                        }
                     } catch (_: Exception) {}
                 }
                 try {
                     bs.close()
                 } catch (_: Exception) {}
             }
-            
+
             try {
                 tunPfd?.close()
             } catch (_: Exception) {}
@@ -786,9 +813,41 @@ object SingBoxManager {
                 }
             }
 
+            if (settings.isTlsSpoofEnabled) {
+                val domain = settings.tlsSpoofDomain.trim()
+                val method = settings.tlsSpoofMethod.trim()
+                if (domain.isNotEmpty()) {
+                    val route = obj.optJSONObject("route")
+                    if (route != null) {
+                        val rules = route.optJSONArray("rules") ?: JSONArray().also { route.put("rules", it) }
+                        val spoofRule = JSONObject().apply {
+                            put("action", "route-options")
+                            put("tls_spoof", domain)
+                            if (method.isNotEmpty()) {
+                                put("tls_spoof_method", method)
+                            }
+                            put("protocol", JSONArray().put("tls"))
+                        }
 
-            val remoteDnsUrl = settings.remoteDnsUrl
-            if (remoteDnsUrl.isNotBlank()) {
+                        val newRules = JSONArray()
+                        newRules.put(spoofRule)
+                        for (i in 0 until rules.length()) {
+                            newRules.put(rules.opt(i))
+                        }
+                        route.put("rules", newRules)
+                        Log.i(TAG, "injectAdvancedSettings: TLS Spoof rule injected: domain=$domain, method=$method")
+                    }
+                }
+            }
+
+            val dnsUrl = when (settings.remoteDnsMode) {
+                "cloudflare_doh" -> "https://1.1.1.1/dns-query"
+                "adguard_doh" -> "https://dns.adguard-dns.com/dns-query"
+                "google_dot" -> "tls://dns.google"
+                "custom" -> settings.remoteDnsUrl
+                else -> ""
+            }
+            if (dnsUrl.isNotBlank()) {
                 val dns = obj.optJSONObject("dns")
                 if (dns != null) {
                     val servers = dns.optJSONArray("servers")
@@ -796,10 +855,18 @@ object SingBoxManager {
                         for (i in 0 until servers.length()) {
                             val server = servers.optJSONObject(i)
                             if (server != null && server.optString("tag") == "dns-remote") {
-                                server.put("address", remoteDnsUrl)
+                                server.remove("type")
+                                server.remove("server")
+                                server.remove("server_port")
+                                server.remove("path")
+                                server.remove("responses")
+                                server.remove("domain_resolver")
+                                
+                                server.put("address", dnsUrl)
+                                V2RayConfigConverter.migrateDnsServerObject(server)
                                 Log.i(
                                         TAG,
-                                        "injectAdvancedSettings: overridden dns-remote address to $remoteDnsUrl"
+                                        "injectAdvancedSettings: overridden dns-remote address to $dnsUrl"
                                 )
                                 break
                             }
@@ -922,7 +989,7 @@ object SingBoxManager {
                 for (i in 0 until outbounds.length()) {
                     val ob = outbounds.optJSONObject(i) ?: continue
                     val type = ob.optString("type")
-                    if (type == "direct" || type == "block" || type == "dns") continue
+                    if (type == "direct" || type == "block" || type == "dns" || type == "urltest" || type == "selector") continue
 
                     val flow = ob.optString("flow", "")
                     val hasReality = ob.optJSONObject("tls")?.has("reality") ?: false

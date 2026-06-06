@@ -173,6 +173,8 @@ object PingHelper {
             override fun getSystemProxyStatus() = SystemProxyStatus()
             override fun setSystemProxyEnabled(enabled: Boolean) {}
             override fun writeDebugMessage(message: String?) {}
+            override fun triggerNativeCrash() {}
+            override fun connectSSHAgent(): Int = 0
         }
 
         val platform = object : PlatformInterface {
@@ -193,6 +195,24 @@ object PingHelper {
             override fun underNetworkExtension(): Boolean = false
             override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
             override fun useProcFS(): Boolean = true
+
+            override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
+            override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
+            override fun registerMyInterface(name: String?) {}
+            override fun usePlatformShell(): Boolean = false
+            override fun checkPlatformShell() {}
+            override fun openShellSession(
+                user: PlatformUser?,
+                command: String?,
+                environ: StringIterator?,
+                term: String?,
+                rows: Int,
+                cols: Int
+            ): ShellSession? = null
+            override fun lookupUser(username: String?): PlatformUser? = null
+            override fun lookupSFTPServer(): String? = null
+            override fun readSystemSSHHostKey(): String? = null
+            override fun tailscaleHostname(): String = ""
         }
 
         val boxService = Libbox.newCommandServer(handler, platform)
@@ -470,6 +490,7 @@ object PingHelper {
                 put("interval", "10m")
             })
 
+            val testHost = extractUrlHost(testUrl)
             val config = JSONObject().apply {
                 put("experimental", JSONObject().apply {
                     put("clash_api", JSONObject().apply {
@@ -482,18 +503,22 @@ object PingHelper {
                     put("servers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "dns-direct")
-                            put("address", "8.8.8.8")
-                            put("detour", "direct")
+                            put("type", "udp")
+                            put("server", "8.8.8.8")
                         })
                         put(JSONObject().apply {
                             put("tag", "dns-cf")
-                            put("address", "1.1.1.1")
-                            put("detour", "direct")
+                            put("type", "udp")
+                            put("server", "1.1.1.1")
                         })
                         put(JSONObject().apply {
                             put("tag", "dns-local")
-                            put("address", "local")
-                            put("detour", "direct")
+                            put("type", "local")
+                        })
+                        put(JSONObject().apply {
+                            put("tag", "dns-fakeip")
+                            put("type", "fakeip")
+                            put("inet4_range", "198.18.0.0/15")
                         })
                     })
                     put("rules", JSONArray().apply {
@@ -501,6 +526,19 @@ object PingHelper {
                             put("outbound", JSONArray().put("direct"))
                             put("server", "dns-direct")
                         })
+                        if (!testHost.isNullOrBlank()) {
+                            put(JSONObject().apply {
+                                put("domain", JSONArray().apply {
+                                    put(testHost)
+                                    if (testHost.startsWith("www.")) {
+                                        put(testHost.substring(4))
+                                    } else {
+                                        put("www.$testHost")
+                                    }
+                                })
+                                put("server", "dns-fakeip")
+                            })
+                        }
                     })
                     put("final", "dns-direct")
                 })
@@ -550,6 +588,21 @@ object PingHelper {
             ServerSocket(0).use { it.localPort }
         } catch (e: Exception) {
             9094
+        }
+    }
+
+    private fun extractUrlHost(urlStr: String): String? {
+        return try {
+            val uri = java.net.URI(urlStr)
+            val host = uri.host
+            if (host.isNullOrBlank()) {
+                val matcher = Pattern.compile("https?://([^:/]+)").matcher(urlStr)
+                if (matcher.find()) matcher.group(1) else null
+            } else {
+                host
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }

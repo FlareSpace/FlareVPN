@@ -242,7 +242,16 @@ object V2RayConfigConverter {
                 }
 
                 val network = xRule.optString("network", "")
-                if (network.isNotEmpty()) { sbRule.put("network", network); hasContent = true }
+                if (network.isNotEmpty()) {
+                    if (network.contains(",")) {
+                        val netArray = JSONArray()
+                        network.split(",").forEach { netArray.put(it.trim()) }
+                        sbRule.put("network", netArray)
+                    } else {
+                        sbRule.put("network", network.trim())
+                    }
+                    hasContent = true
+                }
 
                 val protocol = xRule.optString("protocol", "")
                 if (protocol.isNotEmpty()) {
@@ -298,23 +307,18 @@ object V2RayConfigConverter {
 
         val sbDnsServers = JSONArray()
         
-        sbDnsServers.put(JSONObject().apply {
+        sbDnsServers.put(migrateDnsServerObject(JSONObject().apply {
             put("tag", "dns-remote")
             put("address", primaryDns)
-            put("address_resolver", "dns-direct")
+            put("domain_resolver", "dns-direct")
             put("detour", findPrimaryProxyTag(sbOutbounds))
-        })
+        }))
         
-        sbDnsServers.put(JSONObject().apply {
+        sbDnsServers.put(migrateDnsServerObject(JSONObject().apply {
             put("tag", "dns-direct")
             put("address", directDns)
             put("detour", "direct")
-        })
-        
-        sbDnsServers.put(JSONObject().apply {
-            put("tag", "dns-block")
-            put("address", "rcode://success")
-        })
+        }))
 
         val sbDnsRules = JSONArray()
 
@@ -333,15 +337,16 @@ object V2RayConfigConverter {
                     val domains = s.optJSONArray("domains")
                     if (domains != null && domains.length() > 0) {
                         val tag = "dns-custom-$i"
-                        sbDnsServers.put(JSONObject().apply {
+                        sbDnsServers.put(migrateDnsServerObject(JSONObject().apply {
                             put("tag", tag)
                             put("address", addr)
                             if (port != 53 && port > 0) put("port", port)
                             put("detour", "direct")
-                        })
+                        }))
                         
                         val dnsRule = JSONObject().apply { put("server", tag) }
-                        val dnsDomains = JSONArray()
+                        val dnsDomainExact = JSONArray()
+                        val dnsDomainSuffixes = JSONArray()
                         val dnsRuleSets = JSONArray()
                         for (j in 0 until domains.length()) {
                             val d = domains.optString(j, "")
@@ -355,20 +360,21 @@ object V2RayConfigConverter {
                                 }
                                 d.startsWith("domain:") -> {
                                     val dom = d.removePrefix("domain:")
-                                    if (dom.isNotEmpty()) dnsDomains.put(dom)
+                                    if (dom.isNotEmpty()) dnsDomainSuffixes.put(dom)
                                 }
                                 d.startsWith("full:") -> {
                                     val dom = d.removePrefix("full:")
-                                    if (dom.isNotEmpty()) dnsDomains.put(dom)
+                                    if (dom.isNotEmpty()) dnsDomainExact.put(dom)
                                 }
                                 d.isNotEmpty() -> {
-                                    dnsDomains.put(d)
+                                    dnsDomainSuffixes.put(d)
                                 }
                             }
                         }
-                        if (dnsDomains.length() > 0) dnsRule.put("domain", dnsDomains)
+                        if (dnsDomainExact.length() > 0) dnsRule.put("domain", dnsDomainExact)
+                        if (dnsDomainSuffixes.length() > 0) dnsRule.put("domain_suffix", dnsDomainSuffixes)
                         if (dnsRuleSets.length() > 0) dnsRule.put("rule_set", dnsRuleSets)
-                        if (dnsDomains.length() > 0 || dnsRuleSets.length() > 0) {
+                        if (dnsDomainExact.length() > 0 || dnsDomainSuffixes.length() > 0 || dnsRuleSets.length() > 0) {
                             sbDnsRules.put(dnsRule)
                         }
                     }
@@ -385,7 +391,7 @@ object V2RayConfigConverter {
         }
         if (dnsDirectDomains.length() > 0) {
             sbDnsRules.put(JSONObject().apply {
-                put("domain", dnsDirectDomains)
+                put("domain_suffix", dnsDirectDomains)
                 put("server", "dns-direct")
             })
         }
@@ -490,7 +496,17 @@ object V2RayConfigConverter {
                 "vmess" -> convertVmess(xrayOb, sbOb)
                 "trojan" -> convertTrojan(xrayOb, sbOb)
                 "shadowsocks" -> convertShadowsocks(xrayOb, sbOb, extraOutbounds)
-                "hysteria", "hy" -> convertHysteria(xrayOb, sbOb)
+                "hysteria", "hy" -> {
+                    val settings = xrayOb.optJSONObject("settings")
+                    val streamSettings = xrayOb.optJSONObject("streamSettings")
+                    val hysteriaSettings = streamSettings?.optJSONObject("hysteriaSettings")
+                    val isVersion2 = (settings?.optInt("version", 1) == 2) || (hysteriaSettings?.optInt("version", 1) == 2)
+                    if (isVersion2) {
+                        convertHysteria2(xrayOb, sbOb)
+                    } else {
+                        convertHysteria(xrayOb, sbOb)
+                    }
+                }
                 "hysteria2", "hy2" -> convertHysteria2(xrayOb, sbOb)
                 "freedom" -> sbOb.put("type", "direct")
                 "blackhole" -> sbOb.put("type", "block")
@@ -737,46 +753,229 @@ object V2RayConfigConverter {
     private fun convertHysteria(xrayOb: JSONObject, sbOb: JSONObject) {
         sbOb.put("type", "hysteria")
         val settings = xrayOb.optJSONObject("settings")
-        val server =
-                settings?.optJSONArray("servers")?.optJSONObject(0)
-                        ?: return
-        sbOb.put("server", server.optString("address"))
-        sbOb.put("server_port", server.optInt("port"))
-        val password = server.optString("password", "")
+        var host = ""
+        var port = 0
+        var password = ""
+
+        if (settings != null) {
+            val servers = settings.optJSONArray("servers")
+            if (servers != null && servers.length() > 0) {
+                val server = servers.optJSONObject(0)
+                if (server != null) {
+                    host = server.optString("address", "")
+                    port = server.optInt("port", 0)
+                    password = server.optString("password", "")
+                }
+            }
+            if (host.isEmpty()) {
+                host = settings.optString("address", "")
+            }
+            if (port == 0) {
+                port = settings.optInt("port", 0)
+            }
+            if (password.isEmpty()) {
+                password = settings.optString("password", "")
+            }
+        }
+
+        val streamSettings = xrayOb.optJSONObject("streamSettings")
+        val hysteriaSettings = streamSettings?.optJSONObject("hysteriaSettings")
+        if (password.isEmpty() && hysteriaSettings != null) {
+            password = hysteriaSettings.optString("auth", "")
+            if (password.isEmpty()) {
+                password = hysteriaSettings.optString("auth_str", "")
+            }
+        }
+
+        if (host.isNotEmpty()) {
+            sbOb.put("server", host)
+        }
+        if (port > 0) {
+            sbOb.put("server_port", port)
+        }
         if (password.isNotEmpty()) {
             sbOb.put("auth_str", password)
         }
-        settings.optInt("up_mbps").takeIf { it > 0 }?.let { sbOb.put("up_mbps", it) }
-        settings.optInt("down_mbps").takeIf { it > 0 }?.let { sbOb.put("down_mbps", it) }
-        val obfs = settings.optString("obfs", "")
+
+        var upMbps = 0
+        var downMbps = 0
+        var obfs = ""
+
+        if (settings != null) {
+            upMbps = settings.optInt("up_mbps", 0)
+            if (upMbps == 0) {
+                upMbps = settings.optInt("up", 0)
+            }
+            downMbps = settings.optInt("down_mbps", 0)
+            if (downMbps == 0) {
+                downMbps = settings.optInt("down", 0)
+            }
+            obfs = settings.optString("obfs", "")
+        }
+
+        if (hysteriaSettings != null) {
+            if (upMbps == 0) {
+                upMbps = hysteriaSettings.optInt("up_mbps", 0)
+            }
+            if (upMbps == 0) {
+                upMbps = hysteriaSettings.optInt("up", 0)
+            }
+            if (downMbps == 0) {
+                downMbps = hysteriaSettings.optInt("down_mbps", 0)
+            }
+            if (downMbps == 0) {
+                downMbps = hysteriaSettings.optInt("down", 0)
+            }
+            if (obfs.isEmpty()) {
+                obfs = hysteriaSettings.optString("obfs", "")
+            }
+        }
+
+        if (upMbps <= 0) {
+            upMbps = 100
+        }
+        if (downMbps <= 0) {
+            downMbps = 100
+        }
+        sbOb.put("up_mbps", upMbps)
+        sbOb.put("down_mbps", downMbps)
         if (obfs.isNotEmpty()) {
             sbOb.put("obfs", obfs)
         }
-        xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
+
+        streamSettings?.let { convertStreamSettings(it, sbOb) }
+
+        val tls = sbOb.optJSONObject("tls")
+        if (tls == null) {
+            sbOb.put("tls", JSONObject().apply {
+                put("enabled", true)
+                if (host.isNotEmpty()) {
+                    put("server_name", host)
+                }
+            })
+        } else {
+            if (!tls.has("enabled")) {
+                tls.put("enabled", true)
+            }
+            if (!tls.has("server_name") && host.isNotEmpty()) {
+                tls.put("server_name", host)
+            }
+        }
     }
 
     private fun convertHysteria2(xrayOb: JSONObject, sbOb: JSONObject) {
         sbOb.put("type", "hysteria2")
         val settings = xrayOb.optJSONObject("settings")
-        val server =
-                settings?.optJSONArray("servers")?.optJSONObject(0)
-                        ?: return
-        sbOb.put("server", server.optString("address"))
-        sbOb.put("server_port", server.optInt("port"))
-        sbOb.put("password", server.optString("password"))
-        settings.optInt("up_mbps").takeIf { it > 0 }?.let { sbOb.put("up_mbps", it) }
-        settings.optInt("down_mbps").takeIf { it > 0 }?.let { sbOb.put("down_mbps", it) }
-        settings.optJSONObject("obfs")?.let { obfs ->
-            val obfsType = obfs.optString("type", "")
+        var host = ""
+        var port = 0
+        var password = ""
+
+        if (settings != null) {
+            val servers = settings.optJSONArray("servers")
+            if (servers != null && servers.length() > 0) {
+                val server = servers.optJSONObject(0)
+                if (server != null) {
+                    host = server.optString("address", "")
+                    port = server.optInt("port", 0)
+                    password = server.optString("password", "")
+                }
+            }
+            if (host.isEmpty()) {
+                host = settings.optString("address", "")
+            }
+            if (port == 0) {
+                port = settings.optInt("port", 0)
+            }
+            if (password.isEmpty()) {
+                password = settings.optString("password", "")
+            }
+        }
+
+        val streamSettings = xrayOb.optJSONObject("streamSettings")
+        val hysteriaSettings = streamSettings?.optJSONObject("hysteriaSettings")
+        if (password.isEmpty() && hysteriaSettings != null) {
+            password = hysteriaSettings.optString("auth", "")
+            if (password.isEmpty()) {
+                password = hysteriaSettings.optString("password", "")
+            }
+        }
+
+        if (host.isNotEmpty()) {
+            sbOb.put("server", host)
+        }
+        if (port > 0) {
+            sbOb.put("server_port", port)
+        }
+        if (password.isNotEmpty()) {
+            sbOb.put("password", password)
+        }
+
+        var upMbps = 0
+        var downMbps = 0
+
+        if (settings != null) {
+            upMbps = settings.optInt("up_mbps", 0)
+            if (upMbps == 0) {
+                upMbps = settings.optInt("up", 0)
+            }
+            downMbps = settings.optInt("down_mbps", 0)
+            if (downMbps == 0) {
+                downMbps = settings.optInt("down", 0)
+            }
+        }
+
+        if (hysteriaSettings != null) {
+            if (upMbps == 0) {
+                upMbps = hysteriaSettings.optInt("up_mbps", 0)
+            }
+            if (upMbps == 0) {
+                upMbps = hysteriaSettings.optInt("up", 0)
+            }
+            if (downMbps == 0) {
+                downMbps = hysteriaSettings.optInt("down_mbps", 0)
+            }
+            if (downMbps == 0) {
+                downMbps = hysteriaSettings.optInt("down", 0)
+            }
+        }
+
+        if (upMbps > 0) {
+            sbOb.put("up_mbps", upMbps)
+        }
+        if (downMbps > 0) {
+            sbOb.put("down_mbps", downMbps)
+        }
+
+        val obfs = settings?.optJSONObject("obfs") ?: hysteriaSettings?.optJSONObject("obfs")
+        obfs?.let { o ->
+            val obfsType = o.optString("type", "")
             if (obfsType.isNotEmpty()) {
                 sbOb.put("obfs", JSONObject().apply {
                     put("type", obfsType)
-                    val password = obfs.optString("password", "")
+                    val password = o.optString("password", "")
                     if (password.isNotEmpty()) put("password", password)
                 })
             }
         }
-        xrayOb.optJSONObject("streamSettings")?.let { convertStreamSettings(it, sbOb) }
+
+        streamSettings?.let { convertStreamSettings(it, sbOb) }
+
+        val tls = sbOb.optJSONObject("tls")
+        if (tls == null) {
+            sbOb.put("tls", JSONObject().apply {
+                put("enabled", true)
+                if (host.isNotEmpty()) {
+                    put("server_name", host)
+                }
+            })
+        } else {
+            if (!tls.has("enabled")) {
+                tls.put("enabled", true)
+            }
+            if (!tls.has("server_name") && host.isNotEmpty()) {
+                tls.put("server_name", host)
+            }
+        }
     }
 
     private fun convertStreamSettings(stream: JSONObject, sbOb: JSONObject) {
@@ -915,6 +1114,32 @@ object V2RayConfigConverter {
                         }
                 )
             }
+            "xhttp" -> {
+                val settings = stream.optJSONObject("xhttpSettings")
+                sbOb.put(
+                        "transport",
+                        JSONObject().apply {
+                            put("type", "http")
+                            put("path", settings?.optString("path", "/"))
+                            val hostOpt = settings?.opt("host")
+                            if (hostOpt is JSONArray) {
+                                if (hostOpt.length() > 0) {
+                                    put("host", hostOpt)
+                                } else {
+                                    put("host", JSONArray().put(""))
+                                }
+                            } else if (hostOpt is String) {
+                                if (hostOpt.isNotEmpty()) {
+                                    put("host", JSONArray().put(hostOpt))
+                                } else {
+                                    put("host", JSONArray().put(""))
+                                }
+                            } else {
+                                put("host", JSONArray().put(""))
+                            }
+                        }
+                )
+            }
             "httpUpgrade", "httpupgrade" -> {
                 val settings = stream.optJSONObject("httpUpgradeSettings") ?: stream.optJSONObject("httpupgradeSettings")
                 sbOb.put(
@@ -925,6 +1150,8 @@ object V2RayConfigConverter {
                             val host = settings?.optString("host", "") ?: ""
                             if (host.isNotEmpty()) {
                                 put("host", host)
+                            } else {
+                                put("host", "")
                             }
                         }
                 )
@@ -939,6 +1166,8 @@ object V2RayConfigConverter {
                             val host = settings?.optString("host", "") ?: ""
                             if (host.isNotEmpty()) {
                                 put("host", JSONArray().put(host))
+                            } else {
+                                put("host", JSONArray().put(""))
                             }
                         }
                 )
@@ -1157,9 +1386,12 @@ object V2RayConfigConverter {
 
         val dns = obj.optJSONObject("dns") ?: JSONObject().also { obj.put("dns", it) }
         val dnsServers = dns.optJSONArray("servers")
+        val rcodeServersMap = mutableMapOf<String, String>()
         if (dnsServers != null) {
+            val migratedServers = JSONArray()
             for (i in 0 until dnsServers.length()) {
-                when (val server = dnsServers.get(i)) {
+                val server = dnsServers.get(i)
+                val processedServer = when (server) {
                     is JSONObject -> {
                         val address = server.optString("address", "")
                         if (address.contains("+local://")) {
@@ -1168,20 +1400,70 @@ object V2RayConfigConverter {
                                 server.put("detour", "direct")
                             }
                         }
+                        server
                     }
                     is String -> {
                         if (server.contains("+local://")) {
-                            dnsServers.put(i, server.replace("+local://", "://"))
+                            server.replace("+local://", "://")
+                        } else {
+                            server
                         }
                     }
+                    else -> server
+                }
+                
+                if (processedServer is JSONObject) {
+                    val address = processedServer.optString("address", "")
+                    if (address.startsWith("rcode://", ignoreCase = true)) {
+                        val tag = processedServer.optString("tag", "")
+                        if (tag.isNotEmpty()) {
+                            val rcode = address.substring(8).uppercase(Locale.ROOT)
+                            val finalRcode = when (rcode) {
+                                "SUCCESS" -> "NOERROR"
+                                "NOERROR" -> "NOERROR"
+                                "NXDOMAIN" -> "NXDOMAIN"
+                                "REFUSED" -> "REFUSED"
+                                "SERVFAIL" -> "SERVFAIL"
+                                "FORMERR" -> "FORMERR"
+                                "NOTIMP" -> "NOTIMP"
+                                else -> "NOERROR"
+                            }
+                            rcodeServersMap[tag] = finalRcode
+                        }
+                        continue
+                    }
+                } else if (processedServer is String) {
+                    if (processedServer.startsWith("rcode://", ignoreCase = true)) {
+                        continue
+                    }
+                }
+                
+                val migrated = migrateDnsServer(processedServer)
+                if (migrated != null) {
+                    migratedServers.put(migrated)
+                } else {
+                    migratedServers.put(processedServer)
                 }
             }
+            dns.put("servers", migratedServers)
         }
         if (!dns.has("strategy")) {
             dns.put("strategy", "prefer_ipv4")
         }
 
         val dnsRules = dns.optJSONArray("rules") ?: JSONArray().also { dns.put("rules", it) }
+        if (rcodeServersMap.isNotEmpty()) {
+            for (i in 0 until dnsRules.length()) {
+                val rule = dnsRules.optJSONObject(i) ?: continue
+                val targetServer = rule.optString("server", "")
+                if (targetServer.isNotEmpty() && rcodeServersMap.containsKey(targetServer)) {
+                    val rcode = rcodeServersMap[targetServer] ?: "NOERROR"
+                    rule.remove("server")
+                    rule.put("action", "predefined")
+                    rule.put("rcode", rcode)
+                }
+            }
+        }
         val dnsRulesStr = dnsRules.toString()
 
         val outbounds = obj.optJSONArray("outbounds")
@@ -1346,5 +1628,160 @@ object V2RayConfigConverter {
             clean = clean.substringBefore(":")
         }
         return clean
+    }
+
+    fun parseDnsAddress(address: String): JSONObject {
+        val result = JSONObject()
+        val cleanAddr = address.trim()
+        when {
+            cleanAddr.startsWith("https://", ignoreCase = true) -> {
+                result.put("type", "https")
+                val url = cleanAddr.substring(8)
+                val slashIdx = url.indexOf('/')
+                val hostPort = if (slashIdx != -1) url.substring(0, slashIdx) else url
+                val path = if (slashIdx != -1) url.substring(slashIdx) else "/dns-query"
+                
+                val colonIdx = hostPort.lastIndexOf(':')
+                val ipv6Bracket = hostPort.startsWith("[") && hostPort.contains("]")
+                val host = if (ipv6Bracket) {
+                    val endBracket = hostPort.indexOf(']')
+                    hostPort.substring(1, endBracket)
+                } else if (colonIdx != -1 && hostPort.indexOf(':', colonIdx + 1) == -1) {
+                    hostPort.substring(0, colonIdx)
+                } else {
+                    hostPort
+                }
+                val port = if (ipv6Bracket) {
+                    val endBracket = hostPort.indexOf(']')
+                    val after = hostPort.substring(endBracket + 1)
+                    if (after.startsWith(":")) after.substring(1).toIntOrNull() else null
+                } else if (colonIdx != -1 && hostPort.indexOf(':', colonIdx + 1) == -1) {
+                    hostPort.substring(colonIdx + 1).toIntOrNull()
+                } else {
+                    null
+                }
+                result.put("server", host)
+                if (port != null) result.put("server_port", port)
+                result.put("path", path)
+            }
+            cleanAddr.startsWith("tls://", ignoreCase = true) -> {
+                result.put("type", "tls")
+                val url = cleanAddr.substring(6)
+                parseHostPort(url, result)
+            }
+            cleanAddr.startsWith("tcp://", ignoreCase = true) -> {
+                result.put("type", "tcp")
+                val url = cleanAddr.substring(6)
+                parseHostPort(url, result)
+            }
+            cleanAddr.startsWith("quic://", ignoreCase = true) -> {
+                result.put("type", "quic")
+                val url = cleanAddr.substring(7)
+                parseHostPort(url, result)
+            }
+            cleanAddr.startsWith("h3://", ignoreCase = true) -> {
+                result.put("type", "h3")
+                val url = cleanAddr.substring(5)
+                val slashIdx = url.indexOf('/')
+                val hostPort = if (slashIdx != -1) url.substring(0, slashIdx) else url
+                val path = if (slashIdx != -1) url.substring(slashIdx) else "/dns-query"
+                parseHostPort(hostPort, result)
+                result.put("path", path)
+            }
+            cleanAddr.startsWith("rcode://", ignoreCase = true) -> {
+                result.put("address", cleanAddr)
+            }
+            cleanAddr.equals("local", ignoreCase = true) -> {
+                result.put("type", "local")
+            }
+            else -> {
+                result.put("type", "udp")
+                parseHostPort(cleanAddr, result)
+            }
+        }
+        return result
+    }
+
+    private fun parseHostPort(hostPort: String, result: JSONObject) {
+        val colonIdx = hostPort.lastIndexOf(':')
+        val ipv6Bracket = hostPort.startsWith("[") && hostPort.contains("]")
+        val host = if (ipv6Bracket) {
+            val endBracket = hostPort.indexOf(']')
+            hostPort.substring(1, endBracket)
+        } else if (colonIdx != -1 && hostPort.indexOf(':', colonIdx + 1) == -1) {
+            hostPort.substring(0, colonIdx)
+        } else {
+            hostPort
+        }
+        val port = if (ipv6Bracket) {
+            val endBracket = hostPort.indexOf(']')
+            val after = hostPort.substring(endBracket + 1)
+            if (after.startsWith(":")) after.substring(1).toIntOrNull() else null
+        } else if (colonIdx != -1 && colonIdx > hostPort.indexOf('[')) {
+            hostPort.substring(colonIdx + 1).toIntOrNull()
+        } else {
+            null
+        }
+        result.put("server", host)
+        if (port != null) result.put("server_port", port)
+    }
+
+    fun migrateDnsServerObject(serverObj: JSONObject): JSONObject {
+        if (serverObj.has("port")) {
+            val port = serverObj.opt("port")
+            if (port != null) {
+                serverObj.put("server_port", port)
+            }
+            serverObj.remove("port")
+        }
+        if (serverObj.has("address_resolver")) {
+            val ar = serverObj.opt("address_resolver")
+            if (ar != null) {
+                serverObj.put("domain_resolver", ar)
+            }
+            serverObj.remove("address_resolver")
+        }
+        if (serverObj.optString("detour", "") == "direct") {
+            serverObj.remove("detour")
+        }
+        val address = serverObj.optString("address", "")
+        if (address.startsWith("rcode://", ignoreCase = true)) {
+            return serverObj
+        }
+        if (serverObj.has("type") && serverObj.has("server")) {
+            serverObj.remove("address")
+            return serverObj
+        }
+        if (address.isEmpty()) {
+            if (serverObj.has("type")) {
+                return serverObj
+            }
+            return serverObj
+        }
+        val parsed = parseDnsAddress(address)
+        val keys = parsed.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            if (!serverObj.has(key)) {
+                serverObj.put(key, parsed.get(key))
+            }
+        }
+        serverObj.remove("address")
+        return serverObj
+    }
+
+    fun migrateDnsServer(server: Any?): JSONObject? {
+        if (server == null) return null
+        return when (server) {
+            is JSONObject -> migrateDnsServerObject(server)
+            is String -> {
+                if (server.startsWith("rcode://", ignoreCase = true)) {
+                    JSONObject().put("address", server)
+                } else {
+                    parseDnsAddress(server)
+                }
+            }
+            else -> null
+        }
     }
 }

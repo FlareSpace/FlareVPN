@@ -171,6 +171,7 @@ fun ProfileSimpleEditor(
                             queryParams["insecure"] == "1" || queryParams["insecure"] == "true"
 
                     transport = queryParams["type"] ?: "tcp"
+                    if (transport == "xhttp") transport = "http"
                     tcpHost = queryParams["host"] ?: ""
                     tcpPath = queryParams["path"] ?: ""
                     kcpHost = queryParams["host"] ?: ""
@@ -313,7 +314,7 @@ fun ProfileSimpleEditor(
                                 if (httpUpgradeHost.isNotEmpty()) query.add("host=${encode(httpUpgradeHost)}")
                                 if (httpUpgradePath.isNotEmpty()) query.add("path=${encode(httpUpgradePath)}")
                             }
-                            "h2" -> {
+                            "h2", "http" -> {
                                 if (h2Host.isNotEmpty()) query.add("host=${encode(h2Host)}")
                                 if (h2Path.isNotEmpty()) query.add("path=${encode(h2Path)}")
                             }
@@ -858,8 +859,8 @@ fun ProfileSimpleEditor(
                                 value = transport,
                                 expanded = isTransportMenuExpanded,
                                 onExpandedChange = { isTransportMenuExpanded = it },
-                                options = listOf("tcp", "ws", "httpupgrade", "h2", "quic", "grpc"),
-                                optionTitles = listOf("tcp", "ws", "httpupgrade", "h2", "quic", "grpc"),
+                                options = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc"),
+                                optionTitles = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc"),
                                 onOptionSelected = { transport = it },
                                 accentColor = accentColor,
                                 hazeState = hazeState
@@ -994,15 +995,15 @@ fun ProfileSimpleEditor(
                                     )
                                 }
                             }
-                            AnimatedVisibility(
-                                visible = transport == "h2",
+                             AnimatedVisibility(
+                                 visible = transport == "h2" || transport == "http",
                                 enter = fadeIn(tween(200)) + expandVertically(tween(200)),
                                 exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
                             ) {
                                 Column {
                                     EditorFieldDivider()
                                     EditorTextField(
-                                        label = I18n.strings.simple_editor_h2_host,
+                                        label = if (transport == "h2") I18n.strings.simple_editor_h2_host else I18n.strings.simple_editor_http_host,
                                         value = h2Host,
                                         onValueChange = { h2Host = it },
                                         keyboardType = KeyboardType.Uri,
@@ -1011,7 +1012,7 @@ fun ProfileSimpleEditor(
                                     )
                                     EditorFieldDivider()
                                     EditorTextField(
-                                        label = I18n.strings.simple_editor_h2_path,
+                                        label = if (transport == "h2") I18n.strings.simple_editor_h2_path else I18n.strings.simple_editor_path,
                                         value = h2Path,
                                         onValueChange = { h2Path = it },
                                         keyboardType = KeyboardType.Text,

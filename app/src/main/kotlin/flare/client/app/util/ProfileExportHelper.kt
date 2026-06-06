@@ -79,6 +79,12 @@ object ProfileExportHelper {
                 }
             } else if (type == "grpc") {
                 params["serviceName"] = transport.optString("service_name")
+            } else if (type == "http" || type == "h2") {
+                params["path"] = transport.optString("path", "/")
+                val hostArr = transport.optJSONArray("host")
+                if (hostArr != null && hostArr.length() > 0) {
+                    params["host"] = hostArr.optString(0)
+                }
             }
         } else {
             params["type"] = "tcp"
@@ -117,6 +123,10 @@ object ProfileExportHelper {
             if (transport.optString("type") == "ws") {
                 json.put("path", transport.optString("path", "/"))
                 json.put("host", transport.optJSONObject("headers")?.optString("Host", "") ?: "")
+            } else if (transport.optString("type") == "http" || transport.optString("type") == "h2") {
+                json.put("path", transport.optString("path", "/"))
+                val hostArr = transport.optJSONArray("host")
+                json.put("host", if (hostArr != null && hostArr.length() > 0) hostArr.optString(0) else "")
             }
         } else {
             json.put("net", "tcp")
@@ -154,6 +164,12 @@ object ProfileExportHelper {
                 }
             } else if (type == "grpc") {
                 params["serviceName"] = transport.optString("service_name")
+            } else if (type == "http" || type == "h2") {
+                params["path"] = transport.optString("path", "/")
+                val hostArr = transport.optJSONArray("host")
+                if (hostArr != null && hostArr.length() > 0) {
+                    params["host"] = hostArr.optString(0)
+                }
             }
         } else {
             params["type"] = "tcp"

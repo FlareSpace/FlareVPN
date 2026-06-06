@@ -123,7 +123,7 @@ fun HomeScreen(
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val buttonSize = if (isLandscape) 170.dp else 290.dp
     val buttonOffsetY = if (isLandscape) 10.dp else 40.dp
-    val addProfilesBottomPadding = if (isLandscape) 24.dp else 104.dp
+    val addProfilesBottomPadding = if (isLandscape) 24.dp else 96.dp
 
     Box(
         modifier = Modifier
@@ -305,7 +305,7 @@ fun HomeScreen(
                 exit = fadeOut() + scaleOut(),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = if (isLandscape) 24.dp else 104.dp)
+                    .padding(end = 24.dp, bottom = if (isLandscape) 24.dp else 96.dp)
             ) {
                 val isDarkTheme = FlareTheme.colors.isDark
                 Box(

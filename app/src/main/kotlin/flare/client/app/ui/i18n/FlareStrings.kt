@@ -160,6 +160,11 @@ interface FlareStrings {
     val option_enable: String
     val option_no: String
     val option_yes: String
+    val option_auto: String
+    val option_custom: String
+    val dns_preset_cloudflare: String
+    val dns_preset_adguard: String
+    val dns_preset_google: String
     val permission_usage_stats_needed: String
     val profile_deleted_success: String
     val profile_qr_dialog_title: String
@@ -320,6 +325,10 @@ interface FlareStrings {
     val settings_header_chain: String
     val settings_label_reset_chain: String
     val settings_desc_reset_chain: String
+    val settings_label_tls_spoof: String
+    val settings_desc_tls_spoof: String
+    val settings_label_tls_spoof_domain: String
+    val settings_label_tls_spoof_method: String
     val settings_label_send_hwid: String
     val settings_label_split_tunneling: String
     val settings_label_stack: String
@@ -662,6 +671,11 @@ object RuFlareStrings : FlareStrings {
     override val option_enable: String = "Включить"
     override val option_no: String = "Нет"
     override val option_yes: String = "Да"
+    override val option_auto: String = "Авто"
+    override val option_custom: String = "Свой URL"
+    override val dns_preset_cloudflare: String = "Cloudflare DoH"
+    override val dns_preset_adguard: String = "AdGuard DNS (Антиреклама)"
+    override val dns_preset_google: String = "Google DoT"
     override val permission_usage_stats_needed: String = "Для работы функции «Триггер» необходимо разрешение на доступ к статистике использования."
     override val profile_deleted_success: String = "Профиль %s успешно удален!"
     override val profile_qr_dialog_title: String = "QR-код профиля"
@@ -823,6 +837,10 @@ object RuFlareStrings : FlareStrings {
     override val settings_header_chain: String = "Управление цепью"
     override val settings_label_reset_chain: String = "Сбрасывать цепь после отключения"
     override val settings_desc_reset_chain: String = "Автоматически очищать цепочку прокси после остановки VPN."
+    override val settings_label_tls_spoof: String = "TLS Spoof"
+    override val settings_desc_tls_spoof: String = "Подмена SNI для обхода блокировок. Отправляет поддельный ClientHello с белым доменом перед настоящим."
+    override val settings_label_tls_spoof_domain: String = "Домен"
+    override val settings_label_tls_spoof_method: String = "Метод"
     override val settings_label_send_hwid: String = "Передавать HWID"
     override val settings_label_split_tunneling: String = "Раздельное туннелирование"
     override val settings_label_stack: String = "%s"
@@ -1178,6 +1196,11 @@ object EnFlareStrings : FlareStrings {
     override val option_enable: String = "Enable"
     override val option_no: String = "No"
     override val option_yes: String = "Yes"
+    override val option_auto: String = "Auto"
+    override val option_custom: String = "Custom URL"
+    override val dns_preset_cloudflare: String = "Cloudflare DoH"
+    override val dns_preset_adguard: String = "AdGuard DNS (Ad Block)"
+    override val dns_preset_google: String = "Google DoT"
     override val permission_usage_stats_needed: String = "To use the «Trigger» feature, permission to access usage statistics is required."
     override val profile_deleted_success: String = "Profile %s deleted!"
     override val profile_qr_dialog_title: String = "Profile QR code"
@@ -1338,6 +1361,10 @@ object EnFlareStrings : FlareStrings {
     override val settings_header_chain: String = "Chain Management"
     override val settings_label_reset_chain: String = "Reset chain after disconnection"
     override val settings_desc_reset_chain: String = "Automatically clear the proxy chain after stopping the VPN."
+    override val settings_label_tls_spoof: String = "TLS Spoof"
+    override val settings_desc_tls_spoof: String = "SNI spoofing to bypass blocks. Sends a forged ClientHello with a whitelisted domain before the real one."
+    override val settings_label_tls_spoof_domain: String = "Domain"
+    override val settings_label_tls_spoof_method: String = "Method"
     override val settings_label_send_hwid: String = "Send HWID"
     override val settings_label_split_tunneling: String = "Split Tunneling"
     override val settings_label_stack: String = "%s"

@@ -100,12 +100,25 @@ fun FlareSideNav(
         val dpValue = density.density
         val fullHeightDp = 280.dp
         
+        val pillPressed = remember { mutableStateOf(false) }
+        val panelScale by animateFloatAsState(
+            targetValue = if (pillPressed.value) 1.05f else 1.0f,
+            animationSpec = tween(
+                durationMillis = 200,
+                easing = Easing { OvershootInterpolator(1.2f).getInterpolation(it) }
+            ), label = "panelScale"
+        )
+
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .padding(start = 16.dp)
                 .width(64.dp)
                 .height(fullHeightDp)
+                .graphicsLayer {
+                    scaleX = panelScale
+                    scaleY = panelScale
+                }
                 .bottomNavSoftShadow(isDarkTheme),
             contentAlignment = Alignment.Center
         ) {
@@ -164,7 +177,8 @@ fun FlareSideNav(
                     onDoubleTapPill = onDoubleTapPill,
                     accentStart = accentColorStart,
                     accentEnd = accentColorEnd,
-                    isNightMode = isDarkTheme
+                    isNightMode = isDarkTheme,
+                    onPillPressed = { pillPressed.value = it }
                 )
             }
         }
@@ -178,7 +192,8 @@ private fun VerticalLiquidPillCanvas(
     onDoubleTapPill: () -> Unit,
     accentStart: Color,
     accentEnd: Color,
-    isNightMode: Boolean
+    isNightMode: Boolean,
+    onPillPressed: (Boolean) -> Unit
 ) {
     val density = LocalDensity.current
     val dp = density.density
@@ -187,8 +202,8 @@ private fun VerticalLiquidPillCanvas(
     var containerHeightPx by remember { mutableStateOf(0f) }
 
     val pillWidth by derivedStateOf {
-        if (containerWidthPx > 0f) containerWidthPx - 14f * dp
-        else 50f * dp
+        if (containerWidthPx > 0f) containerWidthPx - 10f * dp
+        else 54f * dp
     }
 
     val topFrac = remember { Animatable(selectedIndex / 3f) }
@@ -254,6 +269,7 @@ private fun VerticalLiquidPillCanvas(
                     var dragIntercepted    = false
 
                     if (onPill) {
+                        onPillPressed(true)
                         scope.launch {
                             launch { glowAlpha.animateTo(1f, tween(120)) }
                             launch {
@@ -302,6 +318,7 @@ private fun VerticalLiquidPillCanvas(
                             centerFrac < 2f / 3f -> 1
                             else                 -> 2
                         }
+                        onPillPressed(false)
                         scope.launch {
                             launch { glowAlpha.animateTo(0f, tween(200)) }
                             launch {
@@ -317,6 +334,7 @@ private fun VerticalLiquidPillCanvas(
                         }
                         latestOnTabSelected.value(newTab)
                     } else {
+                        onPillPressed(false)
                         scope.launch {
                             launch { glowAlpha.animateTo(0f, tween(100)) }
                             launch { expansion.animateTo(0f, tween(150)) }
@@ -344,7 +362,10 @@ private fun VerticalLiquidPillCanvas(
             val ch = size.height
             val curTop = topFrac.value * ch + pad
             val curBottom = bottomFrac.value * ch - pad
-            val rect = Rect(cx - halfW, curTop, cx + halfW, curBottom)
+            val centerY = (curTop + curBottom) / 2f
+            val rawHeight = curBottom - curTop
+            val halfH = rawHeight * 0.47f
+            val rect = Rect(cx - halfW, centerY - halfH, cx + halfW, centerY + halfH)
 
             drawIntoCanvas { canvas ->
                 val nc          = canvas.nativeCanvas
@@ -406,67 +427,20 @@ private fun VerticalLiquidPillCanvas(
                     shader = android.graphics.LinearGradient(
                         0f, rect.top, 0f, rect.bottom,
                         intArrayOf(
-                            android.graphics.Color.argb(255, aStR, aStG, aStB),
-                            android.graphics.Color.argb(255, aEndR, aEndG, aEndB)
+                            android.graphics.Color.argb(45, aStR, aStG, aStB),
+                            android.graphics.Color.argb(45, aEndR, aEndG, aEndB)
                         ),
                         null, android.graphics.Shader.TileMode.CLAMP
                     )
                 }
                 nc.drawRoundRect(rect.left, rect.top, rect.right, rect.bottom, radius, radius, pillPaint)
-
-                val innerGlow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    style = android.graphics.Paint.Style.STROKE
-                    strokeWidth = 1.0f * dp
-                    shader = android.graphics.LinearGradient(
-                        0f, rect.top, 0f, rect.bottom,
-                        intArrayOf(
-                            android.graphics.Color.argb(100, 255, 255, 255),
-                            android.graphics.Color.argb(0,   255, 255, 255)
-                        ),
-                        null, android.graphics.Shader.TileMode.CLAMP
-                    )
-                }
-                val innerB = 1.0f * dp
-                nc.drawRoundRect(
-                    rect.left + innerB, rect.top + innerB,
-                    rect.right - innerB, rect.bottom - innerB,
-                    radius - innerB, radius - innerB, innerGlow
-                )
-
-                val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    style       = android.graphics.Paint.Style.STROKE
-                    strokeWidth = 1.5f * dp
-                    shader = if (isNightMode) {
-                        android.graphics.LinearGradient(
-                            0f, rect.top, 0f, rect.bottom,
-                            intArrayOf(
-                                android.graphics.Color.argb(200, 255, 255, 255),
-                                android.graphics.Color.argb(40,  255, 255, 255),
-                                android.graphics.Color.argb(80,  aEndR, aEndG, aEndB)
-                            ),
-                            floatArrayOf(0f, 0.45f, 1f),
-                            android.graphics.Shader.TileMode.CLAMP
-                        )
-                    } else {
-                        android.graphics.LinearGradient(
-                            0f, rect.top, 0f, rect.bottom,
-                            intArrayOf(
-                                android.graphics.Color.argb(180, aStR, aStG, aStB),
-                                android.graphics.Color.argb(60,  aEndR, aEndG, aEndB),
-                                android.graphics.Color.argb(100, aEndR, aEndG, aEndB)
-                            ),
-                            floatArrayOf(0f, 0.45f, 1f),
-                            android.graphics.Shader.TileMode.CLAMP
-                        )
-                    }
-                }
-                val b = 0.65f * dp
-                nc.drawRoundRect(
-                    rect.left + b, rect.top + b, rect.right - b, rect.bottom - b,
-                    radius - b, radius - b, borderPaint
-                )
             }
         }
+
+        val centerFrac = (topFrac.value + bottomFrac.value) / 2f
+        val influence0 = (1f - abs(centerFrac - 1f / 6f) / (1f / 3f)).coerceIn(0f, 1f)
+        val influence1 = (1f - abs(centerFrac - 0.5f) / (1f / 3f)).coerceIn(0f, 1f)
+        val influence2 = (1f - abs(centerFrac - 5f / 6f) / (1f / 3f)).coerceIn(0f, 1f)
 
         Column(
             modifier = Modifier
@@ -475,44 +449,82 @@ private fun VerticalLiquidPillCanvas(
                 .width(64.dp)
         ) {
             val cellWeightModifier = Modifier.weight(1f)
-            NavTabIcon(R.drawable.ic_nav_settings, selectedIndex == 0, cellWeightModifier)
-            NavTabIcon(R.drawable.ic_nav_home,     selectedIndex == 1, cellWeightModifier)
-            NavTabIcon(R.drawable.ic_nav_servers,  selectedIndex == 2, cellWeightModifier)
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_settings,
+                filledRes = R.drawable.ic_nav_settings_filled,
+                influence = influence0,
+                accentColor = accentStart,
+                modifier = cellWeightModifier
+            )
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_spark,
+                filledRes = R.drawable.ic_nav_spark_filled,
+                influence = influence1,
+                accentColor = accentStart,
+                modifier = cellWeightModifier
+            )
+            NavTabIcon(
+                outlineRes = R.drawable.ic_nav_servers,
+                filledRes = R.drawable.ic_nav_servers_filled,
+                influence = influence2,
+                accentColor = accentStart,
+                modifier = cellWeightModifier
+            )
         }
     }
 }
 
 @Composable
 private fun NavTabIcon(
-    iconRes: Int,
-    isSelected: Boolean,
+    outlineRes: Int,
+    filledRes: Int,
+    influence: Float,
+    accentColor: Color,
     modifier: Modifier
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.45f,
-        animationSpec = tween(220), label = "iconAlpha"
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.0f else 0.88f,
-        animationSpec = tween(220), label = "iconScale"
+    val scale = 0.88f + 0.12f * influence
+    val filledAlpha = influence
+    val outlineAlpha = 0.45f * (1f - influence)
+
+    val iconColor = androidx.compose.ui.graphics.lerp(
+        start = FlareTheme.colors.navIconTint,
+        stop = accentColor,
+        fraction = influence
     )
 
     Box(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = painterResource(id = iconRes),
-            contentDescription = null,
-            tint = FlareTheme.colors.navIconTint,
+        Box(
             modifier = Modifier
                 .size(64.dp)
                 .padding(20.dp)
                 .graphicsLayer {
-                    this.alpha  = alpha
                     this.scaleX = scale
                     this.scaleY = scale
                 }
-        )
+        ) {
+            if (outlineAlpha > 0.01f) {
+                Icon(
+                    painter = painterResource(id = outlineRes),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = outlineAlpha }
+                )
+            }
+            if (filledAlpha > 0.01f) {
+                Icon(
+                    painter = painterResource(id = filledRes),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { this.alpha = filledAlpha }
+                )
+            }
+        }
     }
 }
