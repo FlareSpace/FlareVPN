@@ -15,6 +15,10 @@ Flare is a powerful open-source VPN client designed for flexibility, security, a
 
 ## English Version
 
+<p align="center">
+  <img src=".github/assets/home_eu.png" width="450" alt="Flare VPN Main Screen">
+</p>
+
 ### 🛠 Supported Protocols
 Flare supports a wide range of modern protocols, including:
 - **VLESS** (Reality)
@@ -29,6 +33,10 @@ Flare offers professional-grade tunnel settings to bypass censorship and optimiz
 - **Fake IP:** Enhance DNS performance and privacy.
 - And much more to explore!
 
+<p align="center">
+  <img src=".github/assets/advanced_eu.png" width="450" alt="Advanced Settings">
+</p>
+
 ### 📡 Creating your own servers
 FlareVPN supports the deployment and management of your own VPN servers based on the most modern and block-resistant protocols:
 
@@ -37,8 +45,15 @@ FlareVPN supports the deployment and management of your own VPN servers based on
 * **Shadowsocks**
 * **WireGuard**
 
+<p align="center">
+  <img src=".github/assets/server_eu.png" width="450" alt="Server Creation">
+</p>
+<p align="center">
+  <img src=".github/assets/protocols_eu.png" width="450" alt="protocols">
+</p>
+
 ### 🛠 Installation
-1. Download `Flare.apk` from the [Releases](https://github.com/gitwelk/FlareVPN/releases) page.
+1. Download `Flare.apk` from the [Releases](https://github.com/FlareSpace/FlareVPN/releases) page.
 2. Install the APK on your device.
 3. Grant the required permissions when the app starts.
 4. **Done!** Let's get started.
@@ -60,6 +75,10 @@ We created a channel with beta versions of Flare: **[@FlareVPNBeta](https://t.me
 
 ## Русская Версия
 
+<p align="center">
+  <img src=".github/assets/home_ru.png" width="450" alt="Главный экран Flare VPN">
+</p>
+
 Flare — это мощный VPN-клиент с открытым исходным кодом, созданный для обеспечения гибкости, безопасности и высокой производительности. Flare предоставляет современный интерфейс для управления вашими защищенными туннелями на базе ядра `sing-box`.
 
 ### 🛠 Поддерживаемые протоколы
@@ -76,6 +95,10 @@ Flare поддерживает широкий спектр современны�
 - **Fake IP:** Улучшение производительности DNS и конфиденциальности.
 - И еще немало других полезных опций!
 
+<p align="center">
+  <img src=".github/assets/advanced_ru.png" width="450" alt="Продвинутые настройки">
+</p>
+
 ### 📡 Создание своих серверов
 
 FlareVPN поддерживает развертывание и управление собственными VPN-серверами на базе самых современных и устойчивых к блокировкам протоколов:
@@ -85,9 +108,15 @@ FlareVPN поддерживает развертывание и управлен
 * **Shadowsocks**
 * **WireGuard**
 
+<p align="center">
+  <img src=".github/assets/server_ru.png" width="450" alt="Создание сервера">
+</p>
+<p align="center">
+  <img src=".github/assets/protocols_ru.png" width="450" alt="Протоколы">
+</p>
 
 ### 🛠 Установка
-1. Скачайте `Flare.apk` со страницы [Релизов](https://github.com/gitwelk/FlareVPN/releases).
+1. Скачайте `Flare.apk` со страницы [Релизов](https://github.com/FlareSpace/FlareVPN/releases).
 2. Установите APK на ваше устройство.
 3. Выдайте необходимые разрешения при первом запуске приложения.
 4. **Готово!** Можно пользоваться.
