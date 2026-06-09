@@ -77,7 +77,6 @@ fun AppSelectionDialog(
     GlassDialog(
         onDismissRequest = onDismissRequest,
         maxWidthDp = 300,
-        blurRadius = 15f,
         hazeState = hazeState
     ) {
         Column(

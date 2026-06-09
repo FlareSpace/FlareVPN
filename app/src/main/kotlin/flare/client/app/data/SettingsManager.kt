@@ -122,6 +122,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt("theme_mode", 0)
         set(value) = prefs.edit().putInt("theme_mode", value).apply()
 
+    var backgroundType: Int
+        get() = prefs.getInt("background_type", if (isBackgroundGradientEnabled) 1 else 0)
+        set(value) = prefs.edit().putInt("background_type", value).apply()
+
     var isBackgroundGradientEnabled: Boolean
         get() = prefs.getBoolean("bg_gradient_enabled", false)
         set(value) = prefs.edit().putBoolean("bg_gradient_enabled", value).apply()
@@ -140,6 +144,10 @@ class SettingsManager(context: Context) {
     var isNotificationSpeedEnabled: Boolean
         get() = prefs.getBoolean("notification_speed_enabled", true)
         set(value) = prefs.edit().putBoolean("notification_speed_enabled", value).apply()
+
+    var photoSeed: String
+        get() = prefs.getString("photo_seed", "default_seed") ?: "default_seed"
+        set(value) = prefs.edit().putString("photo_seed", value).apply()
 
     var pendingNavScreen: String
         get() = prefs.getString("pending_nav_screen", "") ?: ""

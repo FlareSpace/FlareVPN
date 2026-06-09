@@ -8,7 +8,10 @@ data class VpnServerConfig(
     val user: String,
     val pass: String,
     val vpnPort: Int,
-    val sni: String
+    val sni: String = "",
+    val obfsPassword: String = "",
+    val fingerprint: String = "chrome",
+    val mport: String? = null
 )
 
 interface VpnServerCreator {

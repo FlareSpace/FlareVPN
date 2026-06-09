@@ -44,6 +44,11 @@
 -dontwarn okio.**
 -dontwarn org.conscrypt.**
 
+# Coil3
+-keep class coil3.** { *; }
+-keep interface coil3.** { *; }
+-dontwarn coil3.**
+
 # App Specific Data layer: Models, Entities, DAOs, Database, and Parsers
 -keep class flare.client.app.data.** { *; }
 

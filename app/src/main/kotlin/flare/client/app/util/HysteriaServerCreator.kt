@@ -124,6 +124,19 @@ class HysteriaServerCreator(private val context: Context) : VpnServerCreator {
 
             _status.value = I18n.strings.ssh_status_configuring_hysteria2
             val password = UUID.randomUUID().toString()
+            
+            var obfsBlock = ""
+            var clientObfsParams = ""
+            if (config.obfsPassword.isNotBlank()) {
+                obfsBlock = """
+obfs:
+  type: salamander
+  salamander:
+    password: ${config.obfsPassword}
+"""
+                clientObfsParams = "&obfs=salamander&obfs-password=${config.obfsPassword}"
+            }
+
             val hyConfig = """
 listen: :${config.vpnPort}
 
@@ -134,7 +147,7 @@ tls:
 auth:
   type: password
   password: $password
-
+$obfsBlock
 masquerade:
   type: proxy
   proxy:
@@ -156,6 +169,20 @@ masquerade:
             _progress.value = 70
 
             _status.value = I18n.strings.ssh_status_restarting_hysteria2
+            
+            
+            var systemdOverride = "[Service]\nRestart=always\nRestartSec=3\n"
+            if (!config.mport.isNullOrBlank()) {
+                val iptPorts = config.mport.replace(Regex("[\\\\s-]+"), ":")
+                systemdOverride += "ExecStartPost=+-/sbin/iptables -t nat -A PREROUTING -p udp -m multiport --dports $iptPorts -j REDIRECT --to-ports ${config.vpnPort}\n"
+                systemdOverride += "ExecStartPost=+-/sbin/ip6tables -t nat -A PREROUTING -p udp -m multiport --dports $iptPorts -j REDIRECT --to-ports ${config.vpnPort}\n"
+                systemdOverride += "ExecStopPost=+-/sbin/iptables -t nat -D PREROUTING -p udp -m multiport --dports $iptPorts -j REDIRECT --to-ports ${config.vpnPort}\n"
+                systemdOverride += "ExecStopPost=+-/sbin/ip6tables -t nat -D PREROUTING -p udp -m multiport --dports $iptPorts -j REDIRECT --to-ports ${config.vpnPort}\n"
+            }
+            ssh.exec("sudo -n mkdir -p /etc/systemd/system/hysteria-server.service.d")
+            ssh.exec("echo -e '$systemdOverride' | sudo tee /etc/systemd/system/hysteria-server.service.d/override.conf > /dev/null")
+            ssh.exec("sudo systemctl daemon-reload 2>&1")
+            
             ssh.exec("sudo systemctl enable hysteria-server 2>&1")
             ssh.exec("sudo systemctl restart hysteria-server 2>&1")
             _progress.value = 80
@@ -177,9 +204,13 @@ masquerade:
             _progress.value = 90
             _status.value = I18n.strings.ssh_status_generating_client
 
+            val clientPortHoppingParams = if (!config.mport.isNullOrBlank()) "&mport=${config.mport}" else ""
+
             val hysteria2Uri = "hysteria2://$password@${config.host}:${config.vpnPort}" +
                 "?sni=${config.sni}" +
                 "&pin=$fingerprint" +
+                clientPortHoppingParams +
+                clientObfsParams +
                 "#Flare-${config.host}"
 
             _progress.value = 100

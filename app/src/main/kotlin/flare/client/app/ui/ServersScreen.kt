@@ -80,6 +80,12 @@ fun ServersScreen(
     onXrayPortChange: (String) -> Unit,
     xraySni: String,
     onXraySniChange: (String) -> Unit,
+    obfsPassword: String,
+    onObfsPasswordChange: (String) -> Unit,
+    portHoppingEnabled: Boolean,
+    onPortHoppingEnabledChange: (Boolean) -> Unit,
+    portHoppingValue: String,
+    onPortHoppingValueChange: (String) -> Unit,
     
     
     setupStatus: String,
@@ -256,6 +262,12 @@ fun ServersScreen(
                                          onPortChange = onXrayPortChange,
                                          sni = xraySni,
                                          onSniChange = onXraySniChange,
+                                         obfsPassword = obfsPassword,
+                                         onObfsPasswordChange = onObfsPasswordChange,
+                                         portHoppingEnabled = portHoppingEnabled,
+                                         onPortHoppingEnabledChange = onPortHoppingEnabledChange,
+                                         portHoppingValue = portHoppingValue,
+                                         onPortHoppingValueChange = onPortHoppingValueChange,
                                          accentColor = accentColor
                                      )
                                  }
@@ -577,6 +589,12 @@ fun XrayConfigStep(
     onPortChange: (String) -> Unit,
     sni: String,
     onSniChange: (String) -> Unit,
+    obfsPassword: String,
+    onObfsPasswordChange: (String) -> Unit,
+    portHoppingEnabled: Boolean,
+    onPortHoppingEnabledChange: (Boolean) -> Unit,
+    portHoppingValue: String,
+    onPortHoppingValueChange: (String) -> Unit,
     accentColor: Color
 ) {
     val isHy2 = selectedProtocol == SelectedProtocol.HYSTERIA2
@@ -625,6 +643,94 @@ fun XrayConfigStep(
                 hint = sniHint,
                 icon = R.drawable.ic_language
             )
+
+            if (isHy2) {
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                FlareWizardInputField(
+                    title = I18n.strings.servers_hysteria2_obfs_pass_label,
+                    value = obfsPassword,
+                    onValueChange = onObfsPasswordChange,
+                    accentColor = accentColor,
+                    isValid = obfsPassword.isNotBlank(),
+                    hint = I18n.strings.wizard_hysteria2_obfs_pass_hint,
+                    icon = R.drawable.ic_vpn_key
+                )
+                
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = I18n.strings.servers_hysteria2_port_hopping_label,
+                        fontFamily = GeologicaMedium,
+                        fontSize = 14.sp,
+                        color = FlareTheme.colors.textPrimary
+                    )
+                    androidx.compose.material3.Switch(
+                        checked = portHoppingEnabled,
+                        onCheckedChange = onPortHoppingEnabledChange,
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = accentColor,
+                            uncheckedThumbColor = FlareTheme.colors.textSecondary,
+                            uncheckedTrackColor = FlareTheme.colors.bgItem.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+                
+                AnimatedVisibility(
+                    visible = portHoppingEnabled,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                FlareWizardInputField(
+                                    title = I18n.strings.wizard_hysteria2_port_hopping_hint,
+                                    value = portHoppingValue,
+                                    onValueChange = onPortHoppingValueChange,
+                                    accentColor = accentColor,
+                                    isValid = portHoppingValue.isNotBlank(),
+                                    hint = "e.g. 20000-50000",
+                                    icon = R.drawable.ic_port
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            androidx.compose.material3.Button(
+                                onClick = { 
+                                    val start = (20000..40000).random()
+                                    val end = start + 10000
+                                    onPortHoppingValueChange("$start-$end")
+                                },
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = accentColor.copy(alpha = 0.15f),
+                                    contentColor = accentColor
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.padding(top = 24.dp).height(50.dp)
+                            ) {
+                                Text(
+                                    text = I18n.strings.servers_hysteria2_port_hopping_auto,
+                                    fontFamily = GeologicaMedium,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

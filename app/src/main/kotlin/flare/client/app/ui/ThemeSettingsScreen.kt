@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -35,6 +36,21 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -48,7 +64,7 @@ import flare.client.app.ui.theme.FlareTheme
 @Composable
 fun ThemeSettingsScreen(
     themeMode: Int,
-    isGradientEnabled: Boolean,
+    backgroundType: Int,
     isAnimationEnabled: Boolean,
     gradientSpeed: Float,
     isCustomColorEnabled: Boolean,
@@ -56,11 +72,13 @@ fun ThemeSettingsScreen(
     accentColor: Color,
     onBack: () -> Unit,
     onThemeClick: (Int) -> Unit,
-    onGradientToggle: (Boolean) -> Unit,
+    onBackgroundTypeClick: (Int) -> Unit,
     onAnimationToggle: (Boolean) -> Unit,
     onSpeedChange: (Float) -> Unit,
     onCustomColorToggle: (Boolean) -> Unit,
     onColorKeySelect: (String) -> Unit,
+    onUpdatePhotoClick: () -> Unit,
+    isDownloadingPhoto: Boolean,
     hazeState: HazeState
 ) {
     val colors = FlareTheme.colors
@@ -137,16 +155,31 @@ fun ThemeSettingsScreen(
                 SettingsSectionHeader(I18n.strings.settings_bg_effects_header)
 
                 Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
-                    SettingsToggleItem(
-                        label = I18n.strings.settings_label_enable_gradient,
-                        checked = isGradientEnabled,
+                    SettingsItem(
+                        label = I18n.strings.settings_bg_effect_label,
+                        value = when (backgroundType) {
+                            1 -> I18n.strings.settings_bg_effect_gradient
+                            2 -> I18n.strings.settings_bg_effect_shapes
+                            3 -> I18n.strings.settings_bg_effect_photo
+                            else -> I18n.strings.settings_bg_effect_none
+                        },
                         accentColor = colors.accent,
-                        onCheckedChange = onGradientToggle,
+                        menuItems = listOf(
+                            I18n.strings.settings_bg_effect_none,
+                            I18n.strings.settings_bg_effect_gradient,
+                            I18n.strings.settings_bg_effect_shapes,
+                            I18n.strings.settings_bg_effect_photo
+                        ).mapIndexed { i, opt ->
+                            flare.client.app.util.GlassUtils.MenuItem(i, opt) {
+                                onBackgroundTypeClick(i)
+                            }
+                        },
+                        hazeState = hazeState,
                         isTop = true,
-                        isBottom = !isGradientEnabled
+                        isBottom = backgroundType == 0 || backgroundType == 2
                     )
 
-                    AnimatedVisibility(visible = isGradientEnabled) {
+                    AnimatedVisibility(visible = backgroundType == 1) {
                         Column {
                             DividerItem()
                             SettingsToggleItem(
@@ -168,6 +201,49 @@ fun ThemeSettingsScreen(
                                     )
                                 }
                             }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = backgroundType == 3) {
+                        Column {
+                            DividerItem()
+                            SettingsItem(
+                                label = I18n.strings.settings_bg_effect_update_photo,
+                                value = "",
+                                accentColor = colors.accent,
+                                onClick = {
+                                    if (!isDownloadingPhoto) {
+                                        onUpdatePhotoClick()
+                                    }
+                                },
+                                isBottom = true,
+                                hazeState = hazeState,
+                                trailingContent = {
+                                    FlareGlassButton(
+                                        onClick = {
+                                            if (!isDownloadingPhoto) {
+                                                onUpdatePhotoClick()
+                                            }
+                                        },
+                                        enabled = !isDownloadingPhoto
+                                    ) {
+                                        if (isDownloadingPhoto) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                color = colors.accent,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_refresh),
+                                                contentDescription = null,
+                                                tint = colors.textPrimary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -216,7 +292,8 @@ fun SettingsItem(
     enabled: Boolean = true,
     isTop: Boolean = false,
     isBottom: Boolean = false,
-    hazeState: HazeState? = null
+    hazeState: HazeState? = null,
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     val colors = FlareTheme.colors
     val backgroundColor = colors.bgItem.copy(alpha = 0.85f)
@@ -256,20 +333,24 @@ fun SettingsItem(
             )
 
             Box(contentAlignment = Alignment.CenterEnd) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = value,
-                        fontFamily = GeologicaMedium,
-                        fontSize = 16.sp,
-                        color = if (enabled) accentColor else colors.textSecondary,
-                        modifier = Modifier.padding(end = 4.dp)
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.ic_arrow_right),
-                        contentDescription = null,
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(18.dp)
-                    )
+                if (trailingContent != null) {
+                    trailingContent()
+                } else {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = value,
+                            fontFamily = GeologicaMedium,
+                            fontSize = 16.sp,
+                            color = if (enabled) accentColor else colors.textSecondary,
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_right),
+                            contentDescription = null,
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
         }
@@ -418,6 +499,37 @@ fun SpeedSliderItem(
 ) {
     val colors = FlareTheme.colors
     val backgroundColor = colors.bgItem.copy(alpha = 0.85f)
+    val inactiveTrackColor = colors.textSecondary.copy(alpha = 0.2f)
+    
+    val density = LocalDensity.current
+    val thumbWidthPx = with(density) { 35.dp.toPx() }
+    val thumbHeightPx = with(density) { 22.dp.toPx() }
+    val trackHeightPx = with(density) { 12.dp.toPx() }
+    
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var isDragging by remember { mutableStateOf(false) }
+    
+    val valueRange = 0.1f..4.0f
+    val currentFraction = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
+    
+    val glowAlpha by animateFloatAsState(
+        targetValue = if (isDragging) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "sliderGlow"
+    )
+
+    fun updateValueFromOffset(xOffset: Float) {
+        val width = canvasSize.width.toFloat()
+        val usableWidth = width - thumbWidthPx
+        val startX = thumbWidthPx / 2
+        if (usableWidth > 0) {
+            val fraction = ((xOffset - startX) / usableWidth).coerceIn(0f, 1f)
+            val rawValue = valueRange.start + fraction * (valueRange.endInclusive - valueRange.start)
+            val roundedValue = (kotlin.math.round(rawValue * 100f) / 100f).coerceIn(valueRange.start, valueRange.endInclusive)
+            onValueChange(roundedValue)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -438,23 +550,155 @@ fun SpeedSliderItem(
                 color = colors.textPrimary
             )
             Text(
-                text = String.format(java.util.Locale.US, "%.1fx", value),
+                text = String.format(java.util.Locale.US, "%.2fx", value),
                 fontFamily = GeologicaMedium,
                 fontSize = 16.sp,
                 color = accentColor
             )
         }
 
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = 0.2f..2.0f,
-            steps = 8,
-            colors = SliderDefaults.colors(
-                thumbColor = accentColor,
-                activeTrackColor = accentColor,
-                inactiveTrackColor = colors.dividerColor
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(32.dp)
+                .onSizeChanged { canvasSize = it }
+                .pointerInput(valueRange) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        isDragging = true
+                        updateValueFromOffset(down.position.x)
+                        
+                        var pointer = down.id
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val anyPressed = event.changes.any { it.pressed }
+                            if (!anyPressed) {
+                                break
+                            }
+                            val change = event.changes.firstOrNull { it.id == pointer } ?: event.changes.first()
+                            pointer = change.id
+                            change.consume()
+                            updateValueFromOffset(change.position.x)
+                        }
+                        isDragging = false
+                    }
+                }
+        ) {
+            val width = size.width
+            val height = size.height
+            val centerY = height / 2
+            
+            val startX = thumbWidthPx / 2
+            val usableWidth = width - thumbWidthPx
+            val thumbX = startX + usableWidth * currentFraction
+            
+            
+            drawRoundRect(
+                color = inactiveTrackColor,
+                topLeft = Offset(startX, centerY - trackHeightPx / 2),
+                size = Size(usableWidth, trackHeightPx),
+                cornerRadius = CornerRadius(trackHeightPx / 2, trackHeightPx / 2)
             )
-        )
+            
+            
+            val activeWidth = thumbX - startX
+            if (activeWidth > 0f) {
+                
+                if (glowAlpha > 0f) {
+                    drawIntoCanvas { canvas ->
+                        val nativeCanvas = canvas.nativeCanvas
+                        
+                        val paintAmbient = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.TRANSPARENT
+                            setShadowLayer(
+                                8.dp.toPx(),
+                                0f,
+                                0f,
+                                android.graphics.Color.argb(
+                                    (0.35f * glowAlpha * 255).toInt(),
+                                    (accentColor.red * 255).toInt(),
+                                    (accentColor.green * 255).toInt(),
+                                    (accentColor.blue * 255).toInt()
+                                )
+                            )
+                        }
+                        nativeCanvas.drawRoundRect(
+                            startX,
+                            centerY - trackHeightPx / 2,
+                            thumbX,
+                            centerY + trackHeightPx / 2,
+                            trackHeightPx / 2,
+                            trackHeightPx / 2,
+                            paintAmbient
+                        )
+
+                        val paintCore = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                            color = android.graphics.Color.TRANSPARENT
+                            setShadowLayer(
+                                3.dp.toPx(),
+                                0f,
+                                0f,
+                                android.graphics.Color.argb(
+                                    (0.65f * glowAlpha * 255).toInt(),
+                                    (accentColor.red * 255).toInt(),
+                                    (accentColor.green * 255).toInt(),
+                                    (accentColor.blue * 255).toInt()
+                                )
+                            )
+                        }
+                        nativeCanvas.drawRoundRect(
+                            startX,
+                            centerY - trackHeightPx / 2,
+                            thumbX,
+                            centerY + trackHeightPx / 2,
+                            trackHeightPx / 2,
+                            trackHeightPx / 2,
+                            paintCore
+                        )
+                    }
+                }
+                
+                
+                drawRoundRect(
+                    color = accentColor,
+                    topLeft = Offset(startX, centerY - trackHeightPx / 2),
+                    size = Size(activeWidth, trackHeightPx),
+                    cornerRadius = CornerRadius(trackHeightPx / 2, trackHeightPx / 2)
+                )
+            }
+            
+            
+            drawIntoCanvas { canvas ->
+                val nativeCanvas = canvas.nativeCanvas
+                val paintShadow = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.TRANSPARENT
+                    setShadowLayer(
+                        4.dp.toPx(),
+                        0f,
+                        2.dp.toPx(),
+                        android.graphics.Color.argb(45, 0, 0, 0)
+                    )
+                }
+                nativeCanvas.drawRoundRect(
+                    thumbX - thumbWidthPx / 2,
+                    centerY - thumbHeightPx / 2,
+                    thumbX + thumbWidthPx / 2,
+                    centerY + thumbHeightPx / 2,
+                    thumbWidthPx / 2,
+                    thumbWidthPx / 2,
+                    paintShadow
+                )
+            }
+            
+            
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(thumbX - thumbWidthPx / 2, centerY - thumbHeightPx / 2),
+                size = Size(thumbWidthPx, thumbHeightPx),
+                cornerRadius = CornerRadius(thumbWidthPx / 2, thumbWidthPx / 2)
+            )
+        }
     }
 }

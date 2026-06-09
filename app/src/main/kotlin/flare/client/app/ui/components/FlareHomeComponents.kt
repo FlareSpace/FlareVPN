@@ -65,30 +65,47 @@ private fun createNoiseBitmap(width: Int = 128, height: Int = 128, opacity: Floa
 }
 
 private val meshBasePositions = listOf(
-    Offset(0.1f, 0.2f),
-    Offset(0.8f, 0.8f),
-    Offset(0.9f, 0.1f),
+    Offset(0.1f, 0.1f),
+    Offset(0.9f, 0.8f),
+    Offset(0.8f, 0.1f),
     Offset(0.2f, 0.9f),
-    Offset(0.5f, 0.4f),
-    Offset(0.1f, 0.8f),
-    Offset(0.7f, 0.3f)
+    Offset(0.5f, 0.5f),
+    Offset(0.1f, 0.7f),
+    Offset(0.8f, 0.4f)
 )
 
-private val meshRadiuses = listOf(800f, 750f, 700f, 800f, 700f, 700f, 600f)
+private val meshRadiuses = listOf(900f, 950f, 850f, 900f, 1000f, 800f, 850f)
 
 @Composable
 fun FlareHomeBackground(
-    isGradientEnabled: Boolean = true,
+    backgroundType: Int = 1,
     isAnimationEnabled: Boolean = true,
     animationSpeed: Float = 1.0f,
+    photoSeed: String = "default_seed",
     modifier: Modifier = Modifier
 ) {
     val themeColors = FlareTheme.colors
     val isDark = themeColors.isDark
 
-    if (!isGradientEnabled) {
-        Box(modifier = modifier.fillMaxSize().background(themeColors.bgDark))
-        return
+    when (backgroundType) {
+        0 -> {
+            Box(modifier = modifier.fillMaxSize().background(themeColors.bgDark))
+            return
+        }
+        2 -> {
+            flare.client.app.ui.components.background.AuroraBackground(
+                modifier = modifier
+            )
+            return
+        }
+        3 -> {
+            flare.client.app.ui.components.background.PhotoBackground(
+                modifier = modifier,
+                isDark = isDark,
+                photoSeed = photoSeed
+            )
+            return
+        }
     }
 
     var time by remember { mutableStateOf(0f) }
@@ -100,7 +117,7 @@ fun FlareHomeBackground(
                 withFrameNanos { frameTime ->
                     val deltaSeconds = (frameTime - lastTime) / 1_000_000_000f
                     lastTime = frameTime
-                    time += deltaSeconds * animationSpeed * 0.4f 
+                    time += deltaSeconds * animationSpeed * 0.35f 
                 }
             }
         }
@@ -108,28 +125,30 @@ fun FlareHomeBackground(
 
     val density = LocalDensity.current
     
-    
-    val extraColor1Start = if (isDark) Color(0x0AFF3D00) else Color(0x12FF3D00) 
+    val extraColor1Start = if (isDark) Color(0x0CFF3D00) else Color(0x15FF3D00) 
     val extraColor1End = Color(0x00FF3D00)
-    val extraColor2Start = if (isDark) Color(0x0A7C4DFF) else Color(0x127C4DFF) 
+    val extraColor2Start = if (isDark) Color(0x0C7C4DFF) else Color(0x157C4DFF) 
     val extraColor2End = Color(0x007C4DFF)
 
     val brushes = remember(themeColors, density, isDark) {
-        val darkAlphaMult = if (isDark) 0.35f else 1.0f 
+        val darkAlphaMult = if (isDark) 0.5f else 1.0f 
         
         val colorsList = listOf(
             themeColors.gradientBlueStart.let { it.copy(alpha = it.alpha * darkAlphaMult) } to themeColors.gradientBlueEnd,
-            themeColors.gradientPurpleStart.let { it.copy(alpha = it.alpha * darkAlphaMult * 0.8f) } to themeColors.gradientPurpleEnd,
+            themeColors.gradientPurpleStart.let { it.copy(alpha = it.alpha * darkAlphaMult * 0.9f) } to themeColors.gradientPurpleEnd,
             themeColors.gradientMagentaStart.let { it.copy(alpha = it.alpha * darkAlphaMult) } to themeColors.gradientMagentaEnd,
             themeColors.gradientCyanStart.let { it.copy(alpha = it.alpha * darkAlphaMult * 1.5f) } to themeColors.gradientCyanEnd, 
             extraColor1Start to extraColor1End,
             extraColor2Start to extraColor2End,
-            themeColors.gradientWhiteStart.let { it.copy(alpha = it.alpha * (if (isDark) 0.05f else 0.4f)) } to themeColors.gradientWhiteEnd
+            themeColors.gradientWhiteStart.let { it.copy(alpha = it.alpha * (if (isDark) 0.08f else 0.5f)) } to themeColors.gradientWhiteEnd
         )
         colorsList.mapIndexed { i, (start, end) ->
             val radiusPx = meshRadiuses[i] * density.density
             Brush.radialGradient(
-                colors = listOf(start, end),
+                0.0f to start,
+                0.4f to start.copy(alpha = start.alpha * 0.7f),
+                0.8f to start.copy(alpha = start.alpha * 0.2f),
+                1.0f to end,
                 center = Offset.Zero,
                 radius = radiusPx
             )
@@ -137,7 +156,7 @@ fun FlareHomeBackground(
     }
 
     val noiseBitmap = remember {
-        createNoiseBitmap(opacity = if (isDark) 0.03f else 0.02f).asImageBitmap()
+        createNoiseBitmap(opacity = if (isDark) 0.035f else 0.025f).asImageBitmap()
     }
     val noiseBrush = remember(noiseBitmap) {
         ShaderBrush(
@@ -162,16 +181,18 @@ fun FlareHomeBackground(
                 val blendMode = BlendMode.SrcOver
 
                 brushes.forEachIndexed { i, brush ->
-                    val phase = i * 1.5f
-                    val speedX = 0.8f + (i * 0.12f)
-                    val speedY = 0.6f + (i * 0.15f)
+                    val phase = i * 2.1f
+                    val speedX = 0.5f + (i * 0.08f)
+                    val speedY = 0.4f + (i * 0.09f)
+
+                    val timeScale = time * 0.8f
 
                     val offsetX = if (isAnimationEnabled) {
-                        (sin(time * speedX + phase) * 0.35f + cos(time * 0.6f * speedX) * 0.15f)
+                        (sin(timeScale * speedX + phase) * 0.45f + cos(timeScale * 0.4f * speedX) * 0.2f)
                     } else 0f
                     
                     val offsetY = if (isAnimationEnabled) {
-                        (cos(time * speedY + phase) * 0.35f + sin(time * 0.5f * speedY) * 0.15f)
+                        (cos(timeScale * speedY + phase) * 0.45f + sin(timeScale * 0.3f * speedY) * 0.2f)
                     } else 0f
 
                     val base = meshBasePositions[i]
@@ -182,8 +203,14 @@ fun FlareHomeBackground(
 
                     val radiusPx = meshRadiuses[i] * density.density
 
+                    val scaleX = if (isAnimationEnabled) 1.2f + sin(timeScale * 0.5f + phase) * 0.4f else 1.2f
+                    val scaleY = if (isAnimationEnabled) 1.2f + cos(timeScale * 0.6f + phase) * 0.4f else 1.2f
+                    val rot = if (isAnimationEnabled) (timeScale * 12f * speedX + phase * 50f) % 360f else (phase * 50f) % 360f
+
                     withTransform({
                         translate(center.x, center.y)
+                        rotate(rot)
+                        scale(scaleX, scaleY)
                     }) {
                         drawCircle(
                             brush = brush,

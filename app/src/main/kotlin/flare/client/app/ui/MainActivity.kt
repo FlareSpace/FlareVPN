@@ -281,7 +281,7 @@ class MainActivity : AppCompatActivity() {
                 androidx.compose.animation.core.animate(
                     initialValue = 0f,
                     targetValue = 1f,
-                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.EaseOutQuad)
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
                 ) { value, _ ->
                     screenAlpha = value
                 }
@@ -633,7 +633,6 @@ class MainActivity : AppCompatActivity() {
                     flare.client.app.ui.components.dialogs.GlassDialog(
                         onDismissRequest = { showUsageDialogState = false },
                         maxWidthDp = 340,
-                        blurRadius = 12f,
                         hazeState = dialogHazeState
                     ) {
                         GlassDialogContent(
@@ -713,7 +712,6 @@ class MainActivity : AppCompatActivity() {
                     GlassDialog(
                         onDismissRequest = { viewModel.dismissNotice() },
                         maxWidthDp = 340,
-                        blurRadius = 12f,
                         hazeState = dialogHazeState
                     ) {
                         GlassDialogContent(
@@ -740,14 +738,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         handleIntentAction(intent)
-        themeManager.checkThemeTransition(
-            when (settings.themeMode) {
-                1 -> false
-                2 -> true
-                else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        )
-
+        
+        
 
         initializeMainUI()
     }
@@ -1005,7 +997,6 @@ class MainActivity : AppCompatActivity() {
             if (settings.themeMode == 0) {
                 val isDark = newUiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
                 themeManager.updateSystemBars(isDark)
-                
                 AppNotificationManager.showNotification(
                     NotificationType.SUCCESS,
                     I18n.strings.notif_theme_changed_auto,
@@ -1014,6 +1005,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+
+
 
     private fun handleThemeModeChange(newMode: Int, view: android.view.View) {
         val currentIsNight = when (settings.themeMode) {
@@ -1031,22 +1025,17 @@ class MainActivity : AppCompatActivity() {
         val isEffectivelySame = currentIsNight == targetIsNight
 
         if (!isSettingSame || !isEffectivelySame) {
+            settings.themeMode = newMode
+            settingsViewModel.composeThemeMode = newMode
+            themeManager.applyTheme()
+            
             if (!isEffectivelySame) {
-                themeManager.captureAndPrepareReveal(view)
-                
-                settings.themeMode = newMode
-                settingsViewModel.composeThemeMode = newMode
-                themeManager.applyTheme()
-                
-                
                 themeManager.updateSystemBars(targetIsNight)
-                
-                
-                themeManager.checkThemeTransition(targetIsNight)
-            } else {
-                settings.themeMode = newMode
-                settingsViewModel.composeThemeMode = newMode
-                themeManager.applyTheme()
+                AppNotificationManager.showNotification(
+                    NotificationType.SUCCESS,
+                    I18n.strings.notif_theme_changed,
+                    3
+                )
             }
         }
     }

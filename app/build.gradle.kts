@@ -23,14 +23,23 @@ android {
         applicationId = "flare.client.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 23
-        versionName = "1.2.8"
+        versionCode = 25
+        versionName = "1.3.0"
         
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
         }
 
         buildConfigField("String", "FREE_SERVERS_URL", "\"$freeServersUrl\"")
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = true
+        }
     }
 
     signingConfigs {
@@ -117,5 +126,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.haze)
     implementation(libs.navigation.compose)
+    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 }

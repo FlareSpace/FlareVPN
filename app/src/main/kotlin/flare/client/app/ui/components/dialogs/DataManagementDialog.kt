@@ -44,8 +44,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import flare.client.app.R
 import flare.client.app.data.db.AppDatabase
 import flare.client.app.ui.i18n.I18n
@@ -140,6 +141,7 @@ fun restoreSharedPreferencesFromXml(context: Context, xmlFile: File) {
     }
 }
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun DataManagementDialog(
     onDismissRequest: () -> Unit,
@@ -369,26 +371,18 @@ fun DataManagementDialog(
                         if (hazeState != null) {
                             it.hazeEffect(
                                 state = hazeState,
-                                style = HazeStyle(
-                                    blurRadius = 15.dp,
-                                    tints = emptyList()
+                                style = HazeMaterials.ultraThin(
+                                    containerColor = FlareTheme.colors.dialogGlassFill
                                 )
                             )
                         } else {
-                            it
+                            it.background(FlareTheme.colors.dialogGlassFill)
                         }
                     }
-                    .background(FlareTheme.colors.dialogGlassFill)
-                    .then(
-                        if (!FlareTheme.colors.isDark) {
-                            Modifier.border(
-                                width = 1.dp,
-                                color = FlareTheme.colors.dialogGlassStroke,
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                        } else {
-                            Modifier
-                        }
+                    .border(
+                        width = 0.5.dp,
+                        color = FlareTheme.colors.dialogGlassStroke,
+                        shape = RoundedCornerShape(24.dp)
                     )
             ) {
                 val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE

@@ -1,5 +1,7 @@
 package flare.client.app.ui
 
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.compose.animation.EnterTransition
@@ -299,6 +301,7 @@ private fun SettingsDetailContainer(
     backgroundContentRight: (@Composable () -> Unit)? = null,
     onDismissLeft: (() -> Unit)? = null,
     backgroundContentLeft: (@Composable () -> Unit)? = null,
+    hazeState: dev.chrisbanes.haze.HazeState? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     LaunchedEffect(morphRequest) {
@@ -314,11 +317,23 @@ private fun SettingsDetailContainer(
         backgroundContentLeft = backgroundContentLeft
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(FlareTheme.colors.gradientBase),
-            content = content
-        )
+            modifier = Modifier.fillMaxSize()
+        ) {
+            flare.client.app.ui.components.FlareHomeBackground(
+                backgroundType = settingsViewModel.composeBackgroundType,
+                isAnimationEnabled = false,
+                animationSpeed = settingsViewModel.composeGradientSpeed,
+                photoSeed = settingsViewModel.composePhotoSeed,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
+                    .let { if (hazeState != null) it.hazeSource(state = hazeState) else it }
+            )
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                content = content
+            )
+        }
     }
 }
 
@@ -514,6 +529,7 @@ fun FlareApp(
                 accentColor = accentColor,
                 pingStyle = settingsViewModel.composePingStyle,
                 isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                backgroundType = settingsViewModel.composeBackgroundType,
                 isAnimationEnabled = false,
                 animationSpeed = settingsViewModel.composeGradientSpeed,
                 isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
@@ -631,9 +647,10 @@ fun FlareApp(
 
     Box(modifier = Modifier.fillMaxSize()) {
         FlareHomeBackground(
-            isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && currentRoute == Destination.Home.route && (rootPagerState.currentPage == 1 || rootPagerState.currentPage == 2),
+            backgroundType = settingsViewModel.composeBackgroundType,
+            isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.Home.route && (rootPagerState.currentPage == 1 || rootPagerState.currentPage == 2)),
             animationSpeed = settingsViewModel.composeGradientSpeed,
+            photoSeed = settingsViewModel.composePhotoSeed,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
@@ -765,6 +782,7 @@ fun FlareApp(
                                         accentColor = accentColor,
                                         pingStyle = settingsViewModel.composePingStyle,
                                         isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                        backgroundType = settingsViewModel.composeBackgroundType,
                                         isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 1,
                                         animationSpeed = settingsViewModel.composeGradientSpeed,
                                         isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
@@ -833,6 +851,12 @@ fun FlareApp(
                                         onXrayPortChange = { wizardViewModel.composeXrayPort = it },
                                         xraySni = wizardViewModel.composeXraySni,
                                         onXraySniChange = { wizardViewModel.composeXraySni = it },
+                                        obfsPassword = wizardViewModel.composeXrayObfsPassword,
+                                        onObfsPasswordChange = { wizardViewModel.composeXrayObfsPassword = it },
+                                        portHoppingEnabled = wizardViewModel.composeXrayPortHoppingEnabled,
+                                        onPortHoppingEnabledChange = { wizardViewModel.composeXrayPortHoppingEnabled = it },
+                                        portHoppingValue = wizardViewModel.composeXrayPortHoppingValue,
+                                        onPortHoppingValueChange = { wizardViewModel.composeXrayPortHoppingValue = it },
                                         setupStatus = wizardViewModel.composeSetupStatus,
                                         setupProgress = wizardViewModel.composeSetupProgress,
                                         setupError = wizardViewModel.composeSetupError,
@@ -881,6 +905,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                     BasicSettingsScreen(
                         isSplitTunnelingEnabled = settingsViewModel.composeIsSplitTunnelingEnabled,
@@ -976,6 +1002,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                     AdvancedSettingsScreen(
                         isFragmentationEnabled = settingsViewModel.composeIsFragmentationEnabled,
@@ -1078,6 +1106,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                 PingSettingsScreen(
                     pingType = settingsViewModel.composePingType,
@@ -1113,6 +1143,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                     val routingRules by mainViewModel.routingRules.collectAsState()
                     RoutingScreen(
@@ -1143,6 +1175,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                 SubscriptionsScreen(
                     isSubIntervalEnabled = settingsViewModel.composeIsSubIntervalEnabled,
@@ -1199,10 +1233,12 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                 ThemeSettingsScreen(
                     themeMode = settingsViewModel.composeThemeMode,
-                    isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                    backgroundType = settingsViewModel.composeBackgroundType,
                     isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
                     gradientSpeed = settingsViewModel.composeGradientSpeed,
                     isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
@@ -1210,9 +1246,13 @@ fun FlareApp(
                     accentColor = settingsViewModel.composeAccentColor,
                     onBack = { navController.popBackStack() },
                     onThemeClick = onThemeClick,
-                    onGradientToggle = {
-                        settings.isBackgroundGradientEnabled = it
-                        settingsViewModel.composeIsGradientEnabled = it
+                    onBackgroundTypeClick = {
+                        settings.backgroundType = it
+                        settingsViewModel.composeBackgroundType = it
+                        
+                        val isGradient = it == 1
+                        settings.isBackgroundGradientEnabled = isGradient
+                        settingsViewModel.composeIsGradientEnabled = isGradient
                     },
                     onAnimationToggle = {
                         settings.isGradientAnimationEnabled = it
@@ -1229,6 +1269,100 @@ fun FlareApp(
                     onColorKeySelect = {
                         settings.accentColorKey = it
                         settingsViewModel.composeAccentColorKey = it
+                    },
+                    isDownloadingPhoto = settingsViewModel.composeIsDownloadingPhoto,
+                    onUpdatePhotoClick = {
+                        coroutineScope.launch {
+                            settingsViewModel.composeIsDownloadingPhoto = true
+                            
+                            kotlinx.coroutines.delay(50)
+                            try {
+                                val newSeed = (1..1000000).random().toString()
+                                val tags = listOf("nature", "landscape", "city", "neon", "abstract", "architecture", "space")
+                                val randomTag = tags.random()
+                                val url = "https://loremflickr.com/1080/1920/$randomTag?lock=$newSeed"
+                                android.util.Log.d("FlareVPN", "Downloading photo with OkHttp3: $url")
+                                
+                                val downloaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    try {
+                                        val client = okhttp3.OkHttpClient.Builder()
+                                            .followRedirects(true)
+                                            .followSslRedirects(true)
+                                            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                                            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                                            .build()
+
+                                        val request = okhttp3.Request.Builder()
+                                            .url(url)
+                                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                                            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+                                            .header("Pragma", "no-cache")
+                                            .build()
+
+                                        val response = client.newCall(request).execute()
+                                        android.util.Log.d("FlareVPN", "Response code: ${response.code}")
+                                        
+                                        if (!response.isSuccessful) {
+                                            response.close()
+                                            return@withContext false
+                                        }
+                                        
+                                        val body = response.body
+                                        if (body == null) {
+                                            response.close()
+                                            return@withContext false
+                                        }
+                                        
+                                        val context = navController.context
+                                        val outFile = java.io.File(context.filesDir, "background_photo.jpg")
+                                        
+                                        outFile.outputStream().use { out ->
+                                            body.byteStream().copyTo(out)
+                                        }
+                                        response.close()
+                                        
+                                        
+                                        context.filesDir.listFiles()?.forEach { file ->
+                                            if (file.name.startsWith("bg_") && file.name.endsWith(".jpg")) {
+                                                file.delete()
+                                            }
+                                        }
+                                        
+                                        android.util.Log.d("FlareVPN", "Saved: ${outFile.length()} bytes")
+                                        true
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("FlareVPN", "OkHttp3 error downloading photo", e)
+                                        false
+                                    }
+                                }
+                                
+                                if (downloaded) {
+                                    settings.photoSeed = newSeed
+                                    settingsViewModel.composePhotoSeed = newSeed
+                                    android.util.Log.d("FlareVPN", "Seed updated: $newSeed")
+                                    AppNotificationManager.showNotification(
+                                        NotificationType.SUCCESS,
+                                        "Фон успешно обновлен",
+                                        3
+                                    )
+                                } else {
+                                    AppNotificationManager.showNotification(
+                                        NotificationType.ERROR,
+                                        "Ошибка загрузки фото. Проверьте интернет.",
+                                        3
+                                    )
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("FlareVPN", "Download failed", e)
+                                AppNotificationManager.showNotification(
+                                    NotificationType.ERROR,
+                                    "Неизвестная ошибка",
+                                    3
+                                )
+                            } finally {
+                                settingsViewModel.composeIsDownloadingPhoto = false
+                            }
+                        }
                     },
                     hazeState = appHazeState
                 )
@@ -1249,6 +1383,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                 LanguageSettingsScreen(
                     currentLanguage = settingsViewModel.composeAppLanguage,
@@ -1274,6 +1410,8 @@ fun FlareApp(
                             coroutineScope.launch { rootPagerState.scrollToPage(1) }
                         },
                     backgroundContentLeft = homeBackgroundContent
+                ,
+                    hazeState = appHazeState
                 ) {
                     JournalScreen(
                         logFile = java.io.File(navController.context.filesDir, "sing-box.log"),
@@ -1307,9 +1445,10 @@ fun FlareApp(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             FlareHomeBackground(
-                                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                backgroundType = settingsViewModel.composeBackgroundType,
                                 isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.JsonEditor.route),
                                 animationSpeed = settingsViewModel.composeGradientSpeed,
+                                photoSeed = settingsViewModel.composePhotoSeed,
                                 modifier = Modifier.fillMaxSize()
                             )
                             profile?.let { p ->
@@ -1369,9 +1508,10 @@ fun FlareApp(
                             modifier = Modifier.fillMaxSize()
                         ) {
                             FlareHomeBackground(
-                                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
+                                backgroundType = settingsViewModel.composeBackgroundType,
                                 isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.SimpleEditor.route),
                                 animationSpeed = settingsViewModel.composeGradientSpeed,
+                                photoSeed = settingsViewModel.composePhotoSeed,
                                 modifier = Modifier.fillMaxSize()
                             )
                             profile?.let { p ->

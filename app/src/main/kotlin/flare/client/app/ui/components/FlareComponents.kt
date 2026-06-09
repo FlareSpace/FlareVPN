@@ -71,7 +71,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.platform.LocalDensity
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
+
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.focus.FocusRequester
@@ -147,6 +152,7 @@ fun RollingTimer(
     }
 }
 
+@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun FlareTopBar(
     title: String,
@@ -158,6 +164,7 @@ fun FlareTopBar(
     actions: @Composable (RowScope.() -> Unit)? = null
 ) {
     val isDark = FlareTheme.colors.isDark
+    android.util.Log.d("FlareTopBar", "isDark = $isDark, colors.bgItem = ${FlareTheme.colors.bgItem}")
     
     val scrollOffset = when {
         scrollState != null -> scrollState.value
@@ -171,11 +178,6 @@ fun FlareTopBar(
     val maxScrollPx = with(density) { 30.dp.toPx() }
     val scrollProgress = (scrollOffset / maxScrollPx).coerceIn(0f, 1f)
     
-    val backgroundColor = if (isDark) {
-        FlareTheme.colors.bgItem.copy(alpha = 0.75f * scrollProgress)
-    } else {
-        Color.White.copy(alpha = 0.65f * scrollProgress)
-    }
     
     val lineColor = if (isDark) {
         Color.White.copy(alpha = 0.12f * scrollProgress)
@@ -183,21 +185,22 @@ fun FlareTopBar(
         Color.Black.copy(alpha = 0.08f * scrollProgress)
     }
     
+    val baseStyle = HazeMaterials.ultraThin()
+    val lightTint = baseStyle.tints.firstOrNull()?.color ?: Color.White.copy(alpha = 0.30f)
+    val darkTint = Color(0xFF1A1A1A).copy(alpha = 0.30f)
+    val hazeStyle = HazeStyle(
+        blurRadius  = baseStyle.blurRadius,
+        tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
+        noiseFactor = baseStyle.noiseFactor
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .hazeEffect(state = hazeState) {
-                progressive = HazeProgressive.verticalGradient(
-                    startY = 0f,
-                    startIntensity = 1f,
-                    endY = Float.POSITIVE_INFINITY,
-                    endIntensity = 0.25f
-                )
-                blurRadius = 32.dp
+            .hazeEffect(state = hazeState, style = hazeStyle) {
                 alpha = scrollProgress
             }
-            .background(backgroundColor)
             .drawBehind {
                 if (scrollProgress > 0f) {
                     val strokeWidth = 1.dp.toPx()

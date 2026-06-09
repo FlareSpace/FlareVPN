@@ -7,9 +7,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -51,7 +53,8 @@ fun FlareFireworkButton(
     connectionState: MainViewModel.ConnectionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    buttonSize: Dp = 300.dp
+    buttonSize: Dp = 300.dp,
+    backgroundType: Int = 1
 ) {
     var scale by remember { mutableStateOf(1f) }
 
@@ -100,6 +103,7 @@ fun FlareFireworkButton(
     }
 
     val isDark = FlareTheme.colors.isDark
+    val useDarkShadow = isDark && backgroundType == 0
 
     
     val offColor = if (isDark) Color(0xFF4A4A4A) else Color(0xFF8E9EB2)
@@ -178,7 +182,7 @@ fun FlareFireworkButton(
     }
 
     
-    val vignetteBrush = remember(isDark) {
+    val vignetteBrush = remember(useDarkShadow) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
@@ -196,7 +200,7 @@ fun FlareFireworkButton(
         }
     }
 
-    val ambientGlowBrush = remember(isDark) {
+    val ambientGlowBrush = remember(useDarkShadow) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
@@ -208,7 +212,7 @@ fun FlareFireworkButton(
                         Color.Transparent
                     ),
                     center = center,
-                    radius = maxRadius * (if (isDark) 0.85f else 0.75f)
+                    radius = maxRadius * (if (useDarkShadow) 0.85f else 0.75f)
                 )
             }
         }
@@ -257,26 +261,32 @@ fun FlareFireworkButton(
             .graphicsLayer {
                 this.scaleX = animatedScale
                 this.scaleY = animatedScale
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        scale = 0.92f
-                        tryAwaitRelease()
-                        scale = 1f
-                        onClick()
-                    }
-                )
             },
         contentAlignment = Alignment.Center
     ) {
+        
+        Box(
+            modifier = Modifier
+                .requiredSize(buttonSize * 0.5f)
+                .clip(CircleShape)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            scale = 0.92f
+                            tryAwaitRelease()
+                            scale = 1f
+                            onClick()
+                        }
+                    )
+                }
+        )
         Canvas(modifier = Modifier.fillMaxSize()) {
             val dpToPx = 1.dp.toPx()
             val center = Offset(size.width / 2, size.height / 2)
             val maxRadius = size.width / 2.3f
 
             
-            if (isDark && totalActiveProgress > 0f) {
+            if (useDarkShadow && totalActiveProgress > 0f) {
                 val vignetteRadius = maxRadius * 1.05f
                 drawCircle(
                     brush = vignetteBrush,
@@ -289,7 +299,7 @@ fun FlareFireworkButton(
             
             if (totalActiveProgress > 0f) {
                 
-                val ambientGlowRadius = maxRadius * (if (isDark) 0.85f else 0.75f)
+                val ambientGlowRadius = maxRadius * (if (useDarkShadow) 0.85f else 0.75f)
                 drawCircle(
                     brush = ambientGlowBrush,
                     radius = ambientGlowRadius,

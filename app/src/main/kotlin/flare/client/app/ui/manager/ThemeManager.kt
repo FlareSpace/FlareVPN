@@ -2,17 +2,10 @@ package flare.client.app.ui.manager
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
-import android.animation.AnimatorSet
 import android.animation.ArgbEvaluator
 import android.animation.ValueAnimator
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.view.View
-import android.view.ViewAnimationUtils
-import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
-import android.view.animation.PathInterpolator
-import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import flare.client.app.R
@@ -31,9 +24,6 @@ class ThemeManager(
     var themeContentView: View? = null
 
     companion object {
-        var themeBitmap: Bitmap? = null
-        var revealX: Int = 0
-        var revealY: Int = 0
         var lastUiMode: Int = -1
         var themeChangedJustNow: Boolean = false
         var lastThemeChangeTime: Long = 0
@@ -65,104 +55,6 @@ class ThemeManager(
         const val COLOR_MATERIAL_YOU_END = COLOR_DEFAULT_END
     }
 
-    fun captureAndPrepareReveal(triggerView: View) {
-        val location = IntArray(2)
-        triggerView.getLocationInWindow(location)
-        revealX = location[0] + triggerView.width / 2
-        revealY = location[1] + triggerView.height / 2
-        themeBitmap = captureScreenshot()
-    }
-
-    private fun captureScreenshot(): Bitmap? {
-        return try {
-            val view = activity.window.decorView
-            val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            view.draw(canvas)
-            bitmap
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    fun checkThemeTransition(targetIsNight: Boolean) {
-        val bitmap = themeBitmap ?: return
-        themeBitmap = null
-
-        val overlay = ImageView(activity).apply {
-            setImageBitmap(bitmap)
-            scaleType = ImageView.ScaleType.CENTER_CROP
-        }
-
-        val rootDecor = activity.window.decorView as ViewGroup
-        rootDecor.addView(overlay, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
-
-        overlay.post {
-            if (!overlay.isAttachedToWindow) return@post
-
-            val displayMetrics = rootDecor.resources.displayMetrics
-            val width = if (rootDecor.width > 0) rootDecor.width else displayMetrics.widthPixels
-            val height = if (rootDecor.height > 0) rootDecor.height else displayMetrics.heightPixels
-
-            val cx = if (revealX != 0) revealX else width / 2
-            val cy = if (revealY != 0) revealY else height / 2
-
-            
-            revealX = 0
-            revealY = 0
-
-            val startRadius = run {
-                val dx1 = cx.toDouble()
-                val dy1 = cy.toDouble()
-                val dx2 = (width - cx).toDouble()
-                val dy2 = (height - cy).toDouble()
-                val r1 = Math.hypot(dx1, dy1)
-                val r2 = Math.hypot(dx2, dy1)
-                val r3 = Math.hypot(dx1, dy2)
-                val r4 = Math.hypot(dx2, dy2)
-                Math.max(Math.max(r1, r2), Math.max(r3, r4)).toFloat()
-            }
-            val endRadius = 0f
-
-            overlay.pivotX = cx.toFloat()
-            overlay.pivotY = cy.toFloat()
-
-            val circularAnim = ViewAnimationUtils.createCircularReveal(overlay, cx, cy, startRadius, endRadius)
-
-            val alphaAnim = ValueAnimator.ofFloat(1f, 0f).apply {
-                addUpdateListener { anim ->
-                    overlay.alpha = anim.animatedValue as Float
-                }
-            }
-
-            val scaleAnim = ValueAnimator.ofFloat(1f, 0.96f).apply {
-                addUpdateListener { anim ->
-                    val scale = anim.animatedValue as Float
-                    overlay.scaleX = scale
-                    overlay.scaleY = scale
-                }
-            }
-
-            val animSet = AnimatorSet().apply {
-                playTogether(circularAnim, alphaAnim, scaleAnim)
-                duration = 500
-                interpolator = PathInterpolator(0.2f, 0.8f, 0.2f, 1f)
-                addListener(object : AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: Animator) {
-                        rootDecor.removeView(overlay)
-                        bitmap.recycle()
-
-                        AppNotificationManager.showNotification(
-                            NotificationType.SUCCESS,
-                            I18n.strings.notif_theme_changed,
-                            3
-                        )
-                    }
-                })
-            }
-            animSet.start()
-        }
-    }
 
     fun applyBackgroundGradient() {
         

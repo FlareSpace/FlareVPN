@@ -56,7 +56,6 @@ fun EditSubscriptionDialog(
     GlassDialog(
         onDismissRequest = onDismissRequest,
         maxWidthDp = 340,
-        blurRadius = 12f,
         hazeState = hazeState
     ) {
         Column(

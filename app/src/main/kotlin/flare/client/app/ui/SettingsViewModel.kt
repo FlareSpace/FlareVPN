@@ -34,11 +34,14 @@ class SettingsViewModel : ViewModel() {
     var composeThemeMode by mutableStateOf(0)
     var composeSystemIsDark by mutableStateOf(false)
     var composeIsGradientEnabled by mutableStateOf(true)
+    var composeBackgroundType by mutableStateOf(0)
     var composeIsAnimationEnabled by mutableStateOf(true)
     var composeGradientSpeed by mutableStateOf(1.0f)
     var composeIsCustomColorEnabled by mutableStateOf(false)
     var composeAccentColorKey by mutableStateOf("")
     var composeAccentColor by mutableStateOf(Color(ThemeManager.COLOR_DEFAULT))
+    var composePhotoSeed by mutableStateOf("default_seed")
+    var composeIsDownloadingPhoto by mutableStateOf(false)
     
     
     var composeIsSplitTunnelingEnabled by mutableStateOf(false)
@@ -149,9 +152,11 @@ class SettingsViewModel : ViewModel() {
     fun syncTheme(settings: SettingsManager) {
         composeThemeMode = settings.themeMode
         composeIsGradientEnabled = settings.isBackgroundGradientEnabled
+        composeBackgroundType = settings.backgroundType
         composeIsAnimationEnabled = settings.isGradientAnimationEnabled
         composeGradientSpeed = settings.gradientAnimationSpeed
         composeIsCustomColorEnabled = settings.isCustomColorEnabled
         composeAccentColorKey = settings.accentColorKey
+        composePhotoSeed = settings.photoSeed
     }
 }

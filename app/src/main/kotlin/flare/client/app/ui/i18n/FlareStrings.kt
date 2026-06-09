@@ -250,6 +250,12 @@ interface FlareStrings {
     val settings_advanced_title: String
     val settings_basic_title: String
     val settings_bg_effects_header: String
+    val settings_bg_effect_label: String
+    val settings_bg_effect_none: String
+    val settings_bg_effect_gradient: String
+    val settings_bg_effect_shapes: String
+    val settings_bg_effect_photo: String
+    val settings_bg_effect_update_photo: String
     val settings_btn_advanced: String
     val settings_btn_base: String
     val settings_btn_change: String
@@ -461,6 +467,12 @@ interface FlareStrings {
     val wizard_hysteria2_port_hint: String
     val servers_hysteria2_sni_label: String
     val wizard_hysteria2_sni_hint: String
+    val servers_hysteria2_obfs_pass_label: String
+    val wizard_hysteria2_obfs_pass_hint: String
+    val servers_hysteria2_port_hopping_label: String
+    val servers_hysteria2_port_hopping_auto: String
+    val servers_hysteria2_port_hopping_manual: String
+    val wizard_hysteria2_port_hopping_hint: String
     val ssh_status_installing_shadowsocks: String
     val ssh_status_configuring_shadowsocks: String
     val ssh_status_restarting_shadowsocks: String
@@ -762,6 +774,12 @@ object RuFlareStrings : FlareStrings {
     override val settings_advanced_title: String = "Расширенные настройки"
     override val settings_basic_title: String = "Базовые настройки"
     override val settings_bg_effects_header: String = "Фоновые эффекты"
+    override val settings_bg_effect_label: String = "Эффект"
+    override val settings_bg_effect_none: String = "Выключен"
+    override val settings_bg_effect_gradient: String = "Градиент"
+    override val settings_bg_effect_shapes: String = "Фигуры"
+    override val settings_bg_effect_photo: String = "Фото"
+    override val settings_bg_effect_update_photo: String = "Обновить фото"
     override val settings_btn_advanced: String = "Расширенные"
     override val settings_btn_base: String = "Базовые"
     override val settings_btn_change: String = "Изменить"
@@ -972,6 +990,12 @@ object RuFlareStrings : FlareStrings {
     override val wizard_hysteria2_port_hint: String = "443 (по умолчанию)"
     override val servers_hysteria2_sni_label: String = "Домен маскировки (SNI)"
     override val wizard_hysteria2_sni_hint: String = "google.com (по умолчанию)"
+    override val servers_hysteria2_obfs_pass_label: String = "Obfs Пароль (Опционально)"
+    override val wizard_hysteria2_obfs_pass_hint: String = "salamander_pass (по умолчанию)"
+    override val servers_hysteria2_port_hopping_label: String = "Port Hopping"
+    override val servers_hysteria2_port_hopping_auto: String = "Авто"
+    override val servers_hysteria2_port_hopping_manual: String = "Вручную"
+    override val wizard_hysteria2_port_hopping_hint: String = "Диапазон, например 20000-50000"
     override val ssh_status_installing_shadowsocks: String = "Установка Shadowsocks..."
     override val ssh_status_configuring_shadowsocks: String = "Настройка Shadowsocks..."
     override val ssh_status_restarting_shadowsocks: String = "Перезапуск сервиса Shadowsocks..."
@@ -1286,6 +1310,12 @@ object EnFlareStrings : FlareStrings {
     override val settings_advanced_title: String = "Advanced Settings"
     override val settings_basic_title: String = "Basic Settings"
     override val settings_bg_effects_header: String = "Background Effects"
+    override val settings_bg_effect_label: String = "Effect"
+    override val settings_bg_effect_none: String = "None"
+    override val settings_bg_effect_gradient: String = "Gradient"
+    override val settings_bg_effect_shapes: String = "Shapes"
+    override val settings_bg_effect_photo: String = "Photo"
+    override val settings_bg_effect_update_photo: String = "Update photo"
     override val settings_btn_advanced: String = "Advanced"
     override val settings_btn_base: String = "Basic"
     override val settings_btn_change: String = "Change"
@@ -1497,6 +1527,12 @@ object EnFlareStrings : FlareStrings {
     override val wizard_hysteria2_port_hint: String = "443 (default)"
     override val servers_hysteria2_sni_label: String = "Masquerade Domain (SNI)"
     override val wizard_hysteria2_sni_hint: String = "google.com (default)"
+    override val servers_hysteria2_obfs_pass_label: String = "Obfs Password (Optional)"
+    override val wizard_hysteria2_obfs_pass_hint: String = "salamander_pass (default)"
+    override val servers_hysteria2_port_hopping_label: String = "Port Hopping"
+    override val servers_hysteria2_port_hopping_auto: String = "Auto"
+    override val servers_hysteria2_port_hopping_manual: String = "Manual"
+    override val wizard_hysteria2_port_hopping_hint: String = "Range, e.g. 20000-50000"
     override val ssh_status_installing_shadowsocks: String = "Installing Shadowsocks..."
     override val ssh_status_configuring_shadowsocks: String = "Configuring Shadowsocks..."
     override val ssh_status_restarting_shadowsocks: String = "Restarting Shadowsocks..."

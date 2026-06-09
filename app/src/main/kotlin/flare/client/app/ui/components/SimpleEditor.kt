@@ -85,6 +85,7 @@ fun ProfileSimpleEditor(
     var sni by remember { mutableStateOf("") }
     var alpn by remember { mutableStateOf("") }
     var fingerprint by remember { mutableStateOf("chrome") }
+    var mport by remember { mutableStateOf("") }
     var pbk by remember { mutableStateOf("") }
     var sid by remember { mutableStateOf("") }
     var upMbps by remember { mutableStateOf("") }
@@ -260,10 +261,13 @@ fun ProfileSimpleEditor(
                     if (scheme == "hysteria2" || scheme == "hy2") {
                         obfsType = queryParams["obfs"] ?: queryParams["obfs-type"] ?: ""
                         obfsPassword = queryParams["obfs-password"] ?: queryParams["obfspassword"] ?: ""
+                        mport = queryParams["mport"] ?: ""
                     } else {
                         obfsType = queryParams["obfs"] ?: ""
                         obfsPassword = ""
+                        mport = queryParams["mport"] ?: ""
                     }
+                    fingerprint = queryParams["fp"] ?: queryParams["fingerprint"] ?: "chrome"
                 }
                 else -> {
                     uuid = uri.userInfo ?: ""
@@ -455,6 +459,8 @@ fun ProfileSimpleEditor(
                             query.add("obfs=${encode(obfsType.trim())}")
                         }
                     }
+                    if (mport.trim().isNotEmpty()) query.add("mport=${encode(mport.trim())}")
+                    
                     val params = if (query.isNotEmpty()) "?" + query.joinToString("&") else ""
                     "$scheme://$cred@$host$portStr$params#${encode(newName)}"
                 }
@@ -1174,6 +1180,16 @@ fun ProfileSimpleEditor(
                                             )
                                         }
                                     }
+                                    
+                                    EditorFieldDivider()
+                                    EditorTextField(
+                                        label = "Port Hopping (mport)",
+                                        value = mport,
+                                        onValueChange = { mport = it },
+                                        keyboardType = KeyboardType.Text,
+                                        placeholder = "e.g. 20000-50000",
+                                        accentColor = accentColor
+                                    )
                                 }
                             }
                             

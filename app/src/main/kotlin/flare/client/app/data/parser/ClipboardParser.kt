@@ -837,6 +837,7 @@ object ClipboardParser {
         ) ?: false
         val alpn = firstNonBlankParam(params, "alpn")
         val pin = firstNonBlankParam(params, "pin")
+        val mport = firstNonBlankParam(params, "mport")
 
         put("protocol", "hysteria2")
         put("tag", "proxy")
@@ -848,6 +849,7 @@ object ClipboardParser {
             }))
             if (upMbps != null && upMbps > 0) put("up_mbps", upMbps)
             if (downMbps != null && downMbps > 0) put("down_mbps", downMbps)
+            if (!mport.isNullOrBlank()) put("mport", mport)
             if (!obfsType.isNullOrBlank()) {
                 put("obfs", JSONObject().apply {
                     put("type", obfsType)

@@ -57,6 +57,7 @@ fun HomeScreen(
     accentColor: Int,
     pingStyle: String,
     isGradientEnabled: Boolean,
+    backgroundType: Int = 1,
     isAnimationEnabled: Boolean,
     animationSpeed: Float,
     isCustomColorEnabled: Boolean = false,
@@ -158,6 +159,7 @@ fun HomeScreen(
                             onConnectClick()
                         }
                     },
+                    backgroundType = backgroundType,
                     modifier = Modifier.offset(y = buttonOffsetY)
                 )
             }

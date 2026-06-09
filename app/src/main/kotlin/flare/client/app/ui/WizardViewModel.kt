@@ -42,6 +42,10 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
     var composeSshPassword by mutableStateOf("")
     var composeXrayPort by mutableStateOf("")
     var composeXraySni by mutableStateOf("")
+    var composeXrayObfsPassword by mutableStateOf("")
+    var composeXrayFingerprint by mutableStateOf("chrome")
+    var composeXrayPortHoppingEnabled by mutableStateOf(false)
+    var composeXrayPortHoppingValue by mutableStateOf("")
     var composeSetupStatus by mutableStateOf("")
     var composeSetupProgress by mutableStateOf(0f)
     var composeSetupError by mutableStateOf<String?>(null)
@@ -148,6 +152,10 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
         composeSshPassword = ""
         composeXrayPort = ""
         composeXraySni = ""
+        composeXrayObfsPassword = ""
+        composeXrayFingerprint = "chrome"
+        composeXrayPortHoppingEnabled = false
+        composeXrayPortHoppingValue = ""
         composeSetupStatus = ""
         composeSetupProgress = 0f
         composeSetupError = null
@@ -275,7 +283,10 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                 user = composeSshUser,
                 pass = composeSshPassword,
                 vpnPort = finalPort.toIntOrNull() ?: 443,
-                sni = primarySni
+                sni = primarySni,
+                obfsPassword = composeXrayObfsPassword,
+                fingerprint = composeXrayFingerprint,
+                mport = if (composeXrayPortHoppingEnabled) composeXrayPortHoppingValue.trim() else null
             )
 
             val vlessUri = creator.setup(config)

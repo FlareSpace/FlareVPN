@@ -910,6 +910,17 @@ object V2RayConfigConverter {
             sbOb.put("password", password)
         }
 
+        val mport = settings?.optString("mport", "")
+        if (!mport.isNullOrBlank()) {
+            val portsArray = org.json.JSONArray()
+            mport.split(",").map { it.trim().replace(Regex("[\\s-]+"), ":") }.filter { it.isNotEmpty() }.forEach {
+                portsArray.put(it)
+            }
+            if (portsArray.length() > 0) {
+                sbOb.put("server_ports", portsArray)
+            }
+        }
+
         var upMbps = 0
         var downMbps = 0
 
@@ -1041,13 +1052,13 @@ object V2RayConfigConverter {
 
                 val type = sbOb.optString("type")
                 if (type != "hysteria" && type != "hysteria2") {
-                    val fp = s.optString("fingerprint", "chrome")
-                    val utlsObj =
-                            JSONObject().apply {
-                                put("enabled", true)
-                                put("fingerprint", if (fp == "random") "chrome" else fp)
-                            }
-                    tls.put("utls", utlsObj)
+                val fp = s.optString("fingerprint", "chrome")
+                val utlsObj =
+                        JSONObject().apply {
+                            put("enabled", true)
+                            put("fingerprint", if (fp == "random") "chrome" else fp)
+                        }
+                tls.put("utls", utlsObj)
                 }
 
                 if (security == "reality") {

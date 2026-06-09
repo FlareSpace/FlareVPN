@@ -115,13 +115,22 @@ val LocalFlareColors = staticCompositionLocalOf {
 }
 
 @Composable
+private fun animatedColor(targetValue: Color): Color {
+    return androidx.compose.animation.animateColorAsState(
+        targetValue = targetValue,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "ThemeColorTransition"
+    ).value
+}
+
+@Composable
 fun FlareTheme(
     isDark: Boolean = isSystemInDarkTheme(),
     accentColor: Color = Color(ThemeManager.COLOR_DEFAULT),
     accentEndColor: Color = Color(ThemeManager.COLOR_DEFAULT_END),
     content: @Composable () -> Unit
 ) {
-    val colors = if (isDark) {
+    val targetColors = if (isDark) {
         FlareColors(
             bgDark = Color(0xFF000000),
             bgSurface = Color(0xFF0F0F11),
@@ -139,8 +148,8 @@ fun FlareTheme(
             navIconTint = Color(0xFFFFFFFF),
             connectedGreen = Color(0xFF30D158),
             disconnectedRed = Color(0xFFFF453A),
-            dialogGlassFill = Color(0x80000000),
-            dialogGlassStroke = Color(0x4DFFFFFF),
+            dialogGlassFill = Color(0xFF1A1A1E).copy(alpha = 0.08f),
+            dialogGlassStroke = Color(0x20FFFFFF),
             bgProfileSelected = Color(0xFF2C2C2E),
             textProfileSelectedPrimary = Color(0xFFFFFFFF),
             textProfileSelectedSecondary = Color(0xFFB0BDD1),
@@ -191,7 +200,7 @@ fun FlareTheme(
             navIconTint = Color(0xFF4A5568),
             connectedGreen = Color(0xFF30D158),
             disconnectedRed = Color(0xFFFF453A),
-            dialogGlassFill = Color(0x4DFFFFFF),
+            dialogGlassFill = Color(0xFFFFFFFF).copy(alpha = 0.08f),
             dialogGlassStroke = Color(0x1A000000),
             bgProfileSelected = Color(0xFFE2EAFD),
             textProfileSelectedPrimary = Color(0xFF1A1C1E),
@@ -226,6 +235,55 @@ fun FlareTheme(
             isDark = false
         )
     }
+    
+    val colors = FlareColors(
+        bgDark = animatedColor(targetColors.bgDark),
+        bgSurface = animatedColor(targetColors.bgSurface),
+        bgItem = animatedColor(targetColors.bgItem),
+        bgNavBar = animatedColor(targetColors.bgNavBar),
+        bgNotificationBar = animatedColor(targetColors.bgNotificationBar),
+        accent = animatedColor(targetColors.accent),
+        accentEnd = animatedColor(targetColors.accentEnd),
+        textPrimary = animatedColor(targetColors.textPrimary),
+        textSecondary = animatedColor(targetColors.textSecondary),
+        white = animatedColor(targetColors.white),
+        glassStroke = animatedColor(targetColors.glassStroke),
+        dividerColor = animatedColor(targetColors.dividerColor),
+        menuTextColor = animatedColor(targetColors.menuTextColor),
+        navIconTint = animatedColor(targetColors.navIconTint),
+        connectedGreen = animatedColor(targetColors.connectedGreen),
+        disconnectedRed = animatedColor(targetColors.disconnectedRed),
+        dialogGlassFill = animatedColor(targetColors.dialogGlassFill),
+        dialogGlassStroke = animatedColor(targetColors.dialogGlassStroke),
+        bgProfileSelected = animatedColor(targetColors.bgProfileSelected),
+        textProfileSelectedPrimary = animatedColor(targetColors.textProfileSelectedPrimary),
+        textProfileSelectedSecondary = animatedColor(targetColors.textProfileSelectedSecondary),
+        dividerProfileSelected = animatedColor(targetColors.dividerProfileSelected),
+        btnConnectRimStart = animatedColor(targetColors.btnConnectRimStart),
+        btnConnectRimEnd = animatedColor(targetColors.btnConnectRimEnd),
+        btnConnectBodyStart = animatedColor(targetColors.btnConnectBodyStart),
+        btnConnectBodyCenter = animatedColor(targetColors.btnConnectBodyCenter),
+        btnConnectBodyEnd = animatedColor(targetColors.btnConnectBodyEnd),
+        btnConnectIconTint = animatedColor(targetColors.btnConnectIconTint),
+        gradientBase = animatedColor(targetColors.gradientBase),
+        gradientBlueStart = animatedColor(targetColors.gradientBlueStart),
+        gradientBlueEnd = animatedColor(targetColors.gradientBlueEnd),
+        gradientPurpleStart = animatedColor(targetColors.gradientPurpleStart),
+        gradientPurpleEnd = animatedColor(targetColors.gradientPurpleEnd),
+        gradientMagentaStart = animatedColor(targetColors.gradientMagentaStart),
+        gradientMagentaEnd = animatedColor(targetColors.gradientMagentaEnd),
+        gradientCyanStart = animatedColor(targetColors.gradientCyanStart),
+        gradientCyanEnd = animatedColor(targetColors.gradientCyanEnd),
+        gradientWhiteStart = animatedColor(targetColors.gradientWhiteStart),
+        gradientWhiteEnd = animatedColor(targetColors.gradientWhiteEnd),
+        glassInputBg = animatedColor(targetColors.glassInputBg),
+        infoBg = animatedColor(targetColors.infoBg),
+        infoStroke = animatedColor(targetColors.infoStroke),
+        trafficTextColor = animatedColor(targetColors.trafficTextColor),
+        headerGradientStart = animatedColor(targetColors.headerGradientStart),
+        headerGradientEnd = animatedColor(targetColors.headerGradientEnd),
+        isDark = isDark
+    )
 
     val textSelectionColors = remember(colors.accent) {
         TextSelectionColors(
