@@ -408,6 +408,21 @@ object PingHelper {
                 try {
                     val converted = V2RayConfigConverter.convertIfNeeded(profile.configJson)
                     val profileJson = JSONObject(converted)
+
+                    
+                    
+                    val endpoints = profileJson.optJSONArray("endpoints")
+                    if (endpoints != null) {
+                        for (ei in 0 until endpoints.length()) {
+                            val ep = endpoints.optJSONObject(ei) ?: continue
+                            if (ep.optString("type").equals("wireguard", ignoreCase = true)) {
+                                excludedIndices.add(index)
+                                onResult(profile.id, -1L, "UDP")
+                                return@forEachIndexed
+                            }
+                        }
+                    }
+
                     val profileOutbounds = profileJson.optJSONArray("outbounds") ?: JSONArray()
                     var mainProxyTag = ""
                     for (i in 0 until profileOutbounds.length()) {
@@ -562,6 +577,22 @@ object PingHelper {
         return try {
             val converted = V2RayConfigConverter.convertIfNeeded(profile.configJson)
             val json = JSONObject(converted)
+
+            
+            val endpoints = json.optJSONArray("endpoints")
+            if (endpoints != null) {
+                for (ei in 0 until endpoints.length()) {
+                    val ep = endpoints.optJSONObject(ei) ?: continue
+                    if (ep.optString("type").equals("wireguard", ignoreCase = true)) {
+                        val peers = ep.optJSONArray("peers")
+                        val peer = peers?.optJSONObject(0)
+                        val host = peer?.optString("address") ?: continue
+                        val port = peer.optInt("port", 51820)
+                        if (host.isNotEmpty()) return host to port
+                    }
+                }
+            }
+
             val outbounds = json.optJSONArray("outbounds") ?: return null
             for (i in 0 until outbounds.length()) {
                 val ob = outbounds.optJSONObject(i) ?: continue

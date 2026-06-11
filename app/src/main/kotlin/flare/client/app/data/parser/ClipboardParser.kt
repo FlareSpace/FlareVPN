@@ -442,8 +442,10 @@ object ClipboardParser {
             "wireguard", "wg" -> null
             else -> throw IllegalArgumentException("Protocol $scheme not supported")
         }
-        val proxyOutbounds = if (scheme == "wireguard" || scheme == "wg") {
-            listOf(buildWireGuardOutbound(processedUri, parsed, params))
+        val protocol = if (scheme == "wg" || scheme == "wireguard") "wireguard" else scheme
+        val configJson = if (scheme == "wireguard" || scheme == "wg") {
+            val wgEndpoint = buildWireGuardEndpoint(processedUri, parsed, params)
+            buildMinimalSingBoxConfigWithEndpoint(wgEndpoint, proxyServer)
         } else {
             val sbOutbounds = V2RayConfigConverter.convertOutboundsPublic(JSONArray().put(xrayOutbound))
             val list = mutableListOf<JSONObject>()
@@ -453,11 +455,8 @@ object ClipboardParser {
             if (list.isEmpty()) {
                 throw IllegalArgumentException("Failed to convert outbound for $scheme")
             }
-            list
+            buildMinimalSingBoxConfig(list, proxyServer)
         }
-
-        val protocol = if (scheme == "wg" || scheme == "wireguard") "wireguard" else scheme
-        val configJson = buildMinimalSingBoxConfig(proxyOutbounds, proxyServer)
         return ProfileEntity(name = displayName, uri = processedUri, configJson = configJson, subscriptionId = subscriptionId, protocol = protocol)
     }
 
@@ -523,6 +522,111 @@ object ClipboardParser {
 
         sb.put("outbounds", JSONArray().apply {
             proxyOutbounds.forEach { put(it) }
+            put(JSONObject().apply { put("type", "direct"); put("tag", "direct") })
+            put(JSONObject().apply { put("type", "block"); put("tag", "block") })
+        })
+
+        sb.put("route", JSONObject().apply {
+            put("auto_detect_interface", false)
+            put("final", "proxy")
+            put("rules", JSONArray().apply {
+                put(JSONObject().apply { put("protocol", "dns"); put("action", "hijack-dns") })
+                put(JSONObject().apply { put("port", 53); put("action", "hijack-dns") })
+                put(JSONObject().apply { put("action", "sniff") })
+                put(JSONObject().apply { put("protocol", JSONArray().put("bittorrent")); put("outbound", "direct") })
+                put(JSONObject().apply { put("ip_is_private", true); put("outbound", "direct") })
+                if (proxyDomains.length() > 0) {
+                    put(JSONObject().apply { put("domain", proxyDomains); put("outbound", "direct") })
+                }
+                put(JSONObject().apply { put("rule_set", JSONArray().put("geosite-ru")); put("outbound", "direct") })
+                put(JSONObject().apply { put("rule_set", JSONArray().put("geoip-ru")); put("outbound", "direct") })
+            })
+            put("rule_set", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("tag", "geosite-ru")
+                    put("type", "local")
+                    put("format", "binary")
+                    put("path", "geosite-ru.srs")
+                })
+                put(JSONObject().apply {
+                    put("tag", "geoip-ru")
+                    put("type", "local")
+                    put("format", "binary")
+                    put("path", "geoip-ru.srs")
+                })
+            })
+        })
+
+        return sb.toString(2).replace("\\/", "/")
+    }
+
+    
+    
+    private fun buildMinimalSingBoxConfigWithEndpoint(wgEndpoint: JSONObject, proxyServer: String): String {
+        val sb = JSONObject()
+
+        sb.put("log", JSONObject().apply {
+            put("level", "info")
+            put("timestamp", true)
+        })
+
+        val proxyDomains = JSONArray().apply {
+            if (proxyServer.isNotEmpty() && !proxyServer[0].isDigit()) put(proxyServer)
+        }
+
+        sb.put("dns", JSONObject().apply {
+            put("servers", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("tag", "dns-remote")
+                    put("type", "https")
+                    put("server", "1.1.1.1")
+                    put("path", "/dns-query")
+                    put("domain_resolver", "dns-direct")
+                    put("detour", "proxy")
+                })
+                put(JSONObject().apply {
+                    put("tag", "dns-direct")
+                    put("type", "udp")
+                    put("server", "8.8.8.8")
+                })
+            })
+            put("rules", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("outbound", JSONArray().put("direct"))
+                    put("server", "dns-direct")
+                })
+                if (proxyDomains.length() > 0) {
+                    put(JSONObject().apply {
+                        put("domain", proxyDomains)
+                        put("server", "dns-direct")
+                    })
+                }
+            })
+            put("final", "dns-remote")
+            put("strategy", "prefer_ipv4")
+            put("independent_cache", true)
+        })
+
+        sb.put("inbounds", JSONArray().apply {
+            put(JSONObject().apply {
+                put("type", "tun")
+                put("tag", "tun-in")
+                put("address", JSONArray().apply {
+                    put("172.19.0.1/30")
+                    put("fdfe:dcba:9876::1/126")
+                })
+                put("mtu", 1500)
+                put("auto_route", true)
+                put("strict_route", true)
+                put("stack", "mixed")
+            })
+        })
+
+        
+        
+        sb.put("endpoints", JSONArray().put(wgEndpoint))
+
+        sb.put("outbounds", JSONArray().apply {
             put(JSONObject().apply { put("type", "direct"); put("tag", "direct") })
             put(JSONObject().apply { put("type", "block"); put("tag", "block") })
         })
@@ -838,6 +942,7 @@ object ClipboardParser {
         val alpn = firstNonBlankParam(params, "alpn")
         val pin = firstNonBlankParam(params, "pin")
         val mport = firstNonBlankParam(params, "mport")
+        val hopInterval = firstNonBlankParam(params, "hop_interval", "hop-interval", "hopInterval")
 
         put("protocol", "hysteria2")
         put("tag", "proxy")
@@ -850,6 +955,7 @@ object ClipboardParser {
             if (upMbps != null && upMbps > 0) put("up_mbps", upMbps)
             if (downMbps != null && downMbps > 0) put("down_mbps", downMbps)
             if (!mport.isNullOrBlank()) put("mport", mport)
+            if (!hopInterval.isNullOrBlank()) put("hop_interval", hopInterval)
             if (!obfsType.isNullOrBlank()) {
                 put("obfs", JSONObject().apply {
                     put("type", obfsType)
@@ -868,7 +974,8 @@ object ClipboardParser {
         })
     }
 
-    private fun buildWireGuardOutbound(rawUri: String, parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
+    
+    private fun buildWireGuardEndpoint(rawUri: String, parsed: URI, params: Map<String, String>): JSONObject = JSONObject().apply {
         val privateKey = extractWireGuardPrivateKey(rawUri, parsed, params)
             ?: throw IllegalArgumentException("WireGuard private key is missing")
         val peerPublicKey = firstNonBlankParam(
@@ -883,22 +990,31 @@ object ClipboardParser {
         if (server.isNullOrBlank()) {
             throw IllegalArgumentException("WireGuard endpoint host is missing")
         }
+        val serverPort = if (parsed.port > 0) parsed.port else (firstNonBlankParam(params, "port")?.toIntOrNull() ?: 51820)
 
+        
         put("type", "wireguard")
         put("tag", "proxy")
-        put("server", server)
-        put("server_port", if (parsed.port > 0) parsed.port else (firstNonBlankParam(params, "port")?.toIntOrNull() ?: 51820))
-        put("local_address", localAddresses)
+        put("address", localAddresses)
         put("private_key", privateKey)
-        put("peer_public_key", peerPublicKey)
 
-        firstNonBlankParam(params, "presharedkey", "pre_shared_key", "pre-shared-key")?.let {
-            put("pre_shared_key", it)
+        val peerObj = JSONObject().apply {
+            put("address", server)       
+            put("port", serverPort)      
+            put("public_key", peerPublicKey)
+            put("allowed_ips", JSONArray().apply {
+                put("0.0.0.0/0")
+                put("::/0")
+            })
+            firstNonBlankParam(params, "presharedkey", "pre_shared_key", "pre-shared-key")?.let {
+                put("pre_shared_key", it)
+            }
+            parseWireGuardReserved(params)?.let { put("reserved", it) }
         }
 
-        parseWireGuardReserved(params)?.let { put("reserved", it) }
+        put("peers", JSONArray().put(peerObj))
+
         firstNonBlankParam(params, "mtu")?.toIntOrNull()?.takeIf { it > 0 }?.let { put("mtu", it) }
-        firstNonBlankParam(params, "workers")?.toIntOrNull()?.takeIf { it > 0 }?.let { put("workers", it) }
     }
 
     private fun buildStreamSettings(host: String, params: Map<String, String>): JSONObject = JSONObject().apply {

@@ -349,6 +349,8 @@ fun FlareApp(
     onImportFileClick: () -> Unit,
     onShareProfile: (flare.client.app.data.model.ProfileSummary) -> Unit,
     onQrProfile: (flare.client.app.data.model.ProfileSummary) -> Unit,
+    onShareSubscription: (flare.client.app.data.model.SubscriptionEntity) -> Unit,
+    onQrSubscription: (flare.client.app.data.model.SubscriptionEntity) -> Unit,
     onLanguageSelected: (String) -> Unit,
     onLogLevelClick: (String) -> Unit,
     onUpdateFrequencyClick: (String) -> Unit,
@@ -546,6 +548,9 @@ fun FlareApp(
                 onSubscriptionSpeedTest = {},
                 onSubscriptionUpdate = {},
                 onEditSubscriptionJson = {},
+                onSubscriptionPinToggle = {},
+                onSubscriptionShare = {},
+                onSubscriptionQr = {},
                 onClipboardClick = {},
                 onManualInputClick = {},
                 onQrScanClick = {},
@@ -805,6 +810,9 @@ fun FlareApp(
                                         onSubscriptionSpeedTest = { id -> mainViewModel.speedTestSubscription(id) },
                                         onSubscriptionUpdate = { sub -> mainViewModel.refreshSubscription(sub) },
                                         onEditSubscriptionJson = { sub -> onEditSubscriptionClick(sub) },
+                                        onSubscriptionPinToggle = { sub -> mainViewModel.toggleSubscriptionPinned(sub.id) },
+                                        onSubscriptionShare = onShareSubscription,
+                                        onSubscriptionQr = onQrSubscription,
                                         onClipboardClick = onClipboardClick,
                                         onManualInputClick = onManualInputClick,
                                         onQrScanClick = onQrScanClick,
@@ -847,6 +855,7 @@ fun FlareApp(
                                         onProtocolXrayClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY },
                                         onProtocolHysteria2Click = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2 },
                                         onProtocolShadowsocksClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS },
+                                        onProtocolWireGuardClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.WIREGUARD },
                                         xrayPort = wizardViewModel.composeXrayPort,
                                         onXrayPortChange = { wizardViewModel.composeXrayPort = it },
                                         xraySni = wizardViewModel.composeXraySni,
@@ -1083,6 +1092,12 @@ fun FlareApp(
                         onTlsSpoofMethodClick = {
                             settings.tlsSpoofMethod = it
                             settingsViewModel.composeTlsSpoofMethod = it
+                            onRestartRequired()
+                        },
+                        fingerprint = settingsViewModel.composeFingerprint,
+                        onFingerprintClick = {
+                            settings.fingerprint = it
+                            settingsViewModel.composeFingerprint = it
                             onRestartRequired()
                         },
                         accentColor = settingsViewModel.composeAccentColor,

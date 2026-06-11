@@ -78,6 +78,7 @@ class SettingsViewModel : ViewModel() {
     var composeIsTlsSpoofEnabled by mutableStateOf(false)
     var composeTlsSpoofDomain by mutableStateOf("google.com")
     var composeTlsSpoofMethod by mutableStateOf("wrong-ack")
+    var composeFingerprint by mutableStateOf("auto")
 
     
     var composePingType by mutableStateOf("via proxy GET")
@@ -134,6 +135,7 @@ class SettingsViewModel : ViewModel() {
         composeIsTlsSpoofEnabled = settings.isTlsSpoofEnabled
         composeTlsSpoofDomain = settings.tlsSpoofDomain
         composeTlsSpoofMethod = settings.tlsSpoofMethod
+        composeFingerprint = settings.fingerprint
     }
 
     fun syncPing(settings: SettingsManager) {

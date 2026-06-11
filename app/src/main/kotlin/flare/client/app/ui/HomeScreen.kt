@@ -74,6 +74,9 @@ fun HomeScreen(
     onSubscriptionSpeedTest: (Long) -> Unit,
     onSubscriptionUpdate: (SubscriptionEntity) -> Unit,
     onEditSubscriptionJson: (SubscriptionEntity) -> Unit,
+    onSubscriptionPinToggle: (SubscriptionEntity) -> Unit,
+    onSubscriptionShare: (SubscriptionEntity) -> Unit,
+    onSubscriptionQr: (SubscriptionEntity) -> Unit,
     onClipboardClick: () -> Unit,
     onManualInputClick: () -> Unit,
     onQrScanClick: () -> Unit,
@@ -255,6 +258,9 @@ fun HomeScreen(
                             onSubscriptionSpeedTest = onSubscriptionSpeedTest,
                             onSubscriptionUpdate = onSubscriptionUpdate,
                             onEditSubscriptionJson = onEditSubscriptionJson,
+                            onSubscriptionPinToggle = onSubscriptionPinToggle,
+                            onSubscriptionQr = onSubscriptionQr,
+                            onSubscriptionShare = onSubscriptionShare,
                             hazeState = hazeState
                         )
                     }

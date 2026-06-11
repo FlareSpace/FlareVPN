@@ -75,6 +75,7 @@ fun ServersScreen(
     onProtocolXrayClick: () -> Unit,
     onProtocolHysteria2Click: () -> Unit,
     onProtocolShadowsocksClick: () -> Unit,
+    onProtocolWireGuardClick: () -> Unit,
     
     xrayPort: String,
     onXrayPortChange: (String) -> Unit,
@@ -241,9 +242,9 @@ fun ServersScreen(
                                     title = I18n.strings.servers_protocol_wireguard_title,
                                     description = I18n.strings.servers_protocol_wireguard_desc,
                                     icon = R.drawable.ic_chain,
-                                    isSelected = false,
+                                    isSelected = selectedProtocol == SelectedProtocol.WIREGUARD,
                                     accentColor = accentColor,
-                                    onClick = {  }
+                                    onClick = onProtocolWireGuardClick
                                 )
                             }
                              WizardStep.XRAY_CONFIG -> {
@@ -253,6 +254,12 @@ fun ServersScreen(
                                          onPortChange = onXrayPortChange,
                                          sni = xraySni,
                                          onSniChange = onXraySniChange,
+                                         accentColor = accentColor
+                                     )
+                                 } else if (selectedProtocol == SelectedProtocol.WIREGUARD) {
+                                     WireGuardConfigStep(
+                                         port = xrayPort,
+                                         onPortChange = onXrayPortChange,
                                          accentColor = accentColor
                                      )
                                  } else {
@@ -1316,6 +1323,44 @@ fun ShadowsocksConfigStep(
                 isValid = sni.isNotBlank(),
                 hint = I18n.strings.wizard_shadowsocks_sni_hint,
                 icon = R.drawable.ic_language
+            )
+        }
+    }
+}
+
+@Composable
+fun WireGuardConfigStep(
+    port: String,
+    onPortChange: (String) -> Unit,
+    accentColor: Color
+) {
+    val titleText = I18n.strings.servers_wireguard_title
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = titleText,
+            fontFamily = GeologicaMedium,
+            fontSize = 15.sp,
+            color = FlareTheme.colors.textPrimary,
+            modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
+        )
+        
+        FlareCard(
+            cornerType = DisplayItem.CornerType.ALL,
+            paddingHorizontal = 16.dp,
+            paddingVertical = 20.dp,
+            borderColor = accentColor.copy(alpha = 0.15f),
+            borderWidth = 1.dp
+        ) {
+            FlareWizardInputField(
+                title = I18n.strings.servers_wireguard_port_label,
+                value = port,
+                onValueChange = onPortChange,
+                accentColor = accentColor,
+                isValid = port.isNotBlank(),
+                hint = I18n.strings.wizard_wireguard_port_hint,
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number,
+                icon = R.drawable.ic_port
             )
         }
     }

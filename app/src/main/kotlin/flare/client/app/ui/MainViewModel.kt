@@ -482,6 +482,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleSubscriptionExpanded(subId: Long) = expandedSubs.update { if (subId in it) it - subId else it + subId }
     fun collapseAllSubscriptions() { expandedSubs.value = emptySet() }
+    fun toggleSubscriptionPinned(subId: Long) {
+        viewModelScope.launch {
+            ensureInitialized()
+            val app = getApplication<Application>()
+            val settings = SettingsManager(app)
+            if (subId == VIRTUAL_SUB_ID) {
+                val wasPinned = settings.isVirtualSubscriptionPinned
+                if (wasPinned) {
+                    settings.isVirtualSubscriptionPinned = false
+                    settings.virtualSubscriptionPinnedTime = 0L
+                } else {
+                    settings.isVirtualSubscriptionPinned = true
+                    settings.virtualSubscriptionPinnedTime = System.currentTimeMillis()
+                }
+            } else {
+                val subs = repository.getAllSubscriptions().first()
+                val targetSub = subs.find { it.id == subId } ?: return@launch
+                val wasPinned = targetSub.pinned > 0L
+                val newPinValue = if (wasPinned) 0L else System.currentTimeMillis()
+                repository.updateSubscriptionPinned(subId, newPinValue)
+            }
+        }
+    }
     fun selectProfile(profileId: Long) {
         selectionJob?.cancel()
         recoveryJob?.cancel()
@@ -784,36 +807,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
 
     private fun buildDisplayList(subs: List<SubscriptionEntity>, standalone: List<ProfileSummary>, profilesBySub: Map<Long?, List<ProfileSummary>>, expanded: Set<Long>, selId: Long?, pings: Map<Long, PingState>, refreshing: Set<Long>): List<DisplayItem> {
-        val actualExpanded = mutableSetOf<Long>()
-        val items = mutableListOf<DisplayItem>()
-        subs.forEach { sub ->
-            val subProfiles = profilesBySub[sub.id] ?: emptyList()
-            val isExpanded = sub.id in expanded
-            if (isExpanded) {
-                actualExpanded.add(sub.id)
-            }
-            val isRefreshing = sub.id in refreshing
-            items += DisplayItem.SubscriptionItem(sub, subProfiles, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
-            if (isExpanded) subProfiles.forEachIndexed { i, p -> items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == subProfiles.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE) }
-        }
+        val settings = SettingsManager(getApplication())
+        val allSubs = subs.toMutableList()
         if (standalone.isNotEmpty()) {
             val virtualSub = SubscriptionEntity(
                 id = VIRTUAL_SUB_ID,
                 name = I18n.strings.sub_single_profiles,
-                url = ""
+                url = "",
+                pinned = if (settings.isVirtualSubscriptionPinned) settings.virtualSubscriptionPinnedTime else 0L
             )
-            val isExpanded = VIRTUAL_SUB_ID in expanded
-            if (isExpanded) {
-                actualExpanded.add(VIRTUAL_SUB_ID)
+            allSubs.add(virtualSub)
+        }
+
+        val sortedSubs = allSubs.sortedWith { s1, s2 ->
+            val p1 = s1.pinned
+            val p2 = s2.pinned
+            val isP1 = p1 > 0
+            val isP2 = p2 > 0
+            if (isP1 && isP2) {
+                p1.compareTo(p2)
+            } else if (isP1) {
+                -1
+            } else if (isP2) {
+                1
+            } else {
+                if (s1.id == VIRTUAL_SUB_ID) 1
+                else if (s2.id == VIRTUAL_SUB_ID) -1
+                else s1.id.compareTo(s2.id)
             }
-            val isRefreshing = VIRTUAL_SUB_ID in refreshing
-            items += DisplayItem.SubscriptionItem(virtualSub, standalone, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
-            if (isExpanded) {
-                standalone.forEachIndexed { i, p ->
-                    items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == standalone.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
+        }
+
+        val actualExpanded = mutableSetOf<Long>()
+        val items = mutableListOf<DisplayItem>()
+
+        sortedSubs.forEach { sub ->
+            if (sub.id == VIRTUAL_SUB_ID) {
+                val isExpanded = VIRTUAL_SUB_ID in expanded
+                if (isExpanded) {
+                    actualExpanded.add(VIRTUAL_SUB_ID)
+                }
+                val isRefreshing = VIRTUAL_SUB_ID in refreshing
+                items += DisplayItem.SubscriptionItem(sub, standalone, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
+                if (isExpanded) {
+                    standalone.forEachIndexed { i, p ->
+                        items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == standalone.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
+                    }
+                }
+            } else {
+                val subProfiles = profilesBySub[sub.id] ?: emptyList()
+                val isExpanded = sub.id in expanded
+                if (isExpanded) {
+                    actualExpanded.add(sub.id)
+                }
+                val isRefreshing = sub.id in refreshing
+                items += DisplayItem.SubscriptionItem(sub, subProfiles, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
+                if (isExpanded) {
+                    subProfiles.forEachIndexed { i, p ->
+                        items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == subProfiles.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
+                    }
                 }
             }
         }
+
         if (actualExpanded.size < expanded.size) {
             expandedSubs.value = actualExpanded
         }

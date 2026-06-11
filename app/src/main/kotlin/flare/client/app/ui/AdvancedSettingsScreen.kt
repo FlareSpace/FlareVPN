@@ -95,6 +95,9 @@ fun AdvancedSettingsScreen(
     tlsSpoofMethod: String,
     onTlsSpoofMethodClick: (String) -> Unit,
 
+    fingerprint: String,
+    onFingerprintClick: (String) -> Unit,
+
     accentColor: Color,
     onBack: () -> Unit,
     hazeState: HazeState
@@ -130,6 +133,20 @@ fun AdvancedSettingsScreen(
         I18n.strings.dns_preset_adguard to "adguard_doh",
         I18n.strings.dns_preset_google to "google_dot",
         I18n.strings.option_custom to "custom"
+    )
+
+    val fingerprintOptions = listOf(
+        "Auto" to "auto",
+        "Chrome" to "chrome",
+        "Firefox" to "firefox",
+        "Edge" to "edge",
+        "Safari" to "safari",
+        "360" to "360",
+        "QQ" to "qq",
+        "iOS" to "ios",
+        "Android" to "android",
+        "Random" to "random",
+        "Randomized" to "randomized"
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -296,6 +313,28 @@ fun AdvancedSettingsScreen(
                 }
                 Text(
                     text = I18n.strings.settings_desc_tls_spoof,
+                    fontFamily = flare.client.app.ui.components.GeologicaRegular,
+                    fontSize = 12.sp,
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp, bottom = 24.dp, start = 4.dp)
+                )
+
+                FlareSectionHeader(I18n.strings.settings_label_fingerprint)
+                val currentFingerprintLabel = fingerprintOptions.find { it.second == fingerprint }?.first ?: "Auto"
+                FlareSettingsValueItem(
+                    title = I18n.strings.settings_item_tls_fingerprint,
+                    value = currentFingerprintLabel,
+                    menuItems = fingerprintOptions.mapIndexed { i, opt ->
+                        flare.client.app.util.GlassUtils.MenuItem(i, opt.first) {
+                            onFingerprintClick(opt.second)
+                        }
+                    },
+                    hazeState = hazeState,
+                    accentColor = accentColor,
+                    cornerType = DisplayItem.CornerType.ALL
+                )
+                Text(
+                    text = I18n.strings.settings_desc_fingerprint,
                     fontFamily = flare.client.app.ui.components.GeologicaRegular,
                     fontSize = 12.sp,
                     color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),

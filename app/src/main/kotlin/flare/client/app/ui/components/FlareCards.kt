@@ -317,278 +317,330 @@ fun SubscriptionCard(
     onEditJsonClick: () -> Unit,
     onDeleteClick: () -> Unit,
     onClick: () -> Unit,
+    isPinned: Boolean = false,
+    showQrAndLink: Boolean = true,
+    onPinClick: () -> Unit = {},
+    onQrClick: () -> Unit = {},
+    onShareLinkClick: () -> Unit = {},
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
-    var showMenu by remember { mutableStateOf(false) }
+    var contextMenuExpanded by remember { mutableStateOf(false) }
+    var touchOffset by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
     val isVirtual = name == I18n.strings.sub_single_profiles
     val arrowRotation by animateFloatAsState(targetValue = if (isExpanded) 90f else 0f)
     
-    FlareCard(
-        cornerType = cornerType,
-        paddingHorizontal = 0.dp,
-        paddingVertical = 0.dp,
-        cornerRadius = 15.dp,
-        onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
+    Box(modifier = Modifier.fillMaxWidth()) {
+        FlareCard(
+            cornerType = cornerType,
+            paddingHorizontal = 0.dp,
+            paddingVertical = 0.dp,
+            cornerRadius = 15.dp,
+            onClick = onClick,
+            onLongClick = { offset ->
+                touchOffset = offset
+                contextMenuExpanded = true
+            }
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_arrow_right),
-                    contentDescription = null,
-                    tint = FlareTheme.colors.textSecondary,
+                Row(
                     modifier = Modifier
-                        .size(20.dp)
-                        .rotate(arrowRotation)
-                )
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 12.dp, end = 8.dp)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = name,
-                        fontFamily = GeologicaMedium,
-                        fontSize = 15.sp,
-                        color = FlareTheme.colors.textPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_right),
+                        contentDescription = null,
+                        tint = FlareTheme.colors.textSecondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(arrowRotation)
                     )
-                    
-                    if (!trafficInfo.isNullOrEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(16.dp)
-                                    .padding(top = 4.dp)
-                        ) {
+
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 12.dp, end = 8.dp)
+                    ) {
+                        Text(
+                            text = name,
+                            fontFamily = GeologicaMedium,
+                            fontSize = 15.sp,
+                            color = FlareTheme.colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        if (!trafficInfo.isNullOrEmpty()) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(
-                                        color = FlareTheme.colors.dividerColor,
-                                        shape = CircleShape
-                                    )
+                                        .fillMaxWidth()
+                                        .height(16.dp)
+                                        .padding(top = 4.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(trafficProgress.coerceIn(0f, 1f))
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
                                         .background(
-                                            color = accentColor,
+                                            color = FlareTheme.colors.dividerColor,
                                             shape = CircleShape
                                         )
-                                )
-                            }
-                            Text(
-                                text = trafficInfo,
-                                modifier = Modifier.align(Alignment.Center),
-                                fontFamily = GeologicaMedium,
-                                fontSize = 10.sp,
-                                color = FlareTheme.colors.textPrimary
-                            )
-                            if (trafficProgress > 0f) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(ProgressClipShape(trafficProgress))
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(trafficProgress.coerceIn(0f, 1f))
+                                            .background(
+                                                color = accentColor,
+                                                shape = CircleShape
+                                            )
+                                    )
+                                }
+                                Text(
+                                    text = trafficInfo,
+                                    modifier = Modifier.align(Alignment.Center),
+                                    fontFamily = GeologicaMedium,
+                                    fontSize = 10.sp,
+                                    color = FlareTheme.colors.textPrimary
+                                )
+                                if (trafficProgress > 0f) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(ProgressClipShape(trafficProgress))
+                                    ) {
+                                        Text(
+                                            text = trafficInfo,
+                                            modifier = Modifier.align(Alignment.Center),
+                                            fontFamily = GeologicaMedium,
+                                            fontSize = 10.sp,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (expire > 0 || updateInterval > 0) {
+                            Column(
+                                modifier = Modifier.padding(top = 4.dp),
+                                verticalArrangement = Arrangement.spacedBy(1.dp)
+                            ) {
+                                if (expire > 0) {
+                                    val expireMillis = if (expire > 1000000000000L) expire else expire * 1000L
+                                    val date = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault()).format(java.util.Date(expireMillis))
                                     Text(
-                                        text = trafficInfo,
-                                        modifier = Modifier.align(Alignment.Center),
+                                        text = I18n.strings.label_expires.format(date),
                                         fontFamily = GeologicaMedium,
-                                        fontSize = 10.sp,
-                                        color = Color.White
+                                        fontSize = 9.sp,
+                                        color = FlareTheme.colors.textSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (updateInterval > 0) {
+                                    val formattedInterval = formatUpdateInterval(updateInterval)
+                                    Text(
+                                        text = I18n.strings.label_update_interval.format(formattedInterval),
+                                        fontFamily = GeologicaMedium,
+                                        fontSize = 9.sp,
+                                        color = FlareTheme.colors.textSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
                         }
                     }
 
-                    if (expire > 0 || updateInterval > 0) {
-                        Column(
-                            modifier = Modifier.padding(top = 4.dp),
-                            verticalArrangement = Arrangement.spacedBy(1.dp)
-                        ) {
-                            if (expire > 0) {
-                                val expireMillis = if (expire > 1000000000000L) expire else expire * 1000L
-                                val date = java.text.SimpleDateFormat("dd.MM.yyyy", java.util.Locale.getDefault()).format(java.util.Date(expireMillis))
-                                Text(
-                                    text = I18n.strings.label_expires.format(date),
-                                    fontFamily = GeologicaMedium,
-                                    fontSize = 9.sp,
-                                    color = FlareTheme.colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            if (updateInterval > 0) {
-                                val formattedInterval = formatUpdateInterval(updateInterval)
-                                Text(
-                                    text = I18n.strings.label_update_interval.format(formattedInterval),
-                                    fontFamily = GeologicaMedium,
-                                    fontSize = 9.sp,
-                                    color = FlareTheme.colors.textSecondary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    modifier = Modifier.widthIn(min = 116.dp)
-                ) {
-                    FlareGlassContainer(
-                        shape = CircleShape,
-                        radius = 17.dp,
-                        hazeState = hazeState,
-                        modifier = Modifier.offset(x = 6.dp)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        modifier = Modifier.widthIn(min = 116.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 5.dp, vertical = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        FlareGlassContainer(
+                            shape = CircleShape,
+                            radius = 17.dp,
+                            hazeState = hazeState,
+                            modifier = Modifier.offset(x = 6.dp)
                         ) {
-                            val buttonTint = FlareTheme.colors.textPrimary
-
-                            FlareGlassButton(
-                                onClick = onUpdateClick,
-                                enabled = !isRefreshing
+                            Row(
+                                modifier = Modifier
+                                    .padding(horizontal = 5.dp, vertical = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                if (isRefreshing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        strokeWidth = 1.5.dp,
-                                        color = accentColor
-                                    )
-                                } else {
+                                val buttonTint = FlareTheme.colors.textPrimary
+
+                                FlareGlassButton(
+                                    onClick = onUpdateClick,
+                                    enabled = !isRefreshing
+                                ) {
+                                    if (isRefreshing) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 1.5.dp,
+                                            color = accentColor
+                                        )
+                                    } else {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_refresh),
+                                            contentDescription = I18n.strings.label_update,
+                                            tint = buttonTint,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(5.dp))
+
+                                FlareGlassButton(
+                                    onClick = onSpeedTestClick
+                                ) {
                                     Icon(
-                                        painter = painterResource(R.drawable.ic_refresh),
-                                        contentDescription = I18n.strings.label_update,
+                                        painter = painterResource(R.drawable.ic_speedometer),
+                                        contentDescription = I18n.strings.label_speed_test,
                                         tint = buttonTint,
                                         modifier = Modifier.size(15.dp)
                                     )
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.width(5.dp))
+                                Spacer(modifier = Modifier.width(5.dp))
 
-                            FlareGlassButton(
-                                onClick = onSpeedTestClick
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_speedometer),
-                                    contentDescription = I18n.strings.label_speed_test,
-                                    tint = buttonTint,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(5.dp))
-
-                            Box {
-                                var menuExpanded by remember { mutableStateOf(false) }
-                                
-                                FlareGlassButton(
-                                    onClick = { menuExpanded = true }
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_more_vert),
-                                        contentDescription = null,
-                                        tint = buttonTint,
-                                        modifier = Modifier.size(18.dp)
+                                Box {
+                                    var menuExpanded by remember { mutableStateOf(false) }
+                                    
+                                    FlareGlassButton(
+                                        onClick = { menuExpanded = true }
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_more_vert),
+                                            contentDescription = null,
+                                            tint = buttonTint,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    
+                                    val editLabel = I18n.strings.menu_edit_subscription
+                                    val deleteLabel = I18n.strings.menu_delete_subscription
+                                    
+                                    val items = if (isVirtual) {
+                                        listOf(
+                                            flare.client.app.util.GlassUtils.MenuItem(1, deleteLabel) { 
+                                                menuExpanded = false
+                                                onDeleteClick() 
+                                            }
+                                        )
+                                    } else {
+                                        listOf(
+                                            flare.client.app.util.GlassUtils.MenuItem(1, editLabel) { 
+                                                menuExpanded = false
+                                                onEditJsonClick() 
+                                            },
+                                            flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
+                                                menuExpanded = false
+                                                onDeleteClick() 
+                                            }
+                                        )
+                                    }
+                                    
+                                    FlareGlassMenu(
+                                        expanded = menuExpanded,
+                                        onDismissRequest = { menuExpanded = false },
+                                        items = items,
+                                        hazeState = hazeState,
+                                        alignment = Alignment.TopEnd
                                     )
                                 }
-                                
-                                val editLabel = I18n.strings.menu_edit_subscription
-                                val deleteLabel = I18n.strings.menu_delete_subscription
-                                
-                                val items = if (isVirtual) {
-                                    listOf(
-                                        flare.client.app.util.GlassUtils.MenuItem(1, deleteLabel) { 
-                                            menuExpanded = false
-                                            onDeleteClick() 
-                                        }
-                                    )
-                                } else {
-                                    listOf(
-                                        flare.client.app.util.GlassUtils.MenuItem(1, editLabel) { 
-                                            menuExpanded = false
-                                            onEditJsonClick() 
-                                        },
-                                        flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
-                                            menuExpanded = false
-                                            onDeleteClick() 
-                                        }
-                                    )
-                                }
-                                
-                                FlareGlassMenu(
-                                    expanded = menuExpanded,
-                                    onDismissRequest = { menuExpanded = false },
-                                    items = items,
-                                    hazeState = hazeState,
-                                    alignment = Alignment.TopEnd
-                                )
                             }
                         }
                     }
                 }
-            }
 
-            if (!description.isNullOrEmpty()) {
-                HorizontalDivider(
-                    color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
-                    thickness = 0.5.dp,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
-                )
-
-                Box(
-                    modifier = Modifier
-                        .padding(start = 16.dp, end = 16.dp, bottom = 10.dp, top = 6.dp)
-                        .fillMaxWidth()
-                        .background(
-                            color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .border(
-                            width = 0.5.dp,
-                            color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = description,
-                        fontFamily = GeologicaRegular,
-                        fontSize = 11.sp,
-                        color = FlareTheme.colors.textSecondary,
-                        modifier = Modifier.alpha(0.8f)
+                if (!description.isNullOrEmpty()) {
+                    HorizontalDivider(
+                        color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.04f),
+                        thickness = 0.5.dp,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 16.dp, end = 16.dp, bottom = 10.dp, top = 6.dp)
+                            .fillMaxWidth()
+                            .background(
+                                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.04f) else Color.Black.copy(alpha = 0.03f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .border(
+                                width = 0.5.dp,
+                                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = description,
+                            fontFamily = GeologicaRegular,
+                            fontSize = 11.sp,
+                            color = FlareTheme.colors.textSecondary,
+                            modifier = Modifier.alpha(0.8f)
+                        )
+                    }
                 }
             }
+            
+            if (cornerType != DisplayItem.CornerType.BOTTOM && cornerType != DisplayItem.CornerType.ALL) {
+                HorizontalDivider(
+                    color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
-        
-        if (cornerType != DisplayItem.CornerType.BOTTOM && cornerType != DisplayItem.CornerType.ALL) {
-            HorizontalDivider(
-                color = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.05f),
-                thickness = 0.5.dp,
-                modifier = Modifier.fillMaxWidth()
+
+        if (isPinned) {
+            Icon(
+                painter = painterResource(R.drawable.ic_star),
+                contentDescription = null,
+                tint = FlareTheme.colors.textSecondary.copy(alpha = 0.8f),
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = 6.dp, start = 6.dp)
+                    .size(11.dp)
             )
         }
+
+        val menuItems = remember(isPinned, showQrAndLink) {
+            val list = mutableListOf<flare.client.app.util.GlassUtils.MenuItem>()
+            if (showQrAndLink) {
+                list.add(flare.client.app.util.GlassUtils.MenuItem(1, I18n.strings.menu_qr_code) {
+                    contextMenuExpanded = false
+                    onQrClick()
+                })
+                list.add(flare.client.app.util.GlassUtils.MenuItem(2, I18n.strings.menu_link) {
+                    contextMenuExpanded = false
+                    onShareLinkClick()
+                })
+            }
+            val pinLabel = if (isPinned) I18n.strings.menu_unpin_subscription else I18n.strings.menu_pin_subscription
+            list.add(flare.client.app.util.GlassUtils.MenuItem(3, pinLabel) {
+                contextMenuExpanded = false
+                onPinClick()
+            })
+            list
+        }
+
+        FlareGlassMenu(
+            expanded = contextMenuExpanded,
+            onDismissRequest = { contextMenuExpanded = false },
+            items = menuItems,
+            hazeState = hazeState,
+            touchOffset = touchOffset
+        )
     }
 }
 

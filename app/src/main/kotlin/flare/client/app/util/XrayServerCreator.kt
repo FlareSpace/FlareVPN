@@ -187,10 +187,40 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
             }
             _progress.value = 70
 
+            _progress.value = 75
+            _status.value = I18n.strings.ssh_status_configuring ?: "Applying server optimizations..."
+
+            
+            ssh.exec("sudo mkdir -p /etc/systemd/system/xray.service.d")
+            ssh.exec("echo -e '[Service]\\nRestart=always\\nRestartSec=3s' | sudo tee /etc/systemd/system/xray.service.d/override.conf > /dev/null")
+            ssh.exec("sudo systemctl daemon-reload")
+
+            
+            val sysctlConfig = """
+                net.core.default_qdisc=fq
+                net.ipv4.tcp_congestion_control=bbr
+                net.core.rmem_max=2500000
+                net.core.wmem_max=2500000
+                fs.file-max=51200
+            """.trimIndent()
+            val sysctlB64 = android.util.Base64.encodeToString(
+                sysctlConfig.toByteArray(Charsets.UTF_8),
+                android.util.Base64.NO_WRAP
+            )
+            ssh.exec("echo '$sysctlB64' | base64 -d | sudo tee -a /etc/sysctl.conf > /dev/null")
+            ssh.exec("sudo sysctl -p")
+
+            
+            ssh.exec("sudo apt-get install -y ufw")
+            ssh.exec("sudo ufw allow OpenSSH || sudo ufw allow 22/tcp")
+            ssh.exec("sudo ufw allow ${config.vpnPort}/tcp")
+            ssh.exec("sudo ufw allow ${config.vpnPort}/udp")
+            ssh.exec("sudo ufw --force enable")
+
             _status.value = I18n.strings.ssh_status_restarting
             ssh.exec("sudo systemctl enable xray 2>&1")
             ssh.exec("sudo systemctl restart xray 2>&1")
-            _progress.value = 80
+            _progress.value = 85
 
             _status.value = I18n.strings.ssh_status_waiting
             Thread.sleep(3000)
@@ -214,7 +244,8 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
                 "&sni=${config.sni}" +
                 "&pbk=${java.net.URLEncoder.encode(publicKey, "UTF-8")}" +
                 "&sid=$shortId" +
-                "&fp=chrome" +
+                "&fp=firefox" +
+                "&packetEncoding=xudp" +
                 "&type=tcp" +
                 "#Flare-${config.host}"
 

@@ -168,8 +168,35 @@ masquerade:
             }
             _progress.value = 70
 
-            _status.value = I18n.strings.ssh_status_restarting_hysteria2
+            _progress.value = 75
+            _status.value = I18n.strings.ssh_status_configuring ?: "Applying server optimizations..."
+
             
+            val sysctlConfig = """
+                net.core.default_qdisc=fq
+                net.ipv4.tcp_congestion_control=bbr
+                net.core.rmem_max=2500000
+                net.core.wmem_max=2500000
+                fs.file-max=51200
+            """.trimIndent()
+            val sysctlB64 = android.util.Base64.encodeToString(
+                sysctlConfig.toByteArray(Charsets.UTF_8),
+                android.util.Base64.NO_WRAP
+            )
+            ssh.exec("echo '$sysctlB64' | base64 -d | sudo tee -a /etc/sysctl.conf > /dev/null")
+            ssh.exec("sudo sysctl -p")
+
+            
+            ssh.exec("sudo apt-get install -y ufw")
+            ssh.exec("sudo ufw allow OpenSSH || sudo ufw allow 22/tcp")
+            ssh.exec("sudo ufw allow ${config.vpnPort}/udp")
+            if (!config.mport.isNullOrBlank()) {
+                val iptPorts = config.mport.replace(Regex("[\\\\s-]+"), ":")
+                ssh.exec("sudo ufw allow $iptPorts/udp")
+            }
+            ssh.exec("sudo ufw --force enable")
+
+            _status.value = I18n.strings.ssh_status_restarting_hysteria2
             
             var systemdOverride = "[Service]\nRestart=always\nRestartSec=3\n"
             if (!config.mport.isNullOrBlank()) {

@@ -352,6 +352,18 @@ class SettingsManager(context: Context) {
     var tlsSpoofMethod: String
         get() = prefs.getString("tls_spoof_method", "wrong-ack") ?: "wrong-ack"
         set(value) = prefs.edit().putString("tls_spoof_method", value).apply()
+
+    var fingerprint: String
+        get() = prefs.getString("fingerprint", "auto") ?: "auto"
+        set(value) = prefs.edit().putString("fingerprint", value).apply()
+
+    var isVirtualSubscriptionPinned: Boolean
+        get() = prefs.getBoolean("virtual_sub_pinned", false)
+        set(value) = prefs.edit().putBoolean("virtual_sub_pinned", value).apply()
+
+    var virtualSubscriptionPinnedTime: Long
+        get() = prefs.getLong("virtual_sub_pinned_time", 0L)
+        set(value) = prefs.edit().putLong("virtual_sub_pinned_time", value).apply()
 }
 
 

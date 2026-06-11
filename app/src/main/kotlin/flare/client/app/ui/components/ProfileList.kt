@@ -38,6 +38,9 @@ fun ProfileList(
     onSubscriptionSpeedTest: (Long) -> Unit,
     onSubscriptionUpdate: (SubscriptionEntity) -> Unit,
     onEditSubscriptionJson: (SubscriptionEntity) -> Unit,
+    onSubscriptionPinToggle: (SubscriptionEntity) -> Unit,
+    onSubscriptionQr: (SubscriptionEntity) -> Unit,
+    onSubscriptionShare: (SubscriptionEntity) -> Unit,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val showTop by remember { derivedStateOf { listState.canScrollBackward } }
@@ -125,6 +128,11 @@ fun ProfileList(
                             onEditJsonClick = { onEditSubscriptionJson(item.entity) },
                             onDeleteClick = { onSubscriptionDelete(item.entity.id) },
                             onClick = { onSubscriptionToggle(item.entity) },
+                            isPinned = item.entity.pinned > 0L,
+                            showQrAndLink = item.entity.id != -1L,
+                            onPinClick = { onSubscriptionPinToggle(item.entity) },
+                            onQrClick = { onSubscriptionQr(item.entity) },
+                            onShareLinkClick = { onSubscriptionShare(item.entity) },
                             accentColor = accentColor,
                             hazeState = hazeState
                         )

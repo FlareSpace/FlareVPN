@@ -32,6 +32,7 @@ fun ProfileQRDialog(
     onDismissRequest: () -> Unit,
     qrBitmap: Bitmap?,
     onClose: () -> Unit,
+    title: String = I18n.strings.profile_qr_dialog_title,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
@@ -69,7 +70,7 @@ fun ProfileQRDialog(
             Spacer(modifier = Modifier.width(12.dp))
 
             Text(
-                text = I18n.strings.profile_qr_dialog_title,
+                text = title,
                 color = FlareTheme.colors.textPrimary,
                 fontSize = 18.sp,
                 fontFamily = geologicaMedium,

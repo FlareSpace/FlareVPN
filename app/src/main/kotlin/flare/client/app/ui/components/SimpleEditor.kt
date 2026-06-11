@@ -94,6 +94,7 @@ fun ProfileSimpleEditor(
     var pin by remember { mutableStateOf("") }
     var obfsType by remember { mutableStateOf("") }
     var obfsPassword by remember { mutableStateOf("") }
+    var hopInterval by remember { mutableStateOf("") }
 
     var transport by remember { mutableStateOf("tcp") }
     var tcpHost by remember { mutableStateOf("") }
@@ -262,10 +263,12 @@ fun ProfileSimpleEditor(
                         obfsType = queryParams["obfs"] ?: queryParams["obfs-type"] ?: ""
                         obfsPassword = queryParams["obfs-password"] ?: queryParams["obfspassword"] ?: ""
                         mport = queryParams["mport"] ?: ""
+                        hopInterval = queryParams["hop_interval"] ?: queryParams["hop-interval"] ?: queryParams["hopInterval"] ?: ""
                     } else {
                         obfsType = queryParams["obfs"] ?: ""
                         obfsPassword = ""
                         mport = queryParams["mport"] ?: ""
+                        hopInterval = ""
                     }
                     fingerprint = queryParams["fp"] ?: queryParams["fingerprint"] ?: "chrome"
                 }
@@ -453,6 +456,9 @@ fun ProfileSimpleEditor(
                             if (obfsPassword.trim().isNotEmpty()) {
                                 query.add("obfs-password=${encode(obfsPassword.trim())}")
                             }
+                        }
+                        if (hopInterval.trim().isNotEmpty()) {
+                            query.add("hop_interval=${encode(hopInterval.trim())}")
                         }
                     } else {
                         if (obfsType.trim().isNotEmpty()) {
@@ -1188,6 +1194,15 @@ fun ProfileSimpleEditor(
                                         onValueChange = { mport = it },
                                         keyboardType = KeyboardType.Text,
                                         placeholder = "e.g. 20000-50000",
+                                        accentColor = accentColor
+                                    )
+                                    EditorFieldDivider()
+                                    EditorTextField(
+                                        label = I18n.strings.simple_editor_hop_interval,
+                                        value = hopInterval,
+                                        onValueChange = { hopInterval = it },
+                                        keyboardType = KeyboardType.Text,
+                                        placeholder = "e.g. 10s or 5s",
                                         accentColor = accentColor
                                     )
                                 }

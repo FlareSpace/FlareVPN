@@ -518,8 +518,9 @@ object V2RayConfigConverter {
             xrayOb.optJSONObject("mux")?.let { mux ->
                 val flow = sbOb.optString("flow", "")
                 val hasReality = sbOb.optJSONObject("tls")?.has("reality") ?: false
+                val type = sbOb.optString("type")
 
-                if (mux.optBoolean("enabled", false) && !flow.contains("vision") && !hasReality) {
+                if (mux.optBoolean("enabled", false) && !flow.contains("vision") && !hasReality && type != "hysteria" && type != "hysteria2") {
                     sbOb.put(
                             "multiplex",
                             JSONObject().apply {
@@ -919,6 +920,12 @@ object V2RayConfigConverter {
             if (portsArray.length() > 0) {
                 sbOb.put("server_ports", portsArray)
             }
+        }
+
+        val hopIntervalRaw = settings?.optString("hop_interval", "")?.trim() ?: ""
+        if (hopIntervalRaw.isNotEmpty()) {
+            val hopInterval = if (hopIntervalRaw.all { it.isDigit() }) "${hopIntervalRaw}s" else hopIntervalRaw
+            sbOb.put("hop_interval", hopInterval)
         }
 
         var upMbps = 0
@@ -1737,6 +1744,13 @@ object V2RayConfigConverter {
         if (port != null) result.put("server_port", port)
     }
 
+    private fun isIpAddress(host: String): Boolean {
+        if (host.isEmpty()) return false
+        if (host.contains(":")) return true
+        val parts = host.split(".")
+        return parts.size == 4 && parts.all { it.toIntOrNull() != null }
+    }
+
     fun migrateDnsServerObject(serverObj: JSONObject): JSONObject {
         if (serverObj.has("port")) {
             val port = serverObj.opt("port")
@@ -1778,6 +1792,17 @@ object V2RayConfigConverter {
             }
         }
         serverObj.remove("address")
+        
+        val parsedServer = serverObj.optString("server", "")
+        if (parsedServer.equals("localhost", ignoreCase = true)) {
+            serverObj.put("server", "127.0.0.1")
+        } else if (parsedServer.isNotEmpty() && !isIpAddress(parsedServer) && !serverObj.has("domain_resolver")) {
+            val tag = serverObj.optString("tag", "")
+            if (tag != "dns-direct") {
+                serverObj.put("domain_resolver", "dns-direct")
+            }
+        }
+        
         return serverObj
     }
 

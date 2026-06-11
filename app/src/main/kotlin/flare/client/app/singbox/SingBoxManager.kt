@@ -840,6 +840,34 @@ object SingBoxManager {
                 }
             }
 
+            val fingerprint = settings.fingerprint
+            if (fingerprint != "auto") {
+                val outbounds = obj.optJSONArray("outbounds")
+                if (outbounds != null) {
+                    for (i in 0 until outbounds.length()) {
+                        val ob = outbounds.optJSONObject(i) ?: continue
+                        
+                        val type = ob.optString("type")
+                        if (type == "hysteria" || type == "hysteria2" || type == "tuic") {
+                            continue
+                        }
+                        
+                        val tls = ob.optJSONObject("tls")
+                        if (tls != null) {
+                            var utls = tls.optJSONObject("utls")
+                            if (utls == null) {
+                                utls = JSONObject().apply { put("enabled", true) }
+                                tls.put("utls", utls)
+                            } else {
+                                utls.put("enabled", true)
+                            }
+                            utls.put("fingerprint", fingerprint)
+                            Log.i(TAG, "injectAdvancedSettings: set utls fingerprint to $fingerprint for outbound '${ob.optString("tag")}'")
+                        }
+                    }
+                }
+            }
+
             val dnsUrl = when (settings.remoteDnsMode) {
                 "cloudflare_doh" -> "https://1.1.1.1/dns-query"
                 "adguard_doh" -> "https://dns.adguard-dns.com/dns-query"
@@ -990,6 +1018,7 @@ object SingBoxManager {
                     val ob = outbounds.optJSONObject(i) ?: continue
                     val type = ob.optString("type")
                     if (type == "direct" || type == "block" || type == "dns" || type == "urltest" || type == "selector") continue
+                    if (type == "hysteria" || type == "hysteria2") continue
 
                     val flow = ob.optString("flow", "")
                     val hasReality = ob.optJSONObject("tls")?.has("reality") ?: false

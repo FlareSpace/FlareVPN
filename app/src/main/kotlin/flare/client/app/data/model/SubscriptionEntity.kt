@@ -16,5 +16,6 @@ data class SubscriptionEntity(
     val supportUrl: String = "",
     val webPageUrl: String = "",
     val updateInterval: Long = 0,
-    val lastUpdated: Long = 0
+    val lastUpdated: Long = 0,
+    val pinned: Long = 0L
 )

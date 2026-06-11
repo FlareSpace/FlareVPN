@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SubscriptionDao {
 
-    @Query("SELECT * FROM subscriptions ORDER BY id ASC")
+    @Query("SELECT * FROM subscriptions ORDER BY pinned > 0 DESC, pinned ASC, id ASC")
     fun getAllSubscriptions(): Flow<List<SubscriptionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -21,6 +21,8 @@ interface SubscriptionDao {
 
     @Query("UPDATE subscriptions SET name = :name, url = :url WHERE id = :id")
     suspend fun updateSubscription(id: Long, name: String, url: String)
+    @Query("UPDATE subscriptions SET pinned = :pinned WHERE id = :id")
+    suspend fun updatePinned(id: Long, pinned: Long)
     @Query("DELETE FROM subscriptions WHERE id = :id")
     suspend fun deleteById(id: Long)
 }

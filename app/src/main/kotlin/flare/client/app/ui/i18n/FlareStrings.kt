@@ -100,6 +100,9 @@ interface FlareStrings {
     val menu_manual_input: String
     val menu_qr_code: String
     val menu_update_subscription: String
+    val menu_pin_subscription: String
+    val menu_unpin_subscription: String
+    val subscription_qr_dialog_title: String
     val mixedstack_desc: String
     val mtu_desc: String
     val mux_desc: String
@@ -335,6 +338,9 @@ interface FlareStrings {
     val settings_desc_tls_spoof: String
     val settings_label_tls_spoof_domain: String
     val settings_label_tls_spoof_method: String
+    val settings_label_fingerprint: String
+    val settings_item_tls_fingerprint: String
+    val settings_desc_fingerprint: String
     val settings_label_send_hwid: String
     val settings_label_split_tunneling: String
     val settings_label_stack: String
@@ -390,6 +396,7 @@ interface FlareStrings {
     val simple_editor_down_mbps: String
     val simple_editor_allow_insecure: String
     val simple_editor_hysteria_settings: String
+    val simple_editor_hop_interval: String
     val sites_hint: String
     val split_mode_blacklist: String
     val split_mode_blacklist_tooltip: String
@@ -481,6 +488,13 @@ interface FlareStrings {
     val wizard_shadowsocks_port_hint: String
     val servers_shadowsocks_sni_label: String
     val wizard_shadowsocks_sni_hint: String
+    val servers_wireguard_title: String
+    val servers_wireguard_port_label: String
+    val wizard_wireguard_port_hint: String
+    val ssh_status_installing_wireguard: String
+    val ssh_status_configuring_wireguard: String
+    val ssh_status_restarting_wireguard: String
+    val ssh_error_service_start_wireguard: String
     val label_shadowsocks_dpi_bypass: String
     val label_shadowsocks_dpi_bypass_hint: String
     val simple_editor_shadowtls_password: String
@@ -623,6 +637,9 @@ object RuFlareStrings : FlareStrings {
     override val menu_manual_input: String = "Ручной ввод"
     override val menu_qr_code: String = "QR-Код"
     override val menu_update_subscription: String = "Обновить"
+    override val menu_pin_subscription: String = "Закрепить"
+    override val menu_unpin_subscription: String = "Открепить"
+    override val subscription_qr_dialog_title: String = "QR-код подписки"
     override val mixedstack_desc: String = "Средняя совместимость, поддерживает большую часть настроек туннеля, высокое энергопотребление."
     override val mtu_desc: String = "Максимальный размер одного пакета данных (в байтах), который может быть передан за один раз."
     override val mux_desc: String = "Объединяет несколько запросов в одно соединение. Снижает задержку на создание новых подключений и ускоряет загрузку."
@@ -859,6 +876,9 @@ object RuFlareStrings : FlareStrings {
     override val settings_desc_tls_spoof: String = "Подмена SNI для обхода блокировок. Отправляет поддельный ClientHello с белым доменом перед настоящим."
     override val settings_label_tls_spoof_domain: String = "Домен"
     override val settings_label_tls_spoof_method: String = "Метод"
+    override val settings_label_fingerprint: String = "Отпечаток"
+    override val settings_item_tls_fingerprint: String = "TLS Отпечаток"
+    override val settings_desc_fingerprint: String = "Маскирует ваш TLS трафик под выбранный браузер/клиент. Если выбрано Auto, отпечаток будет взят из конфигурации."
     override val settings_label_send_hwid: String = "Передавать HWID"
     override val settings_label_split_tunneling: String = "Раздельное туннелирование"
     override val settings_label_stack: String = "%s"
@@ -914,6 +934,7 @@ object RuFlareStrings : FlareStrings {
     override val simple_editor_down_mbps: String = "Скорость загрузки (Down Mbps)"
     override val simple_editor_allow_insecure: String = "Разрешить небезопасный TLS (Insecure)"
     override val simple_editor_hysteria_settings: String = "Настройки Hysteria"
+    override val simple_editor_hop_interval: String = "Интервал смены порта (Hop interval)"
     override val sites_hint: String = "site1.com\nsite2.com"
     override val split_mode_blacklist: String = "Черный список"
     override val split_mode_blacklist_tooltip: String = "В этом режиме все сайты и приложения работают через VPN кроме выбранных"
@@ -1004,6 +1025,13 @@ object RuFlareStrings : FlareStrings {
     override val wizard_shadowsocks_port_hint: String = "8388 (по умолчанию)"
     override val servers_shadowsocks_sni_label: String = "Домен маскировки (SNI)"
     override val wizard_shadowsocks_sni_hint: String = "google.com (по умолчанию)"
+    override val servers_wireguard_title: String = "Параметры WireGuard"
+    override val servers_wireguard_port_label: String = "Порт WireGuard"
+    override val wizard_wireguard_port_hint: String = "51820 (по умолчанию)"
+    override val ssh_status_installing_wireguard: String = "Установка WireGuard..."
+    override val ssh_status_configuring_wireguard: String = "Настройка WireGuard..."
+    override val ssh_status_restarting_wireguard: String = "Запуск службы WireGuard..."
+    override val ssh_error_service_start_wireguard: String = "Не удалось запустить службу WireGuard. Статус: %s"
     override val label_shadowsocks_dpi_bypass: String = "Плагины обхода DPI"
     override val label_shadowsocks_dpi_bypass_hint: String = "Маскировать Shadowsocks под HTTPS-трафик (WebSocket + TLS)"
     override val simple_editor_shadowtls_password: String = "ShadowTLS Пароль"
@@ -1160,6 +1188,9 @@ object EnFlareStrings : FlareStrings {
     override val menu_manual_input: String = "Manual input"
     override val menu_qr_code: String = "QR-Code"
     override val menu_update_subscription: String = "Update"
+    override val menu_pin_subscription: String = "Pin"
+    override val menu_unpin_subscription: String = "Unpin"
+    override val subscription_qr_dialog_title: String = "Subscription QR code"
     override val mixedstack_desc: String = "Average compatibility, supports most settings, high power usage."
     override val mtu_desc: String = "Maximum size of one data packet (in bytes) that can be sent at once."
     override val mux_desc: String = "Combines multiple requests into one connection. Reduces latency and speeds up loading."
@@ -1395,6 +1426,9 @@ object EnFlareStrings : FlareStrings {
     override val settings_desc_tls_spoof: String = "SNI spoofing to bypass blocks. Sends a forged ClientHello with a whitelisted domain before the real one."
     override val settings_label_tls_spoof_domain: String = "Domain"
     override val settings_label_tls_spoof_method: String = "Method"
+    override val settings_label_fingerprint: String = "Fingerprint"
+    override val settings_item_tls_fingerprint: String = "TLS Fingerprint"
+    override val settings_desc_fingerprint: String = "Masks your TLS traffic as a selected browser/client. If Auto is selected, the fingerprint will be taken from the configuration."
     override val settings_label_send_hwid: String = "Send HWID"
     override val settings_label_split_tunneling: String = "Split Tunneling"
     override val settings_label_stack: String = "%s"
@@ -1450,6 +1484,7 @@ object EnFlareStrings : FlareStrings {
     override val simple_editor_down_mbps: String = "Download Speed (Down Mbps)"
     override val simple_editor_allow_insecure: String = "Allow Insecure TLS"
     override val simple_editor_hysteria_settings: String = "Hysteria Settings"
+    override val simple_editor_hop_interval: String = "Hop Interval"
     override val sites_hint: String = "site1.com\nsite2.com"
     override val split_mode_blacklist: String = "Blacklist"
     override val split_mode_blacklist_tooltip: String = "In this mode, all websites and apps work through VPN except the selected ones"
@@ -1541,6 +1576,13 @@ object EnFlareStrings : FlareStrings {
     override val wizard_shadowsocks_port_hint: String = "8388 (default)"
     override val servers_shadowsocks_sni_label: String = "Masquerade Domain (SNI)"
     override val wizard_shadowsocks_sni_hint: String = "google.com (default)"
+    override val servers_wireguard_title: String = "WireGuard Settings"
+    override val servers_wireguard_port_label: String = "WireGuard Port"
+    override val wizard_wireguard_port_hint: String = "51820 (default)"
+    override val ssh_status_installing_wireguard: String = "Installing WireGuard..."
+    override val ssh_status_configuring_wireguard: String = "Configuring WireGuard..."
+    override val ssh_status_restarting_wireguard: String = "Starting WireGuard service..."
+    override val ssh_error_service_start_wireguard: String = "WireGuard service failed to start (status: %s)"
     override val label_shadowsocks_dpi_bypass: String = "Bypass DPI (Plugins)"
     override val label_shadowsocks_dpi_bypass_hint: String = "Mask Shadowsocks as HTTPS traffic (WebSocket + TLS)"
     override val simple_editor_shadowtls_password: String = "ShadowTLS Password"

@@ -61,6 +61,9 @@ class ProfileRepository(
     suspend fun updateSubscription(id: Long, name: String, url: String) =
         subscriptionDao.updateSubscription(id, name, url)
 
+    suspend fun updateSubscriptionPinned(id: Long, pinned: Long) =
+        subscriptionDao.updatePinned(id, pinned)
+
     suspend fun deleteProfilesBySubscription(subId: Long) =
         profileDao.deleteBySubscriptionId(subId)
 

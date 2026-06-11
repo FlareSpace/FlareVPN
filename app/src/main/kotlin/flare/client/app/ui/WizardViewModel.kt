@@ -25,7 +25,7 @@ enum class TariffType {
 }
 
 enum class SelectedProtocol {
-    XRAY, HYSTERIA2, SHADOWSOCKS
+    XRAY, HYSTERIA2, SHADOWSOCKS, WIREGUARD
 }
 
 class WizardViewModel(application: Application) : AndroidViewModel(application) {
@@ -255,6 +255,8 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                 flare.client.app.util.HysteriaServerCreator(getApplication())
             } else if (composeSelectedProtocol == SelectedProtocol.SHADOWSOCKS) {
                 flare.client.app.util.ShadowsocksServerCreator(getApplication())
+            } else if (composeSelectedProtocol == SelectedProtocol.WIREGUARD) {
+                flare.client.app.util.WireGuardServerCreator(getApplication())
             } else {
                 flare.client.app.util.XrayServerCreator(getApplication())
             }
@@ -271,7 +273,12 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            val finalPort = composeXrayPort.ifBlank { "443" }
+            val defaultPort = when (composeSelectedProtocol) {
+                SelectedProtocol.WIREGUARD -> "51820"
+                SelectedProtocol.SHADOWSOCKS -> "8388"
+                else -> "443"
+            }
+            val finalPort = composeXrayPort.ifBlank { defaultPort }
             val finalSni = composeXraySni.ifBlank { "google.com" }
             val snis = finalSni.split(",").map { it.trim() }.filter { it.isNotEmpty() }
             val primarySni = snis.firstOrNull() ?: "google.com"
@@ -310,23 +317,33 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                     sub = newSub.copy(id = id)
                 }
 
-                val parsedProfile = flare.client.app.data.parser.ClipboardParser.buildProfileFromUri(
-                    getApplication(), vlessUri, subscriptionId = sub.id
-                )
+                var parseError: String? = null
+                val parsedProfile = try {
+                    flare.client.app.data.parser.ClipboardParser.buildProfileFromUri(
+                        getApplication(), vlessUri, subscriptionId = sub.id
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.e("WizardViewModel", "Failed to parse generated URI: $vlessUri", e)
+                    parseError = e.message ?: e.toString()
+                    null
+                }
                 
-                val finalProfile = parsedProfile.copy(
-                    name = composeSshProfileName,
-                    serverDescription = when (composeSelectedProtocol) {
-                        SelectedProtocol.HYSTERIA2 -> "Custom Hysteria 2 Server"
-                        SelectedProtocol.SHADOWSOCKS -> "Custom Shadowsocks Server"
-                        else -> "Custom Xray Server"
-                    }
-                )
-                
-                profileRepository.insertProfile(finalProfile)
-                
-                delay(500)
-                composeWizardStep = WizardStep.SUCCESS
+                if (parsedProfile != null) {
+                    val finalProfile = parsedProfile.copy(
+                        name = composeSshProfileName,
+                        serverDescription = when (composeSelectedProtocol) {
+                            SelectedProtocol.HYSTERIA2 -> "Custom Hysteria 2 Server"
+                            SelectedProtocol.SHADOWSOCKS -> "Custom Shadowsocks Server"
+                            SelectedProtocol.WIREGUARD -> "Custom WireGuard Server"
+                            else -> "Custom Xray Server"
+                        }
+                    )
+                    profileRepository.insertProfile(finalProfile)
+                    delay(500)
+                    composeWizardStep = WizardStep.SUCCESS
+                } else {
+                    composeSetupError = "Failed to parse connection link: $parseError"
+                }
             } else {
                 composeSetupError = creator.status.value
             }

@@ -169,6 +169,7 @@ class MainActivity : AppCompatActivity() {
     private var editSubscriptionTarget by mutableStateOf<flare.client.app.data.model.SubscriptionEntity?>(null)
     private var showProfileQrDialogState by mutableStateOf(false)
     private var profileQrBitmap by mutableStateOf<Bitmap?>(null)
+    private var lastQrIsSubscription by mutableStateOf(false)
 
     private var showOnboardingDialogState by mutableStateOf(false)
     private var isNotificationPermissionGranted by mutableStateOf(false)
@@ -352,6 +353,7 @@ class MainActivity : AppCompatActivity() {
                             if (profile != null) {
                                 val link = flare.client.app.util.ProfileExportHelper.exportLink(profile)
                                 if (link != null) {
+                                    lastQrIsSubscription = false
                                     profileQrBitmap = generateQrCodeBitmap(link)
                                     showProfileQrDialogState = true
                                 } else {
@@ -360,6 +362,37 @@ class MainActivity : AppCompatActivity() {
                             } else {
                                 showToast(I18n.strings.error_link_generation)
                             }
+                        }
+                    },
+                    onShareSubscription = { subscription ->
+                        val link = subscription.url
+                        if (link.isNotBlank()) {
+                            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("proxy_link", link)
+                            clipboard.setPrimaryClip(clip)
+                            showToast(I18n.strings.success_link_copied)
+
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, link)
+                            }
+                            startActivity(Intent.createChooser(shareIntent, I18n.strings.btn_share_link))
+                        } else {
+                            showToast(I18n.strings.error_link_generation)
+                        }
+                    },
+                    onQrSubscription = { subscription ->
+                        val link = subscription.url
+                        if (link.isNotBlank()) {
+                            profileQrBitmap = generateQrCodeBitmap(link)
+                            if (profileQrBitmap != null) {
+                                lastQrIsSubscription = true
+                                showProfileQrDialogState = true
+                            } else {
+                                showToast(I18n.strings.error_profile_qr_generation)
+                            }
+                        } else {
+                            showToast(I18n.strings.error_link_generation)
                         }
                     },
                     onLanguageSelected = { langCode ->
@@ -469,6 +502,7 @@ class MainActivity : AppCompatActivity() {
                         onDismissRequest = { showProfileQrDialogState = false },
                         qrBitmap = profileQrBitmap,
                         onClose = { showProfileQrDialogState = false },
+                        title = if (lastQrIsSubscription) I18n.strings.subscription_qr_dialog_title else I18n.strings.profile_qr_dialog_title,
                         hazeState = dialogHazeState
                     )
                 }

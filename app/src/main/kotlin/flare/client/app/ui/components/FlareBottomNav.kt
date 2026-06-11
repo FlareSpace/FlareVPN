@@ -280,7 +280,7 @@ fun FlareBottomNav(
                     .let {
                         if (hazeState != null) {
                             it.hazeEffect(state = hazeState) {
-                                blurRadius = 2.5.dp
+                                blurRadius = 3.dp
                             }
                         } else {
                             it.background(
