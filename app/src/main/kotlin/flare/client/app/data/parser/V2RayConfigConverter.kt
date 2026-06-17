@@ -1137,23 +1137,35 @@ object V2RayConfigConverter {
                 sbOb.put(
                         "transport",
                         JSONObject().apply {
-                            put("type", "http")
+                            put("type", "xhttp")
+                            put("mode", settings?.optString("mode", "auto") ?: "auto")
                             put("path", settings?.optString("path", "/"))
+                            
+                            val headers = settings?.optJSONObject("headers")
+                            if (headers != null) {
+                                put("headers", headers)
+                            }
+
+                            val extra = settings?.optJSONObject("extra")
+                            if (extra != null) {
+                                val keys = extra.keys()
+                                while (keys.hasNext()) {
+                                    val key = keys.next()
+                                    put(key, extra.get(key))
+                                }
+                            }
+
                             val hostOpt = settings?.opt("host")
                             if (hostOpt is JSONArray) {
                                 if (hostOpt.length() > 0) {
-                                    put("host", hostOpt)
+                                    put("host", hostOpt.optString(0, ""))
                                 } else {
-                                    put("host", JSONArray().put(""))
+                                    put("host", "")
                                 }
                             } else if (hostOpt is String) {
-                                if (hostOpt.isNotEmpty()) {
-                                    put("host", JSONArray().put(hostOpt))
-                                } else {
-                                    put("host", JSONArray().put(""))
-                                }
+                                put("host", hostOpt)
                             } else {
-                                put("host", JSONArray().put(""))
+                                put("host", "")
                             }
                         }
                 )

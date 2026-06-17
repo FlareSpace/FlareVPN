@@ -99,26 +99,38 @@ class HysteriaServerCreator(private val context: Context) : VpnServerCreator {
             }
             _progress.value = 30
 
-            _status.value = I18n.strings.ssh_status_generating_cert
-            ssh.exec("sudo -n mkdir -p /etc/hysteria")
+            val isIp = android.util.Patterns.IP_ADDRESS.matcher(config.host).matches()
             
-            val opensslCmd = "sudo -n openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -subj \"/CN=${config.sni}\" -days 36500 2>&1"
-            val (certOut, certErr) = ssh.execWithErr(opensslCmd)
+            val port80Check = ssh.exec("sudo ss -tlnp 2>/dev/null | grep ':80 ' | grep -v 'hysteria' || echo 'free'")
+            val port443Check = ssh.exec("sudo ss -tlnp 2>/dev/null | grep ':443 ' | grep -v 'hysteria' || echo 'free'")
+            val portsFree = port80Check.contains("free") && port443Check.contains("free")
             
-            val keyCheck = ssh.exec("sudo -n [ -s /etc/hysteria/server.key ] && echo 'ok' || echo 'error'")
-            val crtCheck = ssh.exec("sudo -n [ -s /etc/hysteria/server.crt ] && echo 'ok' || echo 'error'")
+            val useAcme = !isIp && portsFree
             
-            if (keyCheck != "ok" || crtCheck != "ok") {
-                throw Exception(I18n.strings.ssh_error_cert + "\n" + I18n.strings.label_output + " [$certOut]\n" + I18n.strings.label_errors + " [$certErr]")
-            }
-            
-            ssh.exec("sudo -n chmod 644 /etc/hysteria/server.crt /etc/hysteria/server.key")
+            var fingerprint = ""
+            if (!useAcme) {
+                _status.value = I18n.strings.ssh_status_generating_cert
+                ssh.exec("sudo -n mkdir -p /etc/hysteria")
+                
+                val sanType = if (android.util.Patterns.IP_ADDRESS.matcher(config.sni).matches()) "IP" else "DNS"
+                val opensslCmd = "sudo -n openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout /etc/hysteria/server.key -out /etc/hysteria/server.crt -subj \"/CN=${config.sni}\" -addext \"subjectAltName=$sanType:${config.sni}\" -days 36500 2>&1"
+                val (certOut, certErr) = ssh.execWithErr(opensslCmd)
+                
+                val keyCheck = ssh.exec("sudo -n [ -s /etc/hysteria/server.key ] && echo 'ok' || echo 'error'")
+                val crtCheck = ssh.exec("sudo -n [ -s /etc/hysteria/server.crt ] && echo 'ok' || echo 'error'")
+                
+                if (keyCheck != "ok" || crtCheck != "ok") {
+                    throw Exception(I18n.strings.ssh_error_cert + "\n" + I18n.strings.label_output + " [$certOut]\n" + I18n.strings.label_errors + " [$certErr]")
+                }
+                
+                ssh.exec("sudo -n chmod 644 /etc/hysteria/server.crt /etc/hysteria/server.key")
 
-            val fingerprintCmd = "sudo -n openssl x509 -in /etc/hysteria/server.crt -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64"
-            val fingerprint = ssh.exec(fingerprintCmd).replace("\\s".toRegex(), "").trim()
-            
-            if (fingerprint.isEmpty() || fingerprint.length < 40 || fingerprint.length > 50) {
-                throw Exception("Failed to get certificate fingerprint. Output: [$fingerprint]")
+                val fingerprintCmd = "sudo -n openssl x509 -in /etc/hysteria/server.crt -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl enc -base64"
+                fingerprint = ssh.exec(fingerprintCmd).replace("\\s".toRegex(), "").trim()
+                
+                if (fingerprint.isEmpty() || fingerprint.length < 40 || fingerprint.length > 50) {
+                    throw Exception("Failed to get certificate fingerprint. Output: [$fingerprint]")
+                }
             }
             _progress.value = 55
 
@@ -137,12 +149,25 @@ obfs:
                 clientObfsParams = "&obfs=salamander&obfs-password=${config.obfsPassword}"
             }
 
-            val hyConfig = """
-listen: :${config.vpnPort}
-
+            val tlsBlock = if (useAcme) {
+                """
+acme:
+  domains:
+    - ${config.host}
+  email: admin@${config.host}
+                """.trimIndent()
+            } else {
+                """
 tls:
   cert: /etc/hysteria/server.crt
   key: /etc/hysteria/server.key
+                """.trimIndent()
+            }
+
+            val hyConfig = """
+listen: :${config.vpnPort}
+
+$tlsBlock
 
 auth:
   type: password
@@ -175,9 +200,13 @@ masquerade:
             val sysctlConfig = """
                 net.core.default_qdisc=fq
                 net.ipv4.tcp_congestion_control=bbr
-                net.core.rmem_max=2500000
-                net.core.wmem_max=2500000
-                fs.file-max=51200
+                net.core.rmem_max=16777216
+                net.core.wmem_max=16777216
+                net.core.rmem_default=2097152
+                net.core.wmem_default=2097152
+                net.ipv4.udp_rmem_min=8192
+                net.ipv4.udp_wmem_min=8192
+                fs.file-max=1048576
             """.trimIndent()
             val sysctlB64 = android.util.Base64.encodeToString(
                 sysctlConfig.toByteArray(Charsets.UTF_8),
@@ -190,6 +219,10 @@ masquerade:
             ssh.exec("sudo apt-get install -y ufw")
             ssh.exec("sudo ufw allow OpenSSH || sudo ufw allow 22/tcp")
             ssh.exec("sudo ufw allow ${config.vpnPort}/udp")
+            if (useAcme) {
+                ssh.exec("sudo ufw allow 80/tcp")
+                ssh.exec("sudo ufw allow 443/tcp")
+            }
             if (!config.mport.isNullOrBlank()) {
                 val iptPorts = config.mport.replace(Regex("[\\\\s-]+"), ":")
                 ssh.exec("sudo ufw allow $iptPorts/udp")
@@ -198,7 +231,7 @@ masquerade:
 
             _status.value = I18n.strings.ssh_status_restarting_hysteria2
             
-            var systemdOverride = "[Service]\nRestart=always\nRestartSec=3\n"
+            var systemdOverride = "[Service]\nRestart=always\nRestartSec=3\nNice=-5\nLimitNOFILE=1048576\nAmbientCapabilities=CAP_NET_BIND_SERVICE\n"
             if (!config.mport.isNullOrBlank()) {
                 val iptPorts = config.mport.replace(Regex("[\\\\s-]+"), ":")
                 systemdOverride += "ExecStartPost=+-/sbin/iptables -t nat -A PREROUTING -p udp -m multiport --dports $iptPorts -j REDIRECT --to-ports ${config.vpnPort}\n"
@@ -212,6 +245,11 @@ masquerade:
             
             ssh.exec("sudo systemctl enable hysteria-server 2>&1")
             ssh.exec("sudo systemctl restart hysteria-server 2>&1")
+            
+            val cronCmd = "echo '0 3 * * * root curl -fsSL https://get.hy2.sh/ | bash && systemctl restart hysteria-server' | sudo tee /etc/cron.d/hysteria-update > /dev/null"
+            ssh.exec(cronCmd)
+            ssh.exec("sudo chmod 644 /etc/cron.d/hysteria-update")
+            
             _progress.value = 80
 
             _status.value = I18n.strings.ssh_status_waiting
@@ -232,10 +270,12 @@ masquerade:
             _status.value = I18n.strings.ssh_status_generating_client
 
             val clientPortHoppingParams = if (!config.mport.isNullOrBlank()) "&mport=${config.mport}" else ""
+            val pinParam = if (fingerprint.isNotBlank()) "&pin=$fingerprint" else ""
+            val finalSni = if (useAcme) config.host else config.sni
 
             val hysteria2Uri = "hysteria2://$password@${config.host}:${config.vpnPort}" +
-                "?sni=${config.sni}" +
-                "&pin=$fingerprint" +
+                "?sni=$finalSni" +
+                pinParam +
                 clientPortHoppingParams +
                 clientObfsParams +
                 "#Flare-${config.host}"

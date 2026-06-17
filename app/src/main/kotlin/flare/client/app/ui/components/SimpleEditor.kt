@@ -115,6 +115,11 @@ fun ProfileSimpleEditor(
     var grpcAuthority by remember { mutableStateOf("") }
     var grpcServiceName by remember { mutableStateOf("") }
 
+    var xhttpHost by remember { mutableStateOf("") }
+    var xhttpPath by remember { mutableStateOf("/") }
+    var xhttpMode by remember { mutableStateOf("auto") }
+    var isXhttpModeMenuExpanded by remember { mutableStateOf(false) }
+
     var tlsType by remember { mutableStateOf("TLS") }
 
     var isTransportMenuExpanded by remember { mutableStateOf(false) }
@@ -173,7 +178,7 @@ fun ProfileSimpleEditor(
                             queryParams["insecure"] == "1" || queryParams["insecure"] == "true"
 
                     transport = queryParams["type"] ?: "tcp"
-                    if (transport == "xhttp") transport = "http"
+                    
                     tcpHost = queryParams["host"] ?: ""
                     tcpPath = queryParams["path"] ?: ""
                     kcpHost = queryParams["host"] ?: ""
@@ -192,6 +197,9 @@ fun ProfileSimpleEditor(
                     quicKey = queryParams["key"] ?: queryParams["quicKey"] ?: ""
                     grpcAuthority = queryParams["authority"] ?: queryParams["grpcAuthority"] ?: ""
                     grpcServiceName = queryParams["serviceName"] ?: queryParams["grpcServiceName"] ?: ""
+                    xhttpHost = queryParams["host"] ?: ""
+                    xhttpPath = queryParams["path"] ?: "/"
+                    xhttpMode = queryParams["mode"] ?: "auto"
                 }
                 "vmess" -> {
                     val b64 = profile.uri.removePrefix("vmess://").trim()
@@ -332,6 +340,11 @@ fun ProfileSimpleEditor(
                             "grpc" -> {
                                 if (grpcAuthority.isNotEmpty()) query.add("authority=${encode(grpcAuthority)}")
                                 if (grpcServiceName.isNotEmpty()) query.add("serviceName=${encode(grpcServiceName)}")
+                            }
+                            "xhttp" -> {
+                                if (xhttpHost.isNotEmpty()) query.add("host=${encode(xhttpHost)}")
+                                if (xhttpPath.isNotEmpty()) query.add("path=${encode(xhttpPath)}")
+                                if (xhttpMode.isNotEmpty()) query.add("mode=${encode(xhttpMode)}")
                             }
                         }
                     } else {
@@ -871,8 +884,8 @@ fun ProfileSimpleEditor(
                                 value = transport,
                                 expanded = isTransportMenuExpanded,
                                 onExpandedChange = { isTransportMenuExpanded = it },
-                                options = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc"),
-                                optionTitles = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc"),
+                                options = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
+                                optionTitles = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
                                 onOptionSelected = { transport = it },
                                 accentColor = accentColor,
                                 hazeState = hazeState
@@ -1079,6 +1092,44 @@ fun ProfileSimpleEditor(
                                         value = grpcServiceName,
                                         onValueChange = { grpcServiceName = it },
                                         keyboardType = KeyboardType.Text,
+                                        accentColor = accentColor
+                                    )
+                                }
+                            }
+                            AnimatedVisibility(
+                                visible = transport == "xhttp",
+                                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                                exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
+                            ) {
+                                Column {
+                                    EditorFieldDivider()
+                                    EditorSelectField(
+                                        label = I18n.strings.simple_editor_mode,
+                                        value = xhttpMode,
+                                        expanded = isXhttpModeMenuExpanded,
+                                        onExpandedChange = { isXhttpModeMenuExpanded = it },
+                                        options = listOf("auto", "download", "streaming"),
+                                        optionTitles = listOf("auto", "download", "streaming"),
+                                        onOptionSelected = { xhttpMode = it },
+                                        accentColor = accentColor,
+                                        hazeState = hazeState
+                                    )
+                                    EditorFieldDivider()
+                                    EditorTextField(
+                                        label = I18n.strings.simple_editor_host,
+                                        value = xhttpHost,
+                                        onValueChange = { xhttpHost = it },
+                                        keyboardType = KeyboardType.Uri,
+                                        placeholder = "domain.com",
+                                        accentColor = accentColor
+                                    )
+                                    EditorFieldDivider()
+                                    EditorTextField(
+                                        label = I18n.strings.simple_editor_path,
+                                        value = xhttpPath,
+                                        onValueChange = { xhttpPath = it },
+                                        keyboardType = KeyboardType.Text,
+                                        placeholder = "/",
                                         accentColor = accentColor
                                     )
                                 }

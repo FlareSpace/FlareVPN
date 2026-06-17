@@ -11,7 +11,14 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("frag_enabled", value).apply()
 
     var packetType: String
-        get() = prefs.getString("frag_packet_type", "tlshello") ?: "tlshello"
+        get() {
+            val type = prefs.getString("frag_packet_type", "fallback_delay") ?: "fallback_delay"
+            if (type == "tlshello") {
+                prefs.edit().putString("frag_packet_type", "fallback_delay").apply()
+                return "fallback_delay"
+            }
+            return type
+        }
         set(value) = prefs.edit().putString("frag_packet_type", value).apply()
 
     var fragmentInterval: String

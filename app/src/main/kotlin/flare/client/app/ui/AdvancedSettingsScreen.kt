@@ -108,7 +108,7 @@ fun AdvancedSettingsScreen(
     var isTestingMtu by remember { mutableStateOf(false) }
 
     val packetTypeOptions = listOf(
-        I18n.strings.option_enable to "tlshello",
+        I18n.strings.option_enable to "fallback_delay",
         I18n.strings.option_disable to "disabled"
     )
 

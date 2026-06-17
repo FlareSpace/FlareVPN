@@ -409,9 +409,7 @@ object ClipboardParser {
         }
 
         var processedUri = uri
-        if (processedUri.contains("type=xhttp")) {
-            processedUri = processedUri.replace("type=xhttp", "type=http")
-        }
+        
 
         val parsed = URI(processedUri)
         val scheme = parsed.scheme?.lowercase() ?: ""
@@ -1094,6 +1092,8 @@ object ClipboardParser {
                     if (hostVal.isNotEmpty()) {
                         put("host", hostVal)
                     }
+                    val modeVal = params["mode"] ?: "auto"
+                    put("mode", modeVal)
                 })
             }
             "quic" -> {

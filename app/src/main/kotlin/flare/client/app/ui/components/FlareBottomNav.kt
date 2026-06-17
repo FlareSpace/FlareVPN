@@ -43,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -461,7 +462,7 @@ private fun LiquidPillCanvas(
                         else                   -> 2
                     }
 
-                    val pad      = 8f * dp
+                    val pad      = 4f * dp
                     val curLeft  = leftFrac.value  * cw + pad
                     val curRight = rightFrac.value * cw - pad
                     val onPill   = startX >= curLeft && startX <= curRight
@@ -553,7 +554,7 @@ private fun LiquidPillCanvas(
 
             val cy = size.height / 2f
             val cw = size.width
-            val pad = 8f * dp
+            val pad = 4f * dp
 
             fun drawPillAt(lFrac: Float, rFrac: Float, scaleVal: Float, alphaMult: Float) {
                 if (alphaMult <= 0.01f) return

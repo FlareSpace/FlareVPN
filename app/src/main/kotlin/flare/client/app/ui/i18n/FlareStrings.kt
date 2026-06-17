@@ -517,6 +517,7 @@ interface FlareStrings {
     val simple_editor_quic_key: String
     val simple_editor_grpc_authority: String
     val simple_editor_grpc_service_name: String
+    val simple_editor_mode: String
     val settings_header_data_mgmt: String
     val settings_label_data_mgmt: String
     val settings_desc_data_mgmt: String
@@ -1054,6 +1055,7 @@ object RuFlareStrings : FlareStrings {
     override val simple_editor_quic_key: String = "QUIC Ключ"
     override val simple_editor_grpc_authority: String = "gRPC Authority"
     override val simple_editor_grpc_service_name: String = "gRPC serviceName"
+    override val simple_editor_mode: String = "Режим"
     override val settings_header_data_mgmt: String = "Управление данными"
     override val settings_label_data_mgmt: String = "Сохранение и восстановление"
     override val settings_desc_data_mgmt: String = "Вы можете сохранить все настройки, профили, подписки приложения"
@@ -1605,6 +1607,7 @@ object EnFlareStrings : FlareStrings {
     override val simple_editor_quic_key: String = "QUIC Key"
     override val simple_editor_grpc_authority: String = "gRPC Authority"
     override val simple_editor_grpc_service_name: String = "gRPC serviceName"
+    override val simple_editor_mode: String = "Mode"
     override val settings_header_data_mgmt: String = "Data Management"
     override val settings_label_data_mgmt: String = "Backup & Restore"
     override val settings_desc_data_mgmt: String = "You can save all settings, profiles, and subscriptions of the app"

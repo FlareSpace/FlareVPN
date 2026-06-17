@@ -24,6 +24,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.LinkProperties
 
 object SingBoxManager {
 
@@ -53,6 +57,7 @@ object SingBoxManager {
 
     private var setupDone = false
     private var logFile: File? = null
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     @Volatile
     private var lastPermissionError: Boolean = false
@@ -146,9 +151,7 @@ object SingBoxManager {
                                 }
 
                                 override fun clearDNSCache() {}
-                                override fun closeDefaultInterfaceMonitor(
-                                        listener: InterfaceUpdateListener?
-                                ) {}
+
                                 override fun findConnectionOwner(
                                         ipProtocol: Int,
                                         sourceAddress: String?,
@@ -342,7 +345,54 @@ object SingBoxManager {
                                 override fun sendNotification(notification: Notification?) {}
                                 override fun startDefaultInterfaceMonitor(
                                         listener: InterfaceUpdateListener?
-                                ) {}
+                                ) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                        val cm = currentVpnService?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+                                        networkCallback = object : ConnectivityManager.NetworkCallback() {
+                                            private fun notifyNetworkChange(network: Network) {
+                                                try {
+                                                    val caps = cm.getNetworkCapabilities(network)
+                                                    val props = cm.getLinkProperties(network)
+                                                    val isExpensive = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == false
+                                                    val interfaceName = props?.interfaceName
+                                                    var idx = -1
+                                                    if (interfaceName != null) {
+                                                        try {
+                                                            val ni = java.net.NetworkInterface.getByName(interfaceName)
+                                                            if (ni != null) idx = ni.index
+                                                        } catch (e: Exception) {}
+                                                    }
+                                                    listener?.updateDefaultInterface(interfaceName ?: "", idx, isExpensive, false)
+                                                } catch (e: Exception) {
+                                                    Log.e(TAG, "Error in notifyNetworkChange", e)
+                                                }
+                                            }
+                                            override fun onAvailable(network: Network) { notifyNetworkChange(network) }
+                                            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) { notifyNetworkChange(network) }
+                                            override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) { notifyNetworkChange(network) }
+                                        }
+                                        try {
+                                            cm.registerDefaultNetworkCallback(networkCallback!!)
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "registerDefaultNetworkCallback failed", e)
+                                        }
+                                    }
+                                }
+                                override fun closeDefaultInterfaceMonitor(
+                                        listener: InterfaceUpdateListener?
+                                ) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                        val cm = currentVpnService?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return
+                                        networkCallback?.let {
+                                            try {
+                                                cm.unregisterNetworkCallback(it)
+                                            } catch (e: Exception) {
+                                                Log.e(TAG, "unregisterNetworkCallback failed", e)
+                                            }
+                                        }
+                                        networkCallback = null
+                                    }
+                                }
                                 override fun systemCertificates(): StringIterator? = null
                                 override fun underNetworkExtension(): Boolean = false
                                 override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
