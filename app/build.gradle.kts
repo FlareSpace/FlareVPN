@@ -9,7 +9,7 @@ plugins {
 layout.buildDirectory.set(file("build"))
 android {
     namespace = "flare.client.app"
-    compileSdk = 36
+    compileSdk = 37
 
     val localProperties = Properties().apply {
         val localPropertiesFile = rootProject.file("local.properties")
@@ -23,9 +23,9 @@ android {
         applicationId = "flare.client.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 25
-        versionName = "1.3.0"
-        
+        versionCode = 28
+        versionName = "1.3.3"
+
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
         }
@@ -43,6 +43,13 @@ android {
     }
 
     signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+
         create("release") {
             storeFile = file("release.key")
             storePassword = project.findProperty("RELEASE_STORE_PASSWORD")?.toString() ?: "YOUR_STORE_PASSWORD"
@@ -61,6 +68,7 @@ android {
 
         getByName("debug") {
             applicationIdSuffix = ".test"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -125,8 +133,9 @@ dependencies {
     implementation(libs.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.haze)
+    implementation(libs.haze.materials)
     implementation(libs.navigation.compose)
-    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
 }

@@ -53,6 +53,10 @@ import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_CYAN
 import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_AMBER
 import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_VIOLET
 import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_TEAL
+import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_LIME
+import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_CANDY_BLUE
+import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_SUNSET
+import flare.client.app.ui.manager.ThemeManager.Companion.COLOR_LAVENDER
 
 object GlassUtils {
 
@@ -96,8 +100,12 @@ object GlassUtils {
             "cyan"   -> COLOR_CYAN
             "amber"  -> COLOR_AMBER
             "violet" -> COLOR_VIOLET
-            "teal"   -> COLOR_TEAL
-            else     -> COLOR_DEFAULT
+            "teal"       -> COLOR_TEAL
+            "lime"       -> COLOR_LIME
+            "candy_blue" -> COLOR_CANDY_BLUE
+            "sunset"     -> COLOR_SUNSET
+            "lavender"   -> COLOR_LAVENDER
+            else         -> COLOR_DEFAULT
         }
     }
 }

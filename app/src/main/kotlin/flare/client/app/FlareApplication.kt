@@ -45,10 +45,15 @@ class FlareApplication : Application() {
         
         if (settings.isAppTriggerEnabled) {
             val intent = android.content.Intent(this, flare.client.app.service.AppMonitorService::class.java)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
+            try {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    startForegroundService(intent)
+                } else {
+                    startService(intent)
+                }
+            } catch (e: Exception) {
+                
+                android.util.Log.e("FlareApplication", "Failed to start AppMonitorService: ${e.message}")
             }
         }
     }

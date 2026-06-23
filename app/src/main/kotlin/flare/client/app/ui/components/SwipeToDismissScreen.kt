@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,6 +22,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
+import flare.client.app.ui.theme.FlareTheme
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -37,8 +39,13 @@ fun SwipeToDismissScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val dragOffsetX = remember { Animatable(0f) }
+    val baseBackgroundColor = FlareTheme.colors.bgDark
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .background(baseBackgroundColor)
+    ) {
         val screenWidthPx = constraints.maxWidth.toFloat()
         val dismissThreshold = screenWidthPx * 0.35f
         val velocityThreshold = 500f

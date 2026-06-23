@@ -35,7 +35,7 @@ fun ProfileQRDialog(
     title: String = I18n.strings.profile_qr_dialog_title,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
-    val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
+    val geologicaMedium = flare.client.app.ui.components.GeologicaMedium
 
     GlassDialog(
         onDismissRequest = onDismissRequest,

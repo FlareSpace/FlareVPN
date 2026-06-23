@@ -207,7 +207,7 @@ fun JournalScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             if (logsList.isEmpty()) {
                 Text(
@@ -272,7 +272,7 @@ fun JournalScreen(
                             thickness = 5f,
                             hasOutline = false
                         )
-                        .hazeEffect(state = hazeState) {
+                        .background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
                             blurRadius = 2.5.dp
                         }
                         .background(

@@ -68,8 +68,8 @@ fun AppSelectionDialog(
     hazeState: dev.chrisbanes.haze.HazeState? = null,
     appsContent: @Composable () -> Unit
 ) {
-    val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
-    val geologicaRegular = FontFamily(Font(R.font.geologica_regular))
+    val geologicaMedium = flare.client.app.ui.components.GeologicaMedium
+    val geologicaRegular = flare.client.app.ui.components.GeologicaRegular
 
     var isSearchFocused by remember { mutableStateOf(false) }
     var isSitesFocused by remember { mutableStateOf(false) }
@@ -355,13 +355,12 @@ fun AppSelectionDialog(
                         I18n.strings.split_mode_blacklist_tooltip
                     }
 
-                    if (tooltipExpanded) {
-                        FlareGlassTooltip(
-                            text = tooltipText,
-                            onDismiss = { tooltipExpanded = false },
-                            hazeState = hazeState
-                        )
-                    }
+                    FlareGlassTooltip(
+                        expanded = tooltipExpanded,
+                        onDismissRequest = { tooltipExpanded = false },
+                        text = tooltipText,
+                        hazeState = hazeState
+                    )
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -430,13 +429,12 @@ fun AppSelectionDialog(
                     color = Color(accentColor)
                 )
 
-                if (tooltipExpanded) {
-                    FlareGlassTooltip(
-                        text = I18n.strings.trigger_hint,
-                        onDismiss = { tooltipExpanded = false },
-                        hazeState = hazeState
-                    )
-                }
+                FlareGlassTooltip(
+                    expanded = tooltipExpanded,
+                    onDismissRequest = { tooltipExpanded = false },
+                    text = I18n.strings.trigger_hint,
+                    hazeState = hazeState
+                )
             }
 
             Spacer(modifier = Modifier.weight(1f))

@@ -37,6 +37,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getString("ping_style", "time") ?: "time"
         set(value) = prefs.edit().putString("ping_style", value).apply()
 
+    var pingTimeout: Int
+        get() = prefs.getInt("ping_timeout", 10)
+        set(value) = prefs.edit().putInt("ping_timeout", value).apply()
+
     var mtu: String
         get() = prefs.getString("mtu", "1500") ?: "1500"
         set(value) = prefs.edit().putString("mtu", value).apply()
@@ -84,6 +88,10 @@ class SettingsManager(context: Context) {
     var subUserAgent: String
         get() = prefs.getString("sub_user_agent", "Happ/3.21.1") ?: "Happ/3.21.1"
         set(value) = prefs.edit().putString("sub_user_agent", value).apply()
+
+    var subUpdateTimeout: Int
+        get() = prefs.getInt("sub_update_timeout", 10)
+        set(value) = prefs.edit().putInt("sub_update_timeout", value).apply()
 
     var lastSubUpdateTime: Long
         get() = prefs.getLong("last_sub_update_time", 0L)
@@ -144,6 +152,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getFloat("bg_gradient_animation_speed", 0.6f)
         set(value) = prefs.edit().putFloat("bg_gradient_animation_speed", value).apply()
 
+    var isBlurEnabled: Boolean
+        get() = prefs.getBoolean("blur_enabled", true)
+        set(value) = prefs.edit().putBoolean("blur_enabled", value).apply()
+
+    var isLiquidGlassEnabled: Boolean
+        get() = prefs.getBoolean("liquid_glass_enabled", true)
+        set(value) = prefs.edit().putBoolean("liquid_glass_enabled", value).apply()
+
     var isStatusNotificationEnabled: Boolean
         get() = prefs.getBoolean("status_notification_enabled", true)
         set(value) = prefs.edit().putBoolean("status_notification_enabled", value).apply()
@@ -200,6 +216,10 @@ class SettingsManager(context: Context) {
         get() = prefs.getBoolean("custom_color_enabled", false)
         set(value) = prefs.edit().putBoolean("custom_color_enabled", value).apply()
 
+    var isChangeLaunchButtonColorEnabled: Boolean
+        get() = prefs.getBoolean("change_launch_button_color_enabled", false)
+        set(value) = prefs.edit().putBoolean("change_launch_button_color_enabled", value).apply()
+
     
     var accentColorKey: String
         get() = prefs.getString("accent_color_key", "default") ?: "default"
@@ -208,6 +228,10 @@ class SettingsManager(context: Context) {
     var appLanguage: String
         get() = prefs.getString("app_language", "auto") ?: "auto"
         set(value) = prefs.edit().putString("app_language", value).apply()
+
+    var fontFamily: String
+        get() = prefs.getString("font_family", "geologica") ?: "geologica"
+        set(value) = prefs.edit().putString("font_family", value).apply()
 
     var isHwidEnabled: Boolean
         get() = prefs.getBoolean("hwid_enabled", true)

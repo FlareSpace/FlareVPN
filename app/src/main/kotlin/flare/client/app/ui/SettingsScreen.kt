@@ -1,5 +1,8 @@
 package flare.client.app.ui
 
+import flare.client.app.ui.components.GeologicaRegular
+import flare.client.app.ui.components.GeologicaMedium
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -33,7 +36,7 @@ import flare.client.app.ui.theme.FlareTheme
 
 import flare.client.app.ui.i18n.I18n
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
+
 
 @Composable
 fun SettingsScreen(
@@ -60,7 +63,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier

@@ -37,11 +37,15 @@ class SettingsViewModel : ViewModel() {
     var composeBackgroundType by mutableStateOf(0)
     var composeIsAnimationEnabled by mutableStateOf(true)
     var composeGradientSpeed by mutableStateOf(1.0f)
+    var composeIsBlurEnabled by mutableStateOf(true)
+    var composeIsLiquidGlassEnabled by mutableStateOf(true)
     var composeIsCustomColorEnabled by mutableStateOf(false)
+    var composeIsChangeLaunchButtonColorEnabled by mutableStateOf(false)
     var composeAccentColorKey by mutableStateOf("")
     var composeAccentColor by mutableStateOf(Color(ThemeManager.COLOR_DEFAULT))
     var composePhotoSeed by mutableStateOf("default_seed")
     var composeIsDownloadingPhoto by mutableStateOf(false)
+    var composeFontFamily by mutableStateOf("geologica")
     
     
     var composeIsSplitTunnelingEnabled by mutableStateOf(false)
@@ -84,11 +88,13 @@ class SettingsViewModel : ViewModel() {
     var composePingType by mutableStateOf("via proxy GET")
     var composePingTestUrl by mutableStateOf("http://cp.cloudflare.com/generate_204")
     var composePingStyle by mutableStateOf("time")
+    var composePingTimeout by mutableStateOf(10)
 
     
     var composeIsSubIntervalEnabled by mutableStateOf(true)
     var composeIsSubAutoUpdateEnabled by mutableStateOf(false)
     var composeSubAutoUpdateInterval by mutableStateOf("3600")
+    var composeSubUpdateTimeout by mutableStateOf(15)
     var composeSubUserAgent by mutableStateOf("Happ/3.21.1")
 
     fun syncAll(settings: SettingsManager) {
@@ -142,12 +148,14 @@ class SettingsViewModel : ViewModel() {
         composePingType = settings.pingType
         composePingTestUrl = settings.pingTestUrl
         composePingStyle = settings.pingStyle
+        composePingTimeout = settings.pingTimeout
     }
 
     fun syncSub(settings: SettingsManager) {
         composeIsSubIntervalEnabled = settings.isSubIntervalEnabled
         composeIsSubAutoUpdateEnabled = settings.isSubAutoUpdateEnabled
         composeSubAutoUpdateInterval = settings.subAutoUpdateInterval
+        composeSubUpdateTimeout = settings.subUpdateTimeout
         composeSubUserAgent = settings.subUserAgent
     }
 
@@ -157,8 +165,12 @@ class SettingsViewModel : ViewModel() {
         composeBackgroundType = settings.backgroundType
         composeIsAnimationEnabled = settings.isGradientAnimationEnabled
         composeGradientSpeed = settings.gradientAnimationSpeed
+        composeIsBlurEnabled = settings.isBlurEnabled
+        composeIsLiquidGlassEnabled = settings.isLiquidGlassEnabled
         composeIsCustomColorEnabled = settings.isCustomColorEnabled
+        composeIsChangeLaunchButtonColorEnabled = settings.isChangeLaunchButtonColorEnabled
         composeAccentColorKey = settings.accentColorKey
         composePhotoSeed = settings.photoSeed
+        composeFontFamily = settings.fontFamily
     }
 }

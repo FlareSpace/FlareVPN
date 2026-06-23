@@ -55,7 +55,34 @@ fun FlareGlassMenu(
     offset: IntOffset = IntOffset(0, 0),
     alignment: Alignment = Alignment.TopStart
 ) {
-    if (expanded) {
+    var shouldRenderPopup by remember { mutableStateOf(false) }
+    val animProgress = remember { Animatable(0f) }
+
+    androidx.compose.runtime.LaunchedEffect(expanded) {
+        if (expanded) {
+            shouldRenderPopup = true
+            animProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+        } else {
+            if (shouldRenderPopup) {
+                animProgress.animateTo(
+                    targetValue = 0f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )
+                )
+                shouldRenderPopup = false
+            }
+        }
+    }
+
+    if (shouldRenderPopup) {
         val density = androidx.compose.ui.platform.LocalDensity.current
         val originHolder = remember { TransformOriginHolder() }
         
@@ -129,27 +156,17 @@ fun FlareGlassMenu(
             )
         ) {
             val isDark = FlareTheme.colors.isDark
-            
-            val alpha = remember { androidx.compose.animation.core.Animatable(0f) }
-            
-            androidx.compose.runtime.LaunchedEffect(Unit) {
-                launch {
-                    alpha.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    )
-                }
-            }
+            val scale = 0.3f + 0.7f * animProgress.value
+            val alpha = animProgress.value.coerceIn(0f, 1f)
 
             val shape = RoundedCornerShape(16.dp)
             Box(
                 modifier = modifier
                     .width(160.dp)
                     .graphicsLayer {
-                        this.alpha = alpha.value
+                        this.alpha = alpha
+                        this.scaleX = scale
+                        this.scaleY = scale
                         transformOrigin = TransformOrigin(originHolder.pivotX, originHolder.pivotY)
                     }
                     .clip(shape)
@@ -169,7 +186,7 @@ fun FlareGlassMenu(
                         )
                         .let {
                             if (hazeState != null) {
-                                it.hazeEffect(state = hazeState) {
+                                it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
                                     blurRadius = 3.dp
                                 }
                             } else {

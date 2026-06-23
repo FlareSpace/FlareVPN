@@ -4,8 +4,10 @@ import android.view.animation.AnticipateOvershootInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.EaseInQuad
 import androidx.compose.animation.core.EaseOutQuad
@@ -158,23 +160,23 @@ fun FlareBottomNav(
     }
 
     
-    val navTranslationY by animateDpAsState(
-        targetValue = if (isVisible && isReady) 0.dp else 200.dp,
-        animationSpec = tween(
-            durationMillis = 300,
-            easing = if (isVisible)
-                Easing { android.view.animation.DecelerateInterpolator().getInterpolation(it) }
-            else
-                Easing { android.view.animation.AccelerateInterpolator().getInterpolation(it) }
-        ), label = "navTransY"
+    val visibilityProgress by animateFloatAsState(
+        targetValue = if (isVisible && isReady) 1f else 0f,
+        animationSpec = if (isVisible) spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ) else spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
+        ), label = "visProgress"
     )
 
     
     val containerWidthFraction by animateFloatAsState(
         targetValue = if (isShrunk) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = 450,
-            easing = Easing { AnticipateOvershootInterpolator(0.8f).getInterpolation(it) }
+        animationSpec = spring(
+            dampingRatio = 0.5f, 
+            stiffness = Spring.StiffnessMediumLow
         ), label = "widthFrac"
     )
 
@@ -182,8 +184,8 @@ fun FlareBottomNav(
     val tabsAlpha by animateFloatAsState(
         targetValue = if (isShrunk) 0f else 1f,
         animationSpec = tween(
-            durationMillis = if (isShrunk) 200 else 300,
-            delayMillis = if (isShrunk) 0 else 200
+            durationMillis = if (isShrunk) 150 else 250,
+            delayMillis = if (isShrunk) 0 else 100
         ), label = "tabsAlpha"
     )
 
@@ -191,19 +193,18 @@ fun FlareBottomNav(
     val arrowAlpha by animateFloatAsState(
         targetValue = if (isShrunk) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (isShrunk) 400 else 200,
-            delayMillis = if (isShrunk) 150 else 0
+            durationMillis = if (isShrunk) 250 else 150,
+            delayMillis = if (isShrunk) 100 else 0
         ), label = "arrowAlpha"
     )
     val arrowScale by animateFloatAsState(
         targetValue = if (isShrunk) 1f else 0.5f,
-        animationSpec = tween(
-            durationMillis = if (isShrunk) 400 else 200,
-            delayMillis = if (isShrunk) 150 else 0,
-            easing = if (isShrunk)
-                Easing { OvershootInterpolator(1.4f).getInterpolation(it) }
-            else
-                Easing { android.view.animation.AccelerateInterpolator().getInterpolation(it) }
+        animationSpec = if (isShrunk) spring(
+            dampingRatio = 0.5f,
+            stiffness = Spring.StiffnessMediumLow
+        ) else spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
         ), label = "arrowScale"
     )
 
@@ -211,7 +212,13 @@ fun FlareBottomNav(
         modifier = modifier
             .fillMaxWidth()
             .height(100.dp) 
-            .offset(y = navTranslationY),
+            .graphicsLayer {
+                val scale = 0.3f + 0.7f * visibilityProgress
+                this.alpha = visibilityProgress.coerceIn(0f, 1f)
+                this.scaleX = scale
+                this.scaleY = scale
+                this.transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
+            },
         contentAlignment = Alignment.BottomCenter
     ) {
         val dpValue = density.density
@@ -223,6 +230,12 @@ fun FlareBottomNav(
         
         val currentWpx = minWpx + (fullWpx - minWpx) * containerWidthFraction
         val currentWidthDp = with(density) { currentWpx.toDp() }
+
+        val stretchScaleY = when {
+            containerWidthFraction > 1f -> 1f - (containerWidthFraction - 1f) * 0.6f
+            containerWidthFraction < 0f -> 1f + (-containerWidthFraction) * 0.6f
+            else -> 1f
+        }
 
         val pillPressed = remember { mutableStateOf(false) }
         val panelScale by animateFloatAsState(
@@ -242,7 +255,7 @@ fun FlareBottomNav(
                 .height(60.dp)
                 .graphicsLayer {
                     scaleX = panelScale
-                    scaleY = panelScale
+                    scaleY = panelScale * stretchScaleY
                 }
                 .bottomNavSoftShadow(isDarkTheme),
             contentAlignment = Alignment.Center
@@ -280,7 +293,7 @@ fun FlareBottomNav(
                       )
                     .let {
                         if (hazeState != null) {
-                            it.hazeEffect(state = hazeState) {
+                            it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
                                 blurRadius = 3.dp
                             }
                         } else {
@@ -391,6 +404,8 @@ private fun LiquidPillCanvas(
     var isTapped by remember { mutableStateOf(false) }
     var isTapTransition by remember { mutableStateOf(false) }
     val tapTransitionFrac = remember { Animatable(0f) }
+    
+    val pillSpringScale = remember { Animatable(1f) }
 
     var lastIndex by remember { mutableStateOf(-1) }
     LaunchedEffect(selectedIndex) {
@@ -401,17 +416,29 @@ private fun LiquidPillCanvas(
             if (isTapped) {
                 isTapped = false
                 isTapTransition = true
-                
+
                 leftFrac.snapTo(newL)
                 rightFrac.snapTo(newR)
+
                 
                 launch {
                     tapTransitionFrac.snapTo(0f)
                     tapTransitionFrac.animateTo(
                         targetValue = 1f,
-                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing)
+                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
                     )
                     isTapTransition = false
+                }
+                
+                launch {
+                    pillSpringScale.snapTo(0.82f)
+                    pillSpringScale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            dampingRatio = 0.55f,          
+                            stiffness = Spring.StiffnessMediumLow  
+                        )
+                    )
                 }
             } else {
                 isTapTransition = false
@@ -521,12 +548,23 @@ private fun LiquidPillCanvas(
                         onPillPressed(false)
                         scope.launch {
                             launch { dragGlowAlpha.animateTo(0f, tween(250)) }
-                            val spec = tween<Float>(
-                                durationMillis = (340 * 1.2f).toInt(),
-                                easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
+                            val spec = spring<Float>(
+                                dampingRatio = 0.6f,
+                                stiffness = Spring.StiffnessMediumLow
                             )
                             launch { leftFrac.animateTo(newTab / 3f, spec) }
                             launch { rightFrac.animateTo((newTab + 1) / 3f, spec) }
+                            
+                            launch {
+                                pillSpringScale.snapTo(0.88f)
+                                pillSpringScale.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = spring(
+                                        dampingRatio = 0.55f,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                )
+                            }
                         }
                         latestOnTabSelected.value(newTab)
                     } else {
@@ -710,6 +748,7 @@ private fun LiquidPillCanvas(
 
             if (isTapTransition) {
                 val frac = tapTransitionFrac.value
+                val springS = pillSpringScale.value
                 val oldL = lastIndex.coerceAtLeast(0) / 3f
                 val oldR = (lastIndex.coerceAtLeast(0) + 1) / 3f
                 val newL = selectedIndex / 3f
@@ -718,9 +757,9 @@ private fun LiquidPillCanvas(
                 
                 drawPillAt(oldL, oldR, scaleVal = 1f, alphaMult = 1f - frac)
                 
-                drawPillAt(newL, newR, scaleVal = 1f, alphaMult = frac)
+                drawPillAt(newL, newR, scaleVal = springS, alphaMult = frac)
             } else {
-                drawPillAt(leftFrac.value, rightFrac.value, scaleVal = 1f, alphaMult = 1f)
+                drawPillAt(leftFrac.value, rightFrac.value, scaleVal = pillSpringScale.value, alphaMult = 1f)
             }
         }
 

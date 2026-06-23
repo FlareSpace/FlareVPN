@@ -50,8 +50,8 @@ fun EditSubscriptionDialog(
     accentColor: Int,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
-    val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
-    val geologicaRegular = FontFamily(Font(R.font.geologica_regular))
+    val geologicaMedium = flare.client.app.ui.components.GeologicaMedium
+    val geologicaRegular = flare.client.app.ui.components.GeologicaRegular
 
     GlassDialog(
         onDismissRequest = onDismissRequest,

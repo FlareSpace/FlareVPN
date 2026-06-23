@@ -32,6 +32,10 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import flare.client.app.ui.theme.FlareTheme
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.runtime.SideEffect
 import android.view.WindowManager
@@ -62,6 +66,20 @@ fun GlassDialog(
             }
         }
 
+        val animProgress = remember { Animatable(0f) }
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            animProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+        }
+
+        val scale = 0.85f + 0.15f * animProgress.value
+        val alpha = animProgress.value.coerceIn(0f, 1f)
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -77,6 +95,11 @@ fun GlassDialog(
                     .padding(horizontal = 24.dp, vertical = 16.dp)
                     .widthIn(max = maxWidthDp.dp)
                     .wrapContentHeight()
+                    .graphicsLayer {
+                        this.alpha = alpha
+                        this.scaleX = scale
+                        this.scaleY = scale
+                    }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -87,17 +110,18 @@ fun GlassDialog(
                         if (hazeState != null) {
                             val isDark = FlareTheme.colors.isDark
                             val baseStyle = HazeMaterials.ultraThin()
+                            val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.30f
                             val lightTint = baseStyle.tints.firstOrNull()?.color
                                 ?: Color.White.copy(alpha = 0.30f)
-                            val darkTint = Color(0xFF1A1A1A).copy(alpha = 0.30f)
-                            val ultraThinStyle = HazeStyle(
+                            val darkTint = Color(0xFF1A1A1A).copy(alpha = baseAlpha)
+                            val dialogStyle = HazeStyle(
                                 blurRadius  = baseStyle.blurRadius,
                                 tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
-                                noiseFactor = baseStyle.noiseFactor
+                                noiseFactor = 0f
                             )
-                            it.hazeEffect(
+                            it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(
                                 state = hazeState,
-                                style = ultraThinStyle
+                                style = dialogStyle
                             )
                         } else {
                             it.background(FlareTheme.colors.dialogGlassFill)

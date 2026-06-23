@@ -34,8 +34,8 @@ import flare.client.app.ui.theme.FlareTheme
 
 import flare.client.app.ui.i18n.I18n
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
-private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWeight.Normal))
+
+
 
 @Composable
 fun LanguageSettingsScreen(
@@ -62,7 +62,7 @@ fun LanguageSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier

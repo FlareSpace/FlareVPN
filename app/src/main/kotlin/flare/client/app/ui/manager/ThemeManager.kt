@@ -51,6 +51,15 @@ class ThemeManager(
         const val COLOR_TEAL        = 0xFF30B0C7.toInt()
         const val COLOR_TEAL_END    = 0xFF62D2E4.toInt()
         
+        const val COLOR_LIME        = 0xFFC6FF34.toInt()
+        const val COLOR_LIME_END    = 0xFF8AC926.toInt()
+        const val COLOR_CANDY_BLUE  = 0xFFB2D5E5.toInt()
+        const val COLOR_CANDY_BLUE_END = 0xFF8CB5CC.toInt()
+        const val COLOR_SUNSET      = 0xFFFF5E62.toInt()
+        const val COLOR_SUNSET_END  = 0xFFFF9966.toInt()
+        const val COLOR_LAVENDER    = 0xFFD1B3FF.toInt()
+        const val COLOR_LAVENDER_END = 0xFF9E8BFF.toInt()
+        
         const val COLOR_MATERIAL_YOU     = COLOR_DEFAULT
         const val COLOR_MATERIAL_YOU_END = COLOR_DEFAULT_END
     }
@@ -95,17 +104,21 @@ class ThemeManager(
 
     fun getColorsForKey(key: String): Pair<Int, Int> = when (key) {
         "material_you" -> getMaterialYouColors()
-        "green"  -> Pair(COLOR_GREEN,  COLOR_GREEN_END)
-        "purple" -> Pair(COLOR_PURPLE, COLOR_PURPLE_END)
-        "red"    -> Pair(COLOR_RED,    COLOR_RED_END)
-        "pink"   -> Pair(COLOR_PINK,   COLOR_PINK_END)
-        "orange" -> Pair(COLOR_ORANGE, COLOR_ORANGE_END)
-        "indigo" -> Pair(COLOR_INDIGO, COLOR_INDIGO_END)
-        "cyan"   -> Pair(COLOR_CYAN,   COLOR_CYAN_END)
-        "amber"  -> Pair(COLOR_AMBER,  COLOR_AMBER_END)
-        "violet" -> Pair(COLOR_VIOLET, COLOR_VIOLET_END)
-        "teal"   -> Pair(COLOR_TEAL,   COLOR_TEAL_END)
-        else     -> Pair(COLOR_DEFAULT, COLOR_DEFAULT_END)
+        "green"      -> Pair(COLOR_GREEN,  COLOR_GREEN_END)
+        "purple"     -> Pair(COLOR_PURPLE, COLOR_PURPLE_END)
+        "red"        -> Pair(COLOR_RED,    COLOR_RED_END)
+        "pink"       -> Pair(COLOR_PINK,   COLOR_PINK_END)
+        "orange"     -> Pair(COLOR_ORANGE, COLOR_ORANGE_END)
+        "indigo"     -> Pair(COLOR_INDIGO, COLOR_INDIGO_END)
+        "cyan"       -> Pair(COLOR_CYAN,   COLOR_CYAN_END)
+        "amber"      -> Pair(COLOR_AMBER,  COLOR_AMBER_END)
+        "violet"     -> Pair(COLOR_VIOLET, COLOR_VIOLET_END)
+        "teal"       -> Pair(COLOR_TEAL,   COLOR_TEAL_END)
+        "lime"       -> Pair(COLOR_LIME,   COLOR_LIME_END)
+        "candy_blue" -> Pair(COLOR_CANDY_BLUE, COLOR_CANDY_BLUE_END)
+        "sunset"     -> Pair(COLOR_SUNSET, COLOR_SUNSET_END)
+        "lavender"   -> Pair(COLOR_LAVENDER, COLOR_LAVENDER_END)
+        else         -> Pair(COLOR_DEFAULT, COLOR_DEFAULT_END)
     }
 
     private fun getMaterialYouColors(): Pair<Int, Int> {

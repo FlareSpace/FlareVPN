@@ -5,7 +5,28 @@ import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontSynthesis
+import androidx.compose.ui.text.font.createFontFamilyResolver
 import flare.client.app.ui.manager.ThemeManager
+import flare.client.app.ui.notification.AppNotificationManager
+import flare.client.app.ui.notification.NotificationType
+import flare.client.app.ui.i18n.I18n
+
+@Immutable
+data class FlareEffectsConfig(
+    val isBlurEnabled: Boolean,
+    val isLiquidGlassEnabled: Boolean
+)
+
+val LocalFlareEffects = staticCompositionLocalOf {
+    FlareEffectsConfig(isBlurEnabled = true, isLiquidGlassEnabled = true)
+}
+
 @Immutable
 data class FlareColors(
     val bgDark: Color,
@@ -62,11 +83,11 @@ data class FlareColors(
 
 val LocalFlareColors = staticCompositionLocalOf {
     FlareColors(
-        bgDark = Color(0xFFF3F5F8),
-        bgSurface = Color(0xFFF4F6F9),
+        bgDark = Color(0xFFEFF1F4),
+        bgSurface = Color(0xFFEFF1F4),
         bgItem = Color(0xFFFFFFFF),
-        bgNavBar = Color(0xCCF0F2F5),
-        bgNotificationBar = Color(0xFFF4F6F9),
+        bgNavBar = Color(0xDDEFF1F4),
+        bgNotificationBar = Color(0xFFEFF1F4),
         accent = Color(0xFF5B8CFF),
         accentEnd = Color(0xFF5B8CFF),
         textPrimary = Color(0xFF1A1C1E),
@@ -91,7 +112,7 @@ val LocalFlareColors = staticCompositionLocalOf {
         btnConnectBodyCenter = Color(0xFFE5E7EB),
         btnConnectBodyEnd = Color(0xFFD1D5DB),
         btnConnectIconTint = Color(0xFF707991),
-        gradientBase = Color(0xFFE8EBF0),
+        gradientBase = Color(0xFFEFF1F4),
         gradientBlueStart = Color(0x355B8CFF),
         gradientBlueEnd = Color(0x005B8CFF),
         gradientPurpleStart = Color(0x35A066FF),
@@ -107,8 +128,8 @@ val LocalFlareColors = staticCompositionLocalOf {
         infoStroke = Color(0x26000000),
         trafficTextColor = Color(0xFFFFFFFF),
 
-        headerGradientStart = Color(0x30FFFFFF),
-        headerGradientEnd = Color(0x20FFFFFF),
+        headerGradientStart = Color(0xFFEFF1F4),
+        headerGradientEnd = Color(0xFFEFF1F4),
 
         isDark = false
     )
@@ -128,6 +149,9 @@ fun FlareTheme(
     isDark: Boolean = isSystemInDarkTheme(),
     accentColor: Color = Color(ThemeManager.COLOR_DEFAULT),
     accentEndColor: Color = Color(ThemeManager.COLOR_DEFAULT_END),
+    isBlurEnabled: Boolean = true,
+    isLiquidGlassEnabled: Boolean = true,
+    fontKey: String = "geologica",
     content: @Composable () -> Unit
 ) {
     val targetColors = if (isDark) {
@@ -184,11 +208,11 @@ fun FlareTheme(
         )
     } else {
         FlareColors(
-            bgDark = Color(0xFFF6F8FC),
-            bgSurface = Color(0xFFF9FAFC),
+            bgDark = Color(0xFFEFF1F4),
+            bgSurface = Color(0xFFEFF1F4),
             bgItem = Color(0xFFFFFFFF),
-            bgNavBar = Color(0xDDF1F4FA),
-            bgNotificationBar = Color(0xFFF9FAFC),
+            bgNavBar = Color(0xDDEFF1F4),
+            bgNotificationBar = Color(0xFFEFF1F4),
             accent = accentColor,
             accentEnd = accentEndColor,
             textPrimary = Color(0xFF1A1C1E),
@@ -213,7 +237,7 @@ fun FlareTheme(
             btnConnectBodyCenter = Color(0xFFE5E7EB),
             btnConnectBodyEnd = Color(0xFFD1D5DB),
             btnConnectIconTint = Color(0xFF707991),
-            gradientBase = Color(0xFFF3F5FA),
+            gradientBase = Color(0xFFEFF1F4),
             gradientBlueStart = Color(0x245B8CFF),
             gradientBlueEnd = Color(0x005B8CFF),
             gradientPurpleStart = Color(0x20A066FF),
@@ -229,8 +253,8 @@ fun FlareTheme(
             infoStroke = Color(0x26000000),
             trafficTextColor = Color(0xFFFFFFFF),
 
-            headerGradientStart = Color(0x30FFFFFF),
-            headerGradientEnd = Color(0x20FFFFFF),
+            headerGradientStart = Color(0xFFEFF1F4),
+            headerGradientEnd = Color(0xFFEFF1F4),
 
             isDark = false
         )
@@ -292,9 +316,20 @@ fun FlareTheme(
         )
     }
 
+    val effectsConfig = remember(isBlurEnabled, isLiquidGlassEnabled) {
+        FlareEffectsConfig(isBlurEnabled = isBlurEnabled, isLiquidGlassEnabled = isLiquidGlassEnabled)
+    }
+
+    val context = LocalContext.current
+    val customResolver = remember(context, fontKey) {
+        createFontFamilyResolver(context)
+    }
+
     CompositionLocalProvider(
         LocalFlareColors provides colors,
         LocalTextSelectionColors provides textSelectionColors,
+        LocalFlareEffects provides effectsConfig,
+        LocalFontFamilyResolver provides customResolver,
         content = content
     )
 }
@@ -304,4 +339,9 @@ object FlareTheme {
         @Composable
         @ReadOnlyComposable
         get() = LocalFlareColors.current
+
+    val effects: FlareEffectsConfig
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalFlareEffects.current
 }

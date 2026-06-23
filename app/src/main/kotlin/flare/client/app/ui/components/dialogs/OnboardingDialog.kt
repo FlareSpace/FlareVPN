@@ -125,8 +125,8 @@ fun OnboardingDialog(
     var isSocialSelected by remember { mutableStateOf(false) }
     var isAiSelected by remember { mutableStateOf(false) }
 
-    val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
-    val geologicaRegular = FontFamily(Font(R.font.geologica_regular))
+    val geologicaMedium = flare.client.app.ui.components.GeologicaMedium
+    val geologicaRegular = flare.client.app.ui.components.GeologicaRegular
     val context = LocalContext.current
 
     val strings = remember(I18n.strings) { OnboardingStrings(I18n.strings) }
@@ -164,18 +164,19 @@ fun OnboardingDialog(
                     .let {
                         if (hazeState != null) {
                             val isDark = FlareTheme.colors.isDark
-                            val baseStyle = HazeMaterials.ultraThin()
+                            val baseStyle = HazeMaterials.regular()
+                            val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.60f
                             val lightTint = baseStyle.tints.firstOrNull()?.color
-                                ?: Color.White.copy(alpha = 0.30f)
-                            val darkTint = Color(0xFF1A1A1A).copy(alpha = 0.30f)
-                            val ultraThinStyle = HazeStyle(
+                                ?: Color.White.copy(alpha = 0.70f)
+                            val darkTint = Color(0xFF1A1A1A).copy(alpha = baseAlpha)
+                            val regularStyle = HazeStyle(
                                 blurRadius  = baseStyle.blurRadius,
                                 tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
-                                noiseFactor = baseStyle.noiseFactor
+                                noiseFactor = 0f
                             )
                             it.hazeEffect(
                                 state = hazeState,
-                                style = ultraThinStyle
+                                style = regularStyle
                             )
                         } else {
                             it.background(FlareTheme.colors.dialogGlassFill)

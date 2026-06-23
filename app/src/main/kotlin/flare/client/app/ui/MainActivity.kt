@@ -17,6 +17,7 @@ import android.content.res.ColorStateList
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.net.VpnService
 import android.os.Bundle
@@ -90,6 +91,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -98,6 +100,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import dev.chrisbanes.haze.rememberHazeState
@@ -144,6 +147,9 @@ class MainActivity : AppCompatActivity() {
 
 
     private val viewModel: MainViewModel by viewModels()
+    private val vpnViewModel: flare.client.app.ui.viewmodel.VpnViewModel by viewModels()
+    private val profilesViewModel: flare.client.app.ui.viewmodel.ProfilesViewModel by viewModels()
+    private val routingViewModel: flare.client.app.ui.viewmodel.RoutingViewModel by viewModels()
     private val settingsViewModel: SettingsViewModel by viewModels()
     private val wizardViewModel: WizardViewModel by viewModels()
 
@@ -159,6 +165,7 @@ class MainActivity : AppCompatActivity() {
     private var runtimeAccentColor by mutableStateOf(ThemeManager.COLOR_DEFAULT)
     private var runtimeAccentEndColor by mutableStateOf(ThemeManager.COLOR_DEFAULT_END)
     private var isClipboardLoading by mutableStateOf(false)
+    private var lastWindowBaseBackgroundColor: Int? = null
 
     
     private var showManualInputDialogState by mutableStateOf(false)
@@ -175,11 +182,28 @@ class MainActivity : AppCompatActivity() {
     private var isNotificationPermissionGranted by mutableStateOf(false)
     private var isBatteryOptimizationIgnored by mutableStateOf(false)
 
+    private fun resolveIsDarkTheme(mode: Int): Boolean = when (mode) {
+        1 -> false
+        2 -> true
+        else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+
+    private fun applyWindowBaseBackground(color: Int) {
+        if (lastWindowBaseBackgroundColor == color) return
+        lastWindowBaseBackgroundColor = color
+        window.setBackgroundDrawable(ColorDrawable(color))
+        window.decorView.setBackgroundColor(color)
+    }
+
+    private fun applyWindowBaseBackground(isDark: Boolean) {
+        applyWindowBaseBackground(if (isDark) Color.BLACK else Color.rgb(239, 241, 244))
+    }
+
     private fun setupPermissions() {
         permissionHandler = PermissionHandler(
             activity = this,
             onVpnResult = { isGranted ->
-                if (isGranted) viewModel.startVpnFromUi()
+                if (isGranted) vpnViewModel.startVpnFromUi()
                 else showToast(I18n.strings.vpn_error_permission_denied)
             },
             onNotificationResult = { isGranted ->
@@ -219,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                     if (content.isNullOrBlank()) {
                         showToast(I18n.strings.error_import_file_read)
                     } else {
-                        viewModel.importFromClipboard(content)
+                        profilesViewModel.importFromClipboard(content)
                     }
                 }
             },
@@ -227,7 +251,7 @@ class MainActivity : AppCompatActivity() {
                 if (qrContent.isNullOrBlank()) {
                     showToast(I18n.strings.error_qr_scan_empty)
                 } else {
-                    viewModel.importFromClipboard(qrContent)
+                    profilesViewModel.importFromClipboard(qrContent)
                 }
             }
         )
@@ -263,6 +287,11 @@ class MainActivity : AppCompatActivity() {
         }
         ThemeManager.lastUiMode = currentUiMode
         settings = SettingsManager(this)
+        DynamicAndroidFont.activeFontKey = settings.fontFamily
+        settingsViewModel.syncTheme(settings)
+        settingsViewModel.composeSystemIsDark =
+            (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        applyWindowBaseBackground(resolveIsDarkTheme(settings.themeMode))
         showOnboardingDialogState = !settings.isOnboardingCompleted
         isNotificationPermissionGranted = checkNotificationPermission()
         isBatteryOptimizationIgnored = checkBatteryOptimizationIgnored()
@@ -300,17 +329,29 @@ class MainActivity : AppCompatActivity() {
             FlareTheme(
                 isDark = isDark,
                 accentColor = androidx.compose.ui.graphics.Color(runtimeAccentColor),
-                accentEndColor = androidx.compose.ui.graphics.Color(runtimeAccentEndColor)
+                accentEndColor = androidx.compose.ui.graphics.Color(runtimeAccentEndColor),
+                isBlurEnabled = settingsViewModel.composeIsBlurEnabled,
+                isLiquidGlassEnabled = settingsViewModel.composeIsLiquidGlassEnabled,
+                fontKey = settingsViewModel.composeFontFamily
             ) {
+                androidx.compose.runtime.key(settingsViewModel.composeFontFamily) {
+                    val windowBaseBackground = FlareTheme.colors.bgDark
+                androidx.compose.runtime.SideEffect {
+                    applyWindowBaseBackground(windowBaseBackground.toArgb())
+                }
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(windowBaseBackground)
                         .graphicsLayer { alpha = screenAlpha }
-                        .hazeSource(state = dialogHazeState)
+                        .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = dialogHazeState) else it }
                 ) {
                     FlareApp(
                     isDark = isDark,
                     mainViewModel = viewModel,
+                    vpnViewModel = vpnViewModel,
+                    profilesViewModel = profilesViewModel,
+                    routingViewModel = routingViewModel,
                     settingsViewModel = settingsViewModel,
                     wizardViewModel = wizardViewModel,
                     accentColor = runtimeAccentColor,
@@ -322,7 +363,7 @@ class MainActivity : AppCompatActivity() {
                     onShareProfile = { summary ->
                         lifecycleScope.launch {
                             val profile = withContext(Dispatchers.IO) {
-                                viewModel.getProfileById(summary.id)
+                                profilesViewModel.getProfileById(summary.id)
                             }
                             if (profile != null) {
                                 val link = flare.client.app.util.ProfileExportHelper.exportLink(profile)
@@ -348,7 +389,7 @@ class MainActivity : AppCompatActivity() {
                     onQrProfile = { summary -> 
                         lifecycleScope.launch {
                             val profile = withContext(Dispatchers.IO) {
-                                viewModel.getProfileById(summary.id)
+                                profilesViewModel.getProfileById(summary.id)
                             }
                             if (profile != null) {
                                 val link = flare.client.app.util.ProfileExportHelper.exportLink(profile)
@@ -405,6 +446,13 @@ class MainActivity : AppCompatActivity() {
                             settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
                         }
                     },
+                    onFontSelect = { fontKey ->
+                        if (settings.fontFamily != fontKey) {
+                            settings.fontFamily = fontKey
+                            DynamicAndroidFont.activeFontKey = fontKey
+                            settingsViewModel.composeFontFamily = fontKey
+                        }
+                    },
                     onLogLevelClick = { level ->
                         settings.coreLogLevel = level
                         settingsViewModel.composeCoreLogLevel = level
@@ -416,13 +464,14 @@ class MainActivity : AppCompatActivity() {
                     onBestProfileOnlyConnectedClick = { enabled ->
                         settings.isBestProfileOnlyIfConnected = enabled
                         settingsViewModel.composeIsBestProfileOnlyConnected = enabled
+                        vpnViewModel.startBestProfileJob()
                     },
                     onUserAgentClick = { agent ->
                         settings.subUserAgent = agent
                         settingsViewModel.composeSubUserAgent = agent
                     },
                     onRoutingModeClick = { ruleId, mode ->
-                        viewModel.setRoutingRuleMode(ruleId, mode)
+                        routingViewModel.setRoutingRuleMode(ruleId, mode)
                     },
                     onPacketTypeClick = { packetType ->
                         settings.packetType = packetType
@@ -462,7 +511,7 @@ class MainActivity : AppCompatActivity() {
                         if (text.isNullOrBlank()) {
                             showToast(I18n.strings.error_clipboard_empty)
                         } else {
-                            viewModel.importFromClipboard(text)
+                            profilesViewModel.importFromClipboard(text)
                         }
                     },
                     showBottomNav = true,
@@ -488,7 +537,7 @@ class MainActivity : AppCompatActivity() {
                         onCancel = { showManualInputDialogState = false },
                         onAdd = { 
                             if (it.trim().isNotEmpty()) {
-                                viewModel.importFromClipboard(it.trim())
+                                profilesViewModel.importFromClipboard(it.trim())
                                 showManualInputDialogState = false
                             }
                         },
@@ -537,7 +586,7 @@ class MainActivity : AppCompatActivity() {
                         },
                         onCancel = { showEditSubscriptionDialogState = false },
                         onSave = {
-                            viewModel.updateSubscription(sub.id, nameValue.trim(), urlValue.trim())
+                            profilesViewModel.updateSubscription(sub.id, nameValue.trim(), urlValue.trim())
                             showEditSubscriptionDialogState = false
                         },
                         accentColor = runtimeAccentColor,
@@ -768,6 +817,7 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
+                }
             }
         }
 
@@ -785,11 +835,8 @@ class MainActivity : AppCompatActivity() {
         settingsViewModel.composeSystemIsDark = (applicationContext.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
 
-        val isDark = when (settings.themeMode) {
-            1 -> false
-            2 -> true
-            else -> (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-        }
+        val isDark = resolveIsDarkTheme(settings.themeMode)
+        applyWindowBaseBackground(isDark)
         themeManager.updateSystemBars(isDark)
 
         if (settings.isCustomColorEnabled) {
@@ -849,16 +896,16 @@ class MainActivity : AppCompatActivity() {
             val host = uri.host?.lowercase()
             when (host) {
                 "open" -> {
-                    viewModel.startVpnFromUi()
+                    vpnViewModel.startVpnFromUi()
                 }
                 "close" -> {
-                    viewModel.stopVpnFromUi()
+                    vpnViewModel.stopVpnFromUi()
                 }
                 "ping" -> {
-                    viewModel.pingCurrentSubscription()
+                    profilesViewModel.pingCurrentSubscription()
                 }
                 "best" -> {
-                    viewModel.selectBestProfileFromUi()
+                    vpnViewModel.selectBestProfileFromUi()
                 }
                 "add" -> {
                     var targetUrl = uri.getQueryParameter("url")
@@ -870,7 +917,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     if (!targetUrl.isNullOrBlank()) {
-                        viewModel.importFromClipboard(targetUrl)
+                        profilesViewModel.importFromClipboard(targetUrl)
                     }
                 }
             }
@@ -879,7 +926,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestPendingTriggerVpnPermissionIfNeeded() {
         if (!hasPendingTriggerVpnPermissionRequest || !mainUiInitialized) return
-        if (viewModel.connectionState.value != MainViewModel.ConnectionState.DISCONNECTED) {
+        if (vpnViewModel.connectionState.value != flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.DISCONNECTED) {
             hasPendingTriggerVpnPermissionRequest = false
             return
         }
@@ -889,7 +936,7 @@ class MainActivity : AppCompatActivity() {
         if (vpnIntent != null) {
             permissionHandler.launchVpnPermission(vpnIntent)
         } else {
-            viewModel.startVpnFromUi()
+            vpnViewModel.startVpnFromUi()
         }
     }
 
@@ -1030,6 +1077,7 @@ class MainActivity : AppCompatActivity() {
             ThemeManager.lastUiMode = newUiMode
             if (settings.themeMode == 0) {
                 val isDark = newUiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                applyWindowBaseBackground(isDark)
                 themeManager.updateSystemBars(isDark)
                 AppNotificationManager.showNotification(
                     NotificationType.SUCCESS,
@@ -1062,6 +1110,7 @@ class MainActivity : AppCompatActivity() {
             settings.themeMode = newMode
             settingsViewModel.composeThemeMode = newMode
             themeManager.applyTheme()
+            applyWindowBaseBackground(targetIsNight)
             
             if (!isEffectivelySame) {
                 themeManager.updateSystemBars(targetIsNight)
@@ -1119,12 +1168,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeViewModel() {
         lifecycleScope.launch {
-            viewModel.importEvent.collect { event ->
+            profilesViewModel.importEvent.collect { event ->
                 when (event) {
-                    is MainViewModel.ImportEvent.Loading -> {
+                    is flare.client.app.ui.viewmodel.ProfilesViewModel.ImportEvent.Loading -> {
                         isClipboardLoading = true
                     }
-                    is MainViewModel.ImportEvent.Success -> {
+                    is flare.client.app.ui.viewmodel.ProfilesViewModel.ImportEvent.Success -> {
                         isClipboardLoading = false
                         flare.client.app.ui.notification.AppNotificationManager.showNotification(
                             flare.client.app.ui.notification.NotificationType.SUCCESS,
@@ -1132,7 +1181,7 @@ class MainActivity : AppCompatActivity() {
                             3
                         )
                     }
-                    is MainViewModel.ImportEvent.Error -> {
+                    is flare.client.app.ui.viewmodel.ProfilesViewModel.ImportEvent.Error -> {
                         isClipboardLoading = false
                         flare.client.app.ui.notification.AppNotificationManager.showNotification(
                             flare.client.app.ui.notification.NotificationType.ERROR,
@@ -1140,11 +1189,17 @@ class MainActivity : AppCompatActivity() {
                             3
                         )
                     }
-                    is MainViewModel.ImportEvent.NeedPermission -> {
+                    is flare.client.app.ui.viewmodel.ProfilesViewModel.ImportEvent.NeedPermission -> {
                         isClipboardLoading = false
                         permissionHandler.launchVpnPermission(event.intent)
                     }
                 }
+            }
+        }
+
+        lifecycleScope.launch {
+            vpnViewModel.vpnPermissionIntent.collect { intent ->
+                permissionHandler.launchVpnPermission(intent)
             }
         }
 
@@ -1172,7 +1227,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun updateConnectButton(state: MainViewModel.ConnectionState) {
+    private fun updateConnectButton(state: flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState) {
         
     }
 

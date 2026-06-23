@@ -47,9 +47,23 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import flare.client.app.ui.navigation.Destination
+import flare.client.app.ui.navigation.settingsForwardEnterTransition
+import flare.client.app.ui.navigation.settingsForwardExitTransition
+import flare.client.app.ui.navigation.settingsBackEnterTransition
+import flare.client.app.ui.navigation.settingsBackExitTransition
+import flare.client.app.ui.navigation.isSettingsDetailRoute
+import flare.client.app.ui.navigation.isEditorRoute
+import flare.client.app.ui.navigation.SettingsMorphRequest
+import flare.client.app.ui.navigation.TransitionBlurContainer
+import flare.client.app.ui.navigation.ROOT_TAB_BLUR
+import flare.client.app.ui.navigation.ROOT_TAB_ENTER_DURATION
+import flare.client.app.ui.navigation.ROOT_TAB_EXIT_DURATION
+import flare.client.app.ui.navigation.graph.flareSettingsGraph
+import flare.client.app.ui.navigation.graph.flareHomeGraph
+import flare.client.app.ui.navigation.graph.flareEditorGraph
 import flare.client.app.ui.components.FlareBottomNav
 import flare.client.app.ui.components.FlareSideNav
+import flare.client.app.ui.navigation.Destination
 import flare.client.app.ui.components.FlareHomeBackground
 import flare.client.app.ui.MainViewModel
 import flare.client.app.ui.SettingsViewModel
@@ -97,249 +111,16 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-private const val ROOT_TAB_EXIT_DURATION = 220
-private const val ROOT_TAB_ENTER_DURATION = 260
-private const val SETTINGS_EXIT_DURATION = 220
-private const val SETTINGS_ENTER_DURATION = 220
-private const val ROOT_TAB_BLUR = 0f
-private const val SETTINGS_BLUR = 25f
-private const val MORPH_DURATION = 450
 
 
 
-private fun rootTabIndexForRoute(route: String?): Int? = when {
-    route == Destination.Settings.route || route?.startsWith("settings/") == true -> 0
-    route == Destination.Home.route -> 1
-    route == Destination.Servers.route -> 2
-    else -> null
-}
-
-private fun isSettingsDetailRoute(route: String?): Boolean = when (route) {
-    Destination.AdvancedSettings.route,
-    Destination.PingSettings.route,
-    Destination.RoutingSettings.route,
-    Destination.BasicSettings.route,
-    Destination.SubscriptionsSettings.route,
-    Destination.ThemeSettings.route,
-    Destination.LanguageSettings.route,
-    Destination.Journal.route -> true
-    else -> false
-}
-
-private fun isSettingsRoute(route: String?): Boolean =
-    route == Destination.Settings.route || isSettingsDetailRoute(route)
-
-private fun isEditorRoute(route: String?): Boolean =
-    route?.startsWith("editor/") == true
-
-private fun NavBackStackEntry.route(): String? = destination.route
-
-private fun rootTabEnterTransition(
-    initial: NavBackStackEntry,
-    target: NavBackStackEntry,
-    isLandscape: Boolean
-): EnterTransition {
-    val fromIndex = rootTabIndexForRoute(initial.route()) ?: return EnterTransition.None
-    val toIndex = rootTabIndexForRoute(target.route()) ?: return EnterTransition.None
-    if (fromIndex == toIndex) return EnterTransition.None
-
-    val direction = if (toIndex > fromIndex) 1 else -1
-    return if (isLandscape) {
-        slideInVertically(
-            animationSpec = tween(
-                durationMillis = ROOT_TAB_ENTER_DURATION,
-                easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-            ),
-            initialOffsetY = { fullHeight -> fullHeight * direction }
-        ) + fadeIn(animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION))
-    } else {
-        slideInHorizontally(
-            animationSpec = tween(
-                durationMillis = ROOT_TAB_ENTER_DURATION,
-                easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-            ),
-            initialOffsetX = { fullWidth -> fullWidth * direction }
-        ) + fadeIn(animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION))
-    }
-}
-
-private fun rootTabExitTransition(
-    initial: NavBackStackEntry,
-    target: NavBackStackEntry,
-    isLandscape: Boolean
-): ExitTransition {
-    val fromIndex = rootTabIndexForRoute(initial.route()) ?: return ExitTransition.None
-    val toIndex = rootTabIndexForRoute(target.route()) ?: return ExitTransition.None
-    if (fromIndex == toIndex) return ExitTransition.None
-
-    val direction = if (toIndex > fromIndex) -1 else 1
-    return if (isLandscape) {
-        slideOutVertically(
-            animationSpec = tween(
-                durationMillis = ROOT_TAB_EXIT_DURATION,
-                easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
-            ),
-            targetOffsetY = { fullHeight -> fullHeight * direction }
-        ) + fadeOut(animationSpec = tween(durationMillis = ROOT_TAB_EXIT_DURATION))
-    } else {
-        slideOutHorizontally(
-            animationSpec = tween(
-                durationMillis = ROOT_TAB_EXIT_DURATION,
-                easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
-            ),
-            targetOffsetX = { fullWidth -> fullWidth * direction }
-        ) + fadeOut(animationSpec = tween(durationMillis = ROOT_TAB_EXIT_DURATION))
-    }
-}
-
-private fun settingsForwardEnterTransition(): EnterTransition =
-    slideInHorizontally(
-        initialOffsetX = { fullWidth -> fullWidth },
-        animationSpec = tween(
-            durationMillis = SETTINGS_ENTER_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-        )
-    ) + fadeIn(animationSpec = tween(durationMillis = SETTINGS_ENTER_DURATION))
-
-private fun settingsForwardExitTransition(): ExitTransition = ExitTransition.None
-
-private fun settingsBackEnterTransition(): EnterTransition = EnterTransition.None
-
-private fun settingsBackExitTransition(): ExitTransition =
-    slideOutHorizontally(
-        targetOffsetX = { fullWidth -> fullWidth },
-        animationSpec = tween(
-            durationMillis = SETTINGS_EXIT_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-        )
-    ) + scaleOut(
-        targetScale = 0.85f,
-        animationSpec = tween(
-            durationMillis = SETTINGS_EXIT_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-        )
-    ) + fadeOut(animationSpec = tween(durationMillis = SETTINGS_EXIT_DURATION))
-
-private data class SettingsMorphRequest(
-    val route: String,
-    val originOffset: IntOffset,
-    val originSize: IntSize
-)
-
-@Composable
-private fun TransitionBlurContainer(
-    isActive: Boolean,
-    enterBlur: Float,
-    exitBlur: Float,
-    enterDuration: Int,
-    exitDuration: Int,
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
-) {
-    val blur = remember { Animatable(if (isActive) enterBlur else exitBlur) }
-    var initialized by remember { mutableStateOf(false) }
-
-    LaunchedEffect(isActive) {
-        if (!initialized) {
-            initialized = true
-            if (isActive) {
-                blur.snapTo(enterBlur)
-                blur.animateTo(
-                    targetValue = 0f,
-                    animationSpec = tween(
-                        durationMillis = enterDuration,
-                        easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-                    )
-                )
-            } else {
-                blur.snapTo(exitBlur)
-            }
-        } else if (isActive) {
-            blur.snapTo(enterBlur)
-            blur.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(
-                    durationMillis = enterDuration,
-                    easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
-                )
-            )
-        } else {
-            blur.animateTo(
-                targetValue = exitBlur,
-                animationSpec = tween(
-                    durationMillis = exitDuration,
-                    easing = { DecelerateInterpolator(1.5f).getInterpolation(it) }
-                )
-            )
-        }
-    }
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                val radius = blur.value
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && radius > 0.5f) {
-                    renderEffect = android.graphics.RenderEffect
-                        .createBlurEffect(radius, radius, android.graphics.Shader.TileMode.CLAMP)
-                        .asComposeRenderEffect()
-                } else {
-                    renderEffect = null
-                }
-            },
-        content = content
-    )
-}
-
-@Composable
-private fun SettingsDetailContainer(
-    route: String,
-    currentRoute: String?,
-    morphRequest: SettingsMorphRequest?,
-    onMorphFinished: () -> Unit,
-    settingsViewModel: SettingsViewModel,
-    onBack: () -> Unit = {},
-    backgroundContentRight: (@Composable () -> Unit)? = null,
-    onDismissLeft: (() -> Unit)? = null,
-    backgroundContentLeft: (@Composable () -> Unit)? = null,
-    hazeState: dev.chrisbanes.haze.HazeState? = null,
-    content: @Composable BoxScope.() -> Unit
-) {
-    LaunchedEffect(morphRequest) {
-        if (morphRequest != null) {
-            onMorphFinished()
-        }
-    }
-    SwipeToDismissScreen(
-        onDismissRight = onBack,
-        onDismissLeft = onDismissLeft,
-        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
-        backgroundContentRight = backgroundContentRight,
-        backgroundContentLeft = backgroundContentLeft
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            flare.client.app.ui.components.FlareHomeBackground(
-                backgroundType = settingsViewModel.composeBackgroundType,
-                isAnimationEnabled = false,
-                animationSpeed = settingsViewModel.composeGradientSpeed,
-                photoSeed = settingsViewModel.composePhotoSeed,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
-                    .let { if (hazeState != null) it.hazeSource(state = hazeState) else it }
-            )
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                content = content
-            )
-        }
-    }
-}
 
 @Composable
 fun FlareApp(
     mainViewModel: MainViewModel,
+    vpnViewModel: flare.client.app.ui.viewmodel.VpnViewModel,
+    profilesViewModel: flare.client.app.ui.viewmodel.ProfilesViewModel,
+    routingViewModel: flare.client.app.ui.viewmodel.RoutingViewModel,
     settingsViewModel: SettingsViewModel,
     wizardViewModel: WizardViewModel,
     accentColor: Int,
@@ -363,6 +144,7 @@ fun FlareApp(
     onTunStackClick: (String) -> Unit,
     onPingStyleClick: (String) -> Unit,
     onThemeClick: (Int) -> Unit,
+    onFontSelect: (String) -> Unit,
     onEditSubscriptionClick: (flare.client.app.data.model.SubscriptionEntity) -> Unit,
     onChangeAppsClick: () -> Unit,
     onViewJournalClick: (android.view.View) -> Unit,
@@ -382,7 +164,10 @@ fun FlareApp(
     FlareTheme(
         isDark = isDark,
         accentColor = Color(accentColor),
-        accentEndColor = Color(accentEndColor)
+        accentEndColor = Color(accentEndColor),
+        isBlurEnabled = settingsViewModel.composeIsBlurEnabled,
+        isLiquidGlassEnabled = settingsViewModel.composeIsLiquidGlassEnabled,
+        fontKey = settingsViewModel.composeFontFamily
     ) {
         val navController = rememberNavController()
         val rootPagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
@@ -448,7 +233,7 @@ fun FlareApp(
         }
 
         val bottomPadding = if (isGestureNav) 22.dp else 38.dp
-        val isAnySubscriptionExpanded by mainViewModel.isAnySubscriptionExpanded.collectAsState()
+        val isAnySubscriptionExpanded by profilesViewModel.isAnySubscriptionExpanded.collectAsState()
         var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
         var showDataManagementDialog by remember { mutableStateOf(false) }
         val sharedBasicSettingsScrollState = androidx.compose.foundation.rememberScrollState()
@@ -456,110 +241,7 @@ fun FlareApp(
 
         
         
-        val settingsBackground: @Composable () -> Unit = {
-            SettingsScreen(
-                onBaseSettingsClick = {},
-                onAdvancedSettingsClick = {},
-                onRoutingSettingsClick = {},
-                onPingSettingsClick = {},
-                onSubscriptionsSettingsClick = {},
-                onThemeSettingsClick = {},
-                onLanguageSettingsClick = {},
-                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                isAnimationEnabled = false,
-                gradientSpeed = settingsViewModel.composeGradientSpeed,
-                hazeState = appHazeState
-            )
-        }
-
-        val basicSettingsBackground: @Composable () -> Unit = {
-            BasicSettingsScreen(
-                isSplitTunnelingEnabled = settingsViewModel.composeIsSplitTunnelingEnabled,
-                onSplitTunnelingChange = {},
-                splitTunnelingDesc = settingsViewModel.composeSplitTunnelingDesc,
-                onChangeAppsClick = {},
-                isChangeAppsLoading = settingsViewModel.composeIsChangeAppsLoading,
-                isAutostartEnabled = settingsViewModel.composeIsAutostartEnabled,
-                onAutostartChange = {},
-                isStatusNotificationEnabled = settingsViewModel.composeIsStatusNotificationEnabled,
-                onStatusNotificationChange = {},
-                isNotificationSpeedEnabled = settingsViewModel.composeIsNotificationSpeedEnabled,
-                onNotificationSpeedChange = {},
-                isBestProfileNotifEnabled = settingsViewModel.composeIsBestProfileNotifEnabled,
-                onBestProfileNotifChange = {},
-                isCoreLogEnabled = settingsViewModel.composeIsCoreLogEnabled,
-                onCoreLogChange = {},
-                coreLogLevel = settingsViewModel.composeCoreLogLevel,
-                onLogLevelClick = {},
-                onViewJournalClick = {},
-                isBestProfileEnabled = settingsViewModel.composeIsBestProfileEnabled,
-                onBestProfileChange = {},
-                bestProfileInterval = settingsViewModel.composeBestProfileInterval,
-                onBestProfileIntervalChange = {},
-                isBestProfileOnlyConnected = settingsViewModel.composeIsBestProfileOnlyConnected,
-                onBestProfileOnlyConnectedClick = {},
-                isAdaptiveTunnelEnabled = settingsViewModel.composeIsAdaptiveTunnelEnabled,
-                onAdaptiveTunnelChange = {},
-                isUpdateCheckEnabled = settingsViewModel.composeIsUpdateCheckEnabled,
-                onUpdateCheckChange = {},
-                updateFrequency = settingsViewModel.composeUpdateFrequency,
-                onUpdateFrequencyClick = {},
-                onDataManagementClick = {},
-                scrollState = sharedBasicSettingsScrollState,
-                accentColor = Color(accentColor),
-                onBack = {},
-                hazeState = appHazeState
-            )
-        }
-
-        val homeBackgroundContent: @Composable () -> Unit = {
-            val connectionState by mainViewModel.connectionState.collectAsState()
-            val profiles by mainViewModel.displayItems.collectAsState()
-            val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
-            val backgroundListState = rememberLazyListState(
-                initialFirstVisibleItemIndex = homeListState.firstVisibleItemIndex,
-                initialFirstVisibleItemScrollOffset = homeListState.firstVisibleItemScrollOffset
-            )
-
-            HomeScreen(
-                connectionState = connectionState,
-                profiles = profiles,
-                chainedProfileIds = chainedProfileIds,
-                onProfileChainToggle = {},
-                isClipboardLoading = isClipboardLoading,
-                isAnySubscriptionExpanded = isAnySubscriptionExpanded,
-                accentColor = accentColor,
-                pingStyle = settingsViewModel.composePingStyle,
-                isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                backgroundType = settingsViewModel.composeBackgroundType,
-                isAnimationEnabled = false,
-                animationSpeed = settingsViewModel.composeGradientSpeed,
-                isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
-                listState = backgroundListState,
-                onConnectClick = {},
-                onProfileClick = {},
-                onProfileDelete = {},
-                onShareProfile = {},
-                onQrProfile = {},
-                onEditProfileJson = {},
-                onEditProfileSimple = {},
-                onSubscriptionToggle = {},
-                onSubscriptionDelete = {},
-                onSubscriptionSpeedTest = {},
-                onSubscriptionUpdate = {},
-                onEditSubscriptionJson = {},
-                onSubscriptionPinToggle = {},
-                onSubscriptionShare = {},
-                onSubscriptionQr = {},
-                onClipboardClick = {},
-                onManualInputClick = {},
-                onQrScanClick = {},
-                onImportFileClick = {},
-                onBack = {},
-                onScroll = {},
-                hazeState = appHazeState
-            )
-        }
+        
 
 
     LaunchedEffect(currentRoute, rootPagerState.currentPage, wizardViewModel.composeWizardStep) {
@@ -659,7 +341,7 @@ fun FlareApp(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = appHazeState)
+                .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = appHazeState) else it }
         )
 
         val contentPaddingStart = if (isLandscape && isBottomNavVisible) 72.dp else 0.dp
@@ -743,816 +425,80 @@ fun FlareApp(
                     }
                 }
             ) {
-                composable(Destination.Home.route) {
-                    TransitionBlurContainer(
-                        isActive = currentRoute == Destination.Home.route,
-                        enterBlur = ROOT_TAB_BLUR,
-                        exitBlur = ROOT_TAB_BLUR,
-                        enterDuration = ROOT_TAB_ENTER_DURATION,
-                        exitDuration = ROOT_TAB_EXIT_DURATION
-                    ) {
-                        HorizontalPager(
-                            state = rootPagerState,
-                            modifier = Modifier.fillMaxSize(),
-                            userScrollEnabled = true
-                        ) { page ->
-                            when (page) {
-                                0 -> {
-                                    SettingsScreen(
-                                        onBaseSettingsClick = { navigateToSettingsDetail(Destination.BasicSettings.route, it) },
-                                        onAdvancedSettingsClick = { navigateToSettingsDetail(Destination.AdvancedSettings.route, it) },
-                                        onRoutingSettingsClick = { navigateToSettingsDetail(Destination.RoutingSettings.route, it) },
-                                        onPingSettingsClick = { navigateToSettingsDetail(Destination.PingSettings.route, it) },
-                                        onSubscriptionsSettingsClick = { navigateToSettingsDetail(Destination.SubscriptionsSettings.route, it) },
-                                        onThemeSettingsClick = { navigateToSettingsDetail(Destination.ThemeSettings.route, it) },
-                                        onLanguageSettingsClick = { navigateToSettingsDetail(Destination.LanguageSettings.route, it) },
-                                        isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 0,
-                                        gradientSpeed = settingsViewModel.composeGradientSpeed,
-                                        hazeState = appHazeState
-                                    )
-                                }
-                                1 -> {
-                                    val connectionState by mainViewModel.connectionState.collectAsState()
-                                    val profiles by mainViewModel.displayItems.collectAsState()
-                                    val chainedProfileIds by mainViewModel.chainedProfileIds.collectAsState()
+                flareHomeGraph(
+                    navController = navController,
+                    coroutineScope = coroutineScope,
+                    rootPagerState = rootPagerState,
+                    currentRoute = { currentRoute },
+                    settingsViewModel = settingsViewModel,
+                    vpnViewModel = vpnViewModel,
+                    profilesViewModel = profilesViewModel,
+                    wizardViewModel = wizardViewModel,
+                    accentColor = { accentColor },
+                    isClipboardLoading = { isClipboardLoading },
+                    isAnySubscriptionExpanded = { isAnySubscriptionExpanded },
+                    homeListState = homeListState,
+                    onShareProfile = onShareProfile,
+                    onQrProfile = onQrProfile,
+                    onShareSubscription = onShareSubscription,
+                    onQrSubscription = onQrSubscription,
+                    onEditSubscriptionClick = onEditSubscriptionClick,
+                    onClipboardClick = onClipboardClick,
+                    onManualInputClick = onManualInputClick,
+                    onQrScanClick = onQrScanClick,
+                    onImportFileClick = onImportFileClick,
+                    appHazeState = appHazeState,
+                    navigateToSettingsDetail = { route, anchor -> navigateToSettingsDetail(route, anchor) }
+                )
 
-                                    HomeScreen(
-                                        connectionState = connectionState,
-                                        profiles = profiles,
-                                        chainedProfileIds = chainedProfileIds,
-                                        onProfileChainToggle = { profile -> mainViewModel.toggleProfileInChain(profile.id) },
-                                        isClipboardLoading = isClipboardLoading,
-                                        isAnySubscriptionExpanded = isAnySubscriptionExpanded,
-                                        accentColor = accentColor,
-                                        pingStyle = settingsViewModel.composePingStyle,
-                                        isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
-                                        backgroundType = settingsViewModel.composeBackgroundType,
-                                        isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 1,
-                                        animationSpeed = settingsViewModel.composeGradientSpeed,
-                                        isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
-                                        listState = homeListState,
-                                        onConnectClick = { mainViewModel.connectOrDisconnect() },
-                                        onProfileClick = { profile -> mainViewModel.selectProfile(profile.id) },
-                                        onProfileDelete = { profile -> mainViewModel.deleteProfile(profile.id, profile.name) },
-                                        onShareProfile = onShareProfile,
-                                        onQrProfile = onQrProfile,
-                                        onEditProfileJson = { profile ->
-                                            mainViewModel.setEditingProfile(null)
-                                            navController.navigate(Destination.JsonEditor.createRoute(profile.id, Destination.JsonEditor.TYPE_PROFILE))
-                                        },
-                                        onEditProfileSimple = { profile ->
-                                            mainViewModel.setEditingProfile(null)
-                                            navController.navigate(Destination.SimpleEditor.createRoute(profile.id))
-                                        },
-                                        onSubscriptionToggle = { sub -> mainViewModel.toggleSubscriptionExpanded(sub.id) },
-                                        onSubscriptionDelete = { id -> mainViewModel.deleteSubscription(id) },
-                                        onSubscriptionSpeedTest = { id -> mainViewModel.speedTestSubscription(id) },
-                                        onSubscriptionUpdate = { sub -> mainViewModel.refreshSubscription(sub) },
-                                        onEditSubscriptionJson = { sub -> onEditSubscriptionClick(sub) },
-                                        onSubscriptionPinToggle = { sub -> mainViewModel.toggleSubscriptionPinned(sub.id) },
-                                        onSubscriptionShare = onShareSubscription,
-                                        onSubscriptionQr = onQrSubscription,
-                                        onClipboardClick = onClipboardClick,
-                                        onManualInputClick = onManualInputClick,
-                                        onQrScanClick = onQrScanClick,
-                                        onImportFileClick = onImportFileClick,
-                                        onBack = { mainViewModel.collapseAllSubscriptions() },
-                                        onScroll = {  },
-                                        hazeState = appHazeState
-                                    )
-                                }
-                                2 -> {
-                                    ServersScreen(
-                                        currentStep = wizardViewModel.composeWizardStep,
-                                        selectedServerType = wizardViewModel.composeSelectedServerType,
-                                        accentColor = Color(accentColor),
-                                        isFreeSuccess = wizardViewModel.composeFreeSubscriptionSuccess,
-                                        onFlareServersClick = { 
-                                            val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.FLARE
-                                            wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.FLARE 
-                                            settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
-                                        },
-                                        onCreateServerClick = { 
-                                            val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.CUSTOM
-                                            wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.CUSTOM 
-                                            settingsViewModel.composeBottomNavIsShrunk = if (wasSelected) !settingsViewModel.composeBottomNavIsShrunk else true
-                                        },
-                                        selectedTariff = wizardViewModel.composeSelectedTariff,
-                                        onTariffSelect = { wizardViewModel.composeSelectedTariff = it },
-                                        sshProfileName = wizardViewModel.composeSshProfileName,
-                                        onSshProfileNameChange = { wizardViewModel.composeSshProfileName = it },
-                                        sshIp = wizardViewModel.composeSshIp,
-                                        onSshIpChange = { wizardViewModel.composeSshIp = it },
-                                        sshPort = wizardViewModel.composeSshPort,
-                                        onSshPortChange = { wizardViewModel.composeSshPort = it },
-                                        sshUser = wizardViewModel.composeSshUser,
-                                        onSshUserChange = { wizardViewModel.composeSshUser = it },
-                                        sshPass = wizardViewModel.composeSshPassword,
-                                        onSshPassChange = { wizardViewModel.composeSshPassword = it },
-                                        onSshKeyClick = {  },
-                                        selectedProtocol = wizardViewModel.composeSelectedProtocol,
-                                        onProtocolXrayClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.XRAY },
-                                        onProtocolHysteria2Click = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.HYSTERIA2 },
-                                        onProtocolShadowsocksClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.SHADOWSOCKS },
-                                        onProtocolWireGuardClick = { wizardViewModel.composeSelectedProtocol = SelectedProtocol.WIREGUARD },
-                                        xrayPort = wizardViewModel.composeXrayPort,
-                                        onXrayPortChange = { wizardViewModel.composeXrayPort = it },
-                                        xraySni = wizardViewModel.composeXraySni,
-                                        onXraySniChange = { wizardViewModel.composeXraySni = it },
-                                        obfsPassword = wizardViewModel.composeXrayObfsPassword,
-                                        onObfsPasswordChange = { wizardViewModel.composeXrayObfsPassword = it },
-                                        portHoppingEnabled = wizardViewModel.composeXrayPortHoppingEnabled,
-                                        onPortHoppingEnabledChange = { wizardViewModel.composeXrayPortHoppingEnabled = it },
-                                        portHoppingValue = wizardViewModel.composeXrayPortHoppingValue,
-                                        onPortHoppingValueChange = { wizardViewModel.composeXrayPortHoppingValue = it },
-                                        setupStatus = wizardViewModel.composeSetupStatus,
-                                        setupProgress = wizardViewModel.composeSetupProgress,
-                                        setupError = wizardViewModel.composeSetupError,
-                                        onGoHomeClick = { 
-                                            wizardViewModel.reset()
-                                            coroutineScope.launch { rootPagerState.animateScrollToPage(1) }
-                                        },
-                                        onBack = {
-                                            if (wizardViewModel.composeWizardStep == WizardStep.SUCCESS || wizardViewModel.composeWizardStep == WizardStep.FLARE_SUCCESS) {
-                                                wizardViewModel.reset()
-                                                settingsViewModel.composeBottomNavIsShrunk = false
-                                            } else if (wizardViewModel.composeWizardStep != WizardStep.CARDS) {
-                                                wizardViewModel.previousStep()
-                                                if (wizardViewModel.composeWizardStep == WizardStep.CARDS) {
-                                                    settingsViewModel.composeBottomNavIsShrunk = false
-                                                    wizardViewModel.composeSelectedServerType = null
-                                                    wizardViewModel.composeSelectedTariff = null
-                                                }
-                                            } else if (wizardViewModel.composeSelectedServerType != null) {
-                                                wizardViewModel.composeSelectedServerType = null
-                                                settingsViewModel.composeBottomNavIsShrunk = false
-                                                wizardViewModel.composeSelectedTariff = null
-                                            }
-                                        },
-                                        onNextClick = { wizardViewModel.nextStep() },
-                                        isSshConfigValid = wizardViewModel.isSshConfigValid,
-                                        hazeState = appHazeState
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                composable(Destination.BasicSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.BasicSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
+                flareSettingsGraph(
+                    navController = navController,
+                    coroutineScope = coroutineScope,
+                    rootPagerState = rootPagerState,
+                    currentRoute = { currentRoute },
+                    pendingSettingsMorph = { pendingSettingsMorph },
                     onMorphFinished = { pendingSettingsMorph = null },
                     settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                    BasicSettingsScreen(
-                        isSplitTunnelingEnabled = settingsViewModel.composeIsSplitTunnelingEnabled,
-                        onSplitTunnelingChange = {
-                            settings.isSplitTunnelingEnabled = it
-                            settingsViewModel.composeIsSplitTunnelingEnabled = it
-                            onRestartRequired()
-                        },
-                        splitTunnelingDesc = settingsViewModel.composeSplitTunnelingDesc,
-                        onChangeAppsClick = onChangeAppsClick,
-                        isChangeAppsLoading = settingsViewModel.composeIsChangeAppsLoading,                        isAutostartEnabled = settingsViewModel.composeIsAutostartEnabled,
-                        onAutostartChange = {
-                            settings.isAutostartEnabled = it
-                            settingsViewModel.composeIsAutostartEnabled = it
-                        },
-                        isStatusNotificationEnabled = settingsViewModel.composeIsStatusNotificationEnabled,
-                        onStatusNotificationChange = {
-                            settings.isStatusNotificationEnabled = it
-                            settingsViewModel.composeIsStatusNotificationEnabled = it
-                            if (it) {
-                                AppNotificationManager.showNotification(
-                                    NotificationType.SUCCESS,
-                                    I18n.strings.notif_notifications_enabled,
-                                    3
-                                )
-                            }
-                        },
-                        isNotificationSpeedEnabled = settingsViewModel.composeIsNotificationSpeedEnabled,
-                        onNotificationSpeedChange = {
-                            settings.isNotificationSpeedEnabled = it
-                            settingsViewModel.composeIsNotificationSpeedEnabled = it
-                        },
-                        isBestProfileNotifEnabled = settingsViewModel.composeIsBestProfileNotifEnabled,
-                        onBestProfileNotifChange = {
-                            settings.isBestProfileNotificationEnabled = it
-                            settingsViewModel.composeIsBestProfileNotifEnabled = it
-                        },
-                        isCoreLogEnabled = settingsViewModel.composeIsCoreLogEnabled,
-                        onCoreLogChange = {
-                            settings.isCoreLogEnabled = it
-                            settingsViewModel.composeIsCoreLogEnabled = it
-                            onRestartRequired()
-                        },
-                        coreLogLevel = settingsViewModel.composeCoreLogLevel,
-                        onLogLevelClick = onLogLevelClick,
-                        onViewJournalClick = {
-                            navController.navigate(Destination.Journal.route)
-                        },
-                        isBestProfileEnabled = settingsViewModel.composeIsBestProfileEnabled,
-                        onBestProfileChange = {
-                            settings.isBestProfileEnabled = it
-                            settingsViewModel.composeIsBestProfileEnabled = it
-                        },
-                        bestProfileInterval = settingsViewModel.composeBestProfileInterval,
-                        onBestProfileIntervalChange = {
-                            settings.bestProfileInterval = it
-                            settingsViewModel.composeBestProfileInterval = it
-                        },
-                        isBestProfileOnlyConnected = settingsViewModel.composeIsBestProfileOnlyConnected,
-                        onBestProfileOnlyConnectedClick = onBestProfileOnlyConnectedClick,
-                        isAdaptiveTunnelEnabled = settingsViewModel.composeIsAdaptiveTunnelEnabled,
-                        onAdaptiveTunnelChange = {
-                            settings.isAdaptiveTunnelEnabled = it
-                            settingsViewModel.composeIsAdaptiveTunnelEnabled = it
-                        },
-                        isUpdateCheckEnabled = settingsViewModel.composeIsUpdateCheckEnabled,
-                        onUpdateCheckChange = {
-                            settings.isUpdateCheckEnabled = it
-                            settingsViewModel.composeIsUpdateCheckEnabled = it
-                        },
-                        updateFrequency = settingsViewModel.composeUpdateFrequency,
-                        onUpdateFrequencyClick = onUpdateFrequencyClick,
-                        onDataManagementClick = { showDataManagementDialog = true },
-                        scrollState = sharedBasicSettingsScrollState,
-                        accentColor = Color(accentColor),
-                        onBack = { navController.popBackStack() },
-                        hazeState = appHazeState
-                    )
-                }
-            }
-
-            composable(Destination.AdvancedSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.AdvancedSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                    AdvancedSettingsScreen(
-                        isFragmentationEnabled = settingsViewModel.composeIsFragmentationEnabled,
-                        onFragmentationChange = {
-                            settings.isFragmentationEnabled = it
-                            settingsViewModel.composeIsFragmentationEnabled = it
-                            onRestartRequired()
-                        },
-                        packetType = settingsViewModel.composePacketType,
-                        onPacketTypeClick = onPacketTypeClick,
-                        fragmentInterval = settingsViewModel.composeFragmentInterval,
-                        onFragmentIntervalChange = {
-                            settings.fragmentInterval = it
-                            settingsViewModel.composeFragmentInterval = it
-                            onRestartRequired()
-                        },
-                        isMuxEnabled = settingsViewModel.composeIsMuxEnabled,
-                        onMuxChange = {
-                            settings.isMuxEnabled = it
-                            settingsViewModel.composeIsMuxEnabled = it
-                            onRestartRequired()
-                        },
-                        muxProtocol = settingsViewModel.composeMuxProtocol,
-                        onMuxProtocolClick = onMuxProtocolClick,
-                        muxMaxStreams = settingsViewModel.composeMuxMaxStreams,
-                        onMuxMaxStreamsChange = {
-                            settings.muxMaxStreams = it
-                            settingsViewModel.composeMuxMaxStreams = it
-                            onRestartRequired()
-                        },
-                        muxPadding = settingsViewModel.composeMuxPadding,
-                        onMuxPaddingClick = onMuxPaddingClick,
-                        remoteDnsMode = settingsViewModel.composeRemoteDnsMode,
-                        onRemoteDnsModeClick = {
-                            settings.remoteDnsMode = it
-                            settingsViewModel.composeRemoteDnsMode = it
-                            onRestartRequired()
-                        },
-                        remoteDnsUrl = settingsViewModel.composeRemoteDnsUrl,
-                        onRemoteDnsUrlChange = {
-                            settings.remoteDnsUrl = it
-                            settingsViewModel.composeRemoteDnsUrl = it
-                            onRestartRequired()
-                        },
-                        isFakeIpEnabled = settingsViewModel.composeIsFakeIpEnabled,
-                        onFakeIpChange = {
-                            settings.isFakeIpEnabled = it
-                            settingsViewModel.composeIsFakeIpEnabled = it
-                            onRestartRequired()
-                        },
-                        mtu = settingsViewModel.composeMtu,
-                        onMtuChange = {
-                            settings.mtu = it
-                            settingsViewModel.composeMtu = it
-                            onRestartRequired()
-                        },
-                        tunStack = settingsViewModel.composeTunStack,
-                        onTunStackClick = onTunStackClick,
-                        isResetChainOnDisconnect = settingsViewModel.composeIsResetChainOnDisconnect,
-                        onResetChainOnDisconnectChange = {
-                            settings.isResetChainOnDisconnect = it
-                            settingsViewModel.composeIsResetChainOnDisconnect = it
-                        },
-                        isTlsSpoofEnabled = settingsViewModel.composeIsTlsSpoofEnabled,
-                        onTlsSpoofChange = {
-                            settings.isTlsSpoofEnabled = it
-                            settingsViewModel.composeIsTlsSpoofEnabled = it
-                            onRestartRequired()
-                        },
-                        tlsSpoofDomain = settingsViewModel.composeTlsSpoofDomain,
-                        onTlsSpoofDomainChange = {
-                            settings.tlsSpoofDomain = it
-                            settingsViewModel.composeTlsSpoofDomain = it
-                            onRestartRequired()
-                        },
-                        tlsSpoofMethod = settingsViewModel.composeTlsSpoofMethod,
-                        onTlsSpoofMethodClick = {
-                            settings.tlsSpoofMethod = it
-                            settingsViewModel.composeTlsSpoofMethod = it
-                            onRestartRequired()
-                        },
-                        fingerprint = settingsViewModel.composeFingerprint,
-                        onFingerprintClick = {
-                            settings.fingerprint = it
-                            settingsViewModel.composeFingerprint = it
-                            onRestartRequired()
-                        },
-                        accentColor = settingsViewModel.composeAccentColor,
-                        onBack = { navController.popBackStack() },
-                        hazeState = appHazeState
-                    )
-                }
-            }
-
-            composable(Destination.PingSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.PingSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                PingSettingsScreen(
-                    pingType = settingsViewModel.composePingType,
-                    onPingTypeChange = { type -> 
-                        settings.pingType = type
-                        settingsViewModel.composePingType = type
-                    },
-                    pingTestUrl = settingsViewModel.composePingTestUrl,
-                    onPingTestUrlChange = { url -> 
-                        settings.pingTestUrl = url
-                        settingsViewModel.composePingTestUrl = url
-                    },
-                    pingStyleValue = settingsViewModel.composePingStyle,
+                    routingViewModel = routingViewModel,
+                    profilesViewModel = profilesViewModel,
+                    vpnViewModel = vpnViewModel,
+                    homeListState = homeListState,
+                    settings = settings,
+                    onRestartRequired = onRestartRequired,
+                    onChangeAppsClick = onChangeAppsClick,
+                    onLogLevelClick = onLogLevelClick,
+                    onBestProfileOnlyConnectedClick = onBestProfileOnlyConnectedClick,
+                    onUpdateFrequencyClick = onUpdateFrequencyClick,
+                    onPacketTypeClick = onPacketTypeClick,
+                    onMuxProtocolClick = onMuxProtocolClick,
+                    onMuxPaddingClick = onMuxPaddingClick,
+                    onTunStackClick = onTunStackClick,
                     onPingStyleClick = onPingStyleClick,
-                    onBack = { navController.popBackStack() },
-                    accentColor = settingsViewModel.composeAccentColor,
-                    hazeState = appHazeState
-                )
-                }
-            }
-
-            composable(Destination.RoutingSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.RoutingSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                    val routingRules by mainViewModel.routingRules.collectAsState()
-                    RoutingScreen(
-                        routingRules = routingRules,
-                        onBack = { navController.popBackStack() },
-                        onToggleRule = { id, enabled -> 
-                            mainViewModel.toggleRoutingRule(id, enabled)
-                        },
-                        onModeClick = onRoutingModeClick,
-                        onDownloadClick = { id -> mainViewModel.downloadRoutingRule(id) },
-                        accentColor = Color(accentColor),
-                        hazeState = appHazeState
-                    )
-                }
-            }
-
-            composable(Destination.SubscriptionsSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.SubscriptionsSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                SubscriptionsScreen(
-                    isSubIntervalEnabled = settingsViewModel.composeIsSubIntervalEnabled,
-                    onSubIntervalChange = { checked ->
-                        settings.isSubIntervalEnabled = checked
-                        settingsViewModel.composeIsSubIntervalEnabled = checked
-                        if (checked) {
-                            settings.isSubAutoUpdateEnabled = false
-                            settingsViewModel.composeIsSubAutoUpdateEnabled = false
-                        }
-                        mainViewModel.startAutoUpdateJob()
-                    },
-                    isAutoUpdateEnabled = settingsViewModel.composeIsSubAutoUpdateEnabled,
-                    onAutoUpdateChange = { checked ->
-                        settings.isSubAutoUpdateEnabled = checked
-                        settingsViewModel.composeIsSubAutoUpdateEnabled = checked
-                        if (checked) {
-                            settings.isSubIntervalEnabled = false
-                            settingsViewModel.composeIsSubIntervalEnabled = false
-                        }
-                        mainViewModel.startAutoUpdateJob()
-                    },
-                    updateInterval = settingsViewModel.composeSubAutoUpdateInterval,
-                    onUpdateIntervalChange = {
-                        settings.subAutoUpdateInterval = it
-                        settingsViewModel.composeSubAutoUpdateInterval = it
-                        mainViewModel.startAutoUpdateJob()
-                    },
-                    userAgent = settingsViewModel.composeSubUserAgent,
+                    onRoutingModeClick = onRoutingModeClick,
                     onUserAgentClick = onUserAgentClick,
-                    isHwidEnabled = settingsViewModel.composeIsHwidEnabled,
-                    onHwidChange = {
-                        settings.isHwidEnabled = it
-                        settingsViewModel.composeIsHwidEnabled = it
-                    },
-                    onBack = { navController.popBackStack() },
-                    accentColor = Color(accentColor),
-                    hazeState = appHazeState
-                )
-                }
-            }
-
-            composable(Destination.ThemeSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.ThemeSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                ThemeSettingsScreen(
-                    themeMode = settingsViewModel.composeThemeMode,
-                    backgroundType = settingsViewModel.composeBackgroundType,
-                    isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
-                    gradientSpeed = settingsViewModel.composeGradientSpeed,
-                    isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
-                    accentColorKey = settingsViewModel.composeAccentColorKey,
-                    accentColor = settingsViewModel.composeAccentColor,
-                    onBack = { navController.popBackStack() },
                     onThemeClick = onThemeClick,
-                    onBackgroundTypeClick = {
-                        settings.backgroundType = it
-                        settingsViewModel.composeBackgroundType = it
-                        
-                        val isGradient = it == 1
-                        settings.isBackgroundGradientEnabled = isGradient
-                        settingsViewModel.composeIsGradientEnabled = isGradient
-                    },
-                    onAnimationToggle = {
-                        settings.isGradientAnimationEnabled = it
-                        settingsViewModel.composeIsAnimationEnabled = it
-                    },
-                    onSpeedChange = {
-                        settings.gradientAnimationSpeed = it
-                        settingsViewModel.composeGradientSpeed = it
-                    },
-                    onCustomColorToggle = {
-                        settings.isCustomColorEnabled = it
-                        settingsViewModel.composeIsCustomColorEnabled = it
-                    },
-                    onColorKeySelect = {
-                        settings.accentColorKey = it
-                        settingsViewModel.composeAccentColorKey = it
-                    },
-                    isDownloadingPhoto = settingsViewModel.composeIsDownloadingPhoto,
-                    onUpdatePhotoClick = {
-                        coroutineScope.launch {
-                            settingsViewModel.composeIsDownloadingPhoto = true
-                            
-                            kotlinx.coroutines.delay(50)
-                            try {
-                                val newSeed = (1..1000000).random().toString()
-                                val tags = listOf("nature", "landscape", "city", "neon", "abstract", "architecture", "space")
-                                val randomTag = tags.random()
-                                val url = "https://loremflickr.com/1080/1920/$randomTag?lock=$newSeed"
-                                android.util.Log.d("FlareVPN", "Downloading photo with OkHttp3: $url")
-                                
-                                val downloaded = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    try {
-                                        val client = okhttp3.OkHttpClient.Builder()
-                                            .followRedirects(true)
-                                            .followSslRedirects(true)
-                                            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                                            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                                            .build()
-
-                                        val request = okhttp3.Request.Builder()
-                                            .url(url)
-                                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                                            .header("Cache-Control", "no-cache, no-store, must-revalidate")
-                                            .header("Pragma", "no-cache")
-                                            .build()
-
-                                        val response = client.newCall(request).execute()
-                                        android.util.Log.d("FlareVPN", "Response code: ${response.code}")
-                                        
-                                        if (!response.isSuccessful) {
-                                            response.close()
-                                            return@withContext false
-                                        }
-                                        
-                                        val body = response.body
-                                        if (body == null) {
-                                            response.close()
-                                            return@withContext false
-                                        }
-                                        
-                                        val context = navController.context
-                                        val outFile = java.io.File(context.filesDir, "background_photo.jpg")
-                                        
-                                        outFile.outputStream().use { out ->
-                                            body.byteStream().copyTo(out)
-                                        }
-                                        response.close()
-                                        
-                                        
-                                        context.filesDir.listFiles()?.forEach { file ->
-                                            if (file.name.startsWith("bg_") && file.name.endsWith(".jpg")) {
-                                                file.delete()
-                                            }
-                                        }
-                                        
-                                        android.util.Log.d("FlareVPN", "Saved: ${outFile.length()} bytes")
-                                        true
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("FlareVPN", "OkHttp3 error downloading photo", e)
-                                        false
-                                    }
-                                }
-                                
-                                if (downloaded) {
-                                    settings.photoSeed = newSeed
-                                    settingsViewModel.composePhotoSeed = newSeed
-                                    android.util.Log.d("FlareVPN", "Seed updated: $newSeed")
-                                    AppNotificationManager.showNotification(
-                                        NotificationType.SUCCESS,
-                                        "Фон успешно обновлен",
-                                        3
-                                    )
-                                } else {
-                                    AppNotificationManager.showNotification(
-                                        NotificationType.ERROR,
-                                        "Ошибка загрузки фото. Проверьте интернет.",
-                                        3
-                                    )
-                                }
-                            } catch (e: Exception) {
-                                android.util.Log.e("FlareVPN", "Download failed", e)
-                                AppNotificationManager.showNotification(
-                                    NotificationType.ERROR,
-                                    "Неизвестная ошибка",
-                                    3
-                                )
-                            } finally {
-                                settingsViewModel.composeIsDownloadingPhoto = false
-                            }
-                        }
-                    },
-                    hazeState = appHazeState
-                )
-                }
-            }
-
-            composable(Destination.LanguageSettings.route) {
-                SettingsDetailContainer(
-                    route = Destination.LanguageSettings.route,
-                    currentRoute = currentRoute,
-                    morphRequest = pendingSettingsMorph,
-                    onMorphFinished = { pendingSettingsMorph = null },
-                    settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = settingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                LanguageSettingsScreen(
-                    currentLanguage = settingsViewModel.composeAppLanguage,
-                    accentColor = Color(accentColor),
-                    onBack = { navController.popBackStack() },
                     onLanguageSelected = onLanguageSelected,
-                    hazeState = appHazeState
+                    onFontSelect = onFontSelect,
+                    accentColor = { accentColor },
+                    isClipboardLoading = { isClipboardLoading },
+                    isAnySubscriptionExpanded = { isAnySubscriptionExpanded },
+                    appHazeState = appHazeState,
+                    sharedBasicSettingsScrollState = sharedBasicSettingsScrollState,
+                    onDataManagementClick = { showDataManagementDialog = true }
                 )
-                }
-            }
-            
-                composable(Destination.Journal.route) {
-                SettingsDetailContainer(
-                    route = Destination.Journal.route,
-                    currentRoute = currentRoute,
-                    morphRequest = null,
-                    onMorphFinished = {},
+
+                flareEditorGraph(
+                    navController = navController,
+                    currentRoute = { currentRoute },
                     settingsViewModel = settingsViewModel,
-                    onBack = { navController.popBackStack() },
-                    backgroundContentRight = basicSettingsBackground,
-                    onDismissLeft = {
-                            navController.popBackStack(Destination.Home.route, inclusive = false)
-                            coroutineScope.launch { rootPagerState.scrollToPage(1) }
-                        },
-                    backgroundContentLeft = homeBackgroundContent
-                ,
-                    hazeState = appHazeState
-                ) {
-                    JournalScreen(
-                        logFile = java.io.File(navController.context.filesDir, "sing-box.log"),
-                        accentColor = Color(accentColor),
-                        onBack = { navController.popBackStack() },
-                        hazeState = appHazeState
-                    )
-                }
-            }
-
-                composable(Destination.JsonEditor.route) { backStackEntry ->
-                    val id = backStackEntry.arguments?.getString("id")?.toLongOrNull() ?: 0L
-                    
-                    val profile by mainViewModel.editingProfile.collectAsState()
-                    
-                    LaunchedEffect(id) {
-                        if (profile == null || profile?.id != id) {
-                            mainViewModel.fetchProfileForEditing(id)
-                        }
-                    }
-
-                    SwipeToDismissScreen(
-                        onDismissRight = {
-                            mainViewModel.setEditingProfile(null)
-                            navController.popBackStack()
-                        },
-                        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
-                        backgroundContentRight = homeBackgroundContent
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            FlareHomeBackground(
-                                backgroundType = settingsViewModel.composeBackgroundType,
-                                isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.JsonEditor.route),
-                                animationSpeed = settingsViewModel.composeGradientSpeed,
-                                photoSeed = settingsViewModel.composePhotoSeed,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            profile?.let { p ->
-                                val profileScheme = p.protocol?.takeIf { it.isNotBlank() }
-                                    ?: try {
-                                        val outbounds = org.json.JSONObject(p.configJson).optJSONArray("outbounds")
-                                        outbounds?.optJSONObject(0)?.optString("type")
-                                    } catch (_: Exception) { null }?.takeIf { it.isNotBlank() }
-                                    ?: runCatching {
-                                        java.net.URI(p.uri).scheme ?: ""
-                                    }.getOrDefault("")
-                                ProfileJsonEditor(
-                                    initialName = p.name,
-                                    initialContent = p.configJson,
-                                    accentColor = Color(accentColor),
-                                    initialScheme = profileScheme,
-                                    onSave = { name: String, json: String ->
-                                        mainViewModel.updateProfile(p.id, name, json)
-                                        mainViewModel.setEditingProfile(null)
-                                        AppNotificationManager.showNotification(
-                                            NotificationType.SUCCESS,
-                                            I18n.strings.notif_profile_changed,
-                                            3
-                                        )
-                                        navController.popBackStack()
-                                    },
-                                    onBack = {
-                                        mainViewModel.setEditingProfile(null)
-                                        navController.popBackStack()
-                                    },
-                                    hazeState = appHazeState
-                                )
-                            }
-                        }
-                    }
-                }
-
-                composable(Destination.SimpleEditor.route) { backStackEntry ->
-                    val id = backStackEntry.arguments?.getString("id")?.toLongOrNull() ?: 0L
-                    val profile by mainViewModel.editingProfile.collectAsState()
-
-                    LaunchedEffect(id) {
-                        if (profile == null || profile?.id != id) {
-                            mainViewModel.fetchProfileForEditing(id)
-                        }
-                    }
-
-                    SwipeToDismissScreen(
-                        onDismissRight = {
-                            mainViewModel.setEditingProfile(null)
-                            navController.popBackStack()
-                        },
-                        onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
-                        backgroundContentRight = homeBackgroundContent
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            FlareHomeBackground(
-                                backgroundType = settingsViewModel.composeBackgroundType,
-                                isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && (currentRoute == Destination.SimpleEditor.route),
-                                animationSpeed = settingsViewModel.composeGradientSpeed,
-                                photoSeed = settingsViewModel.composePhotoSeed,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                            profile?.let { p ->
-                                ProfileSimpleEditor(
-                                    profile = p,
-                                    onSave = { updatedProfile ->
-                                        mainViewModel.updateProfileFull(updatedProfile)
-                                        mainViewModel.setEditingProfile(null)
-                                        AppNotificationManager.showNotification(
-                                            NotificationType.SUCCESS,
-                                            I18n.strings.notif_profile_changed,
-                                            3
-                                        )
-                                        navController.popBackStack()
-                                    },
-                                    onBack = {
-                                        mainViewModel.setEditingProfile(null)
-                                        navController.popBackStack()
-                                    },
-                                    accentColor = Color(accentColor),
-                                    hazeState = appHazeState
-                                )
-                            }
-                        }
-                    }
-                }
+                    profilesViewModel = profilesViewModel,
+                    vpnViewModel = vpnViewModel,
+                    homeListState = homeListState,
+                    accentColor = { accentColor },
+                    isClipboardLoading = { isClipboardLoading },
+                    isAnySubscriptionExpanded = { isAnySubscriptionExpanded },
+                    appHazeState = appHazeState
+                )
             }
         }
 

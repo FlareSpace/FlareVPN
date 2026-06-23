@@ -35,8 +35,8 @@ import flare.client.app.ui.components.*
 import flare.client.app.ui.theme.FlareTheme
 
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
-private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWeight.Normal))
+
+
 
 @Composable
 fun SubscriptionsScreen(
@@ -46,6 +46,8 @@ fun SubscriptionsScreen(
     onAutoUpdateChange: (Boolean) -> Unit,
     updateInterval: String,
     onUpdateIntervalChange: (String) -> Unit,
+    subUpdateTimeout: Int,
+    onSubUpdateTimeoutChange: (Int) -> Unit,
     userAgent: String,
     onUserAgentClick: (String) -> Unit,
     isHwidEnabled: Boolean,
@@ -67,7 +69,7 @@ fun SubscriptionsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier
@@ -115,7 +117,30 @@ fun SubscriptionsScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                FlareSectionHeader(text = I18n.strings.settings_header_app)
+                FlareSectionHeader(text = I18n.strings.settings_label_sub_update_timeout)
+
+                Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
+                    FlareSliderItem(
+                        label = I18n.strings.settings_label_sub_update_timeout,
+                        valueText = String.format(I18n.strings.settings_ping_timeout_sec, subUpdateTimeout),
+                        value = subUpdateTimeout.toFloat(),
+                        valueRange = 1f..25f,
+                        accentColor = accentColor,
+                        onValueChange = { onSubUpdateTimeoutChange(it.toInt()) },
+                        isTop = true,
+                        isBottom = true
+                    )
+                }
+
+                Text(
+                    text = I18n.strings.settings_desc_sub_update_timeout,
+                    fontFamily = GeologicaRegular,
+                    fontSize = 12.sp,
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 24.dp)
+                )
+                
+                FlareSectionHeader(text = I18n.strings.settings_header_user_agent)
                 
                 val isCustomUa = userAgent !in standardUserAgents
                 val displayedUaValue = if (isCustomUa) "custom" else userAgent

@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import flare.client.app.ui.MainViewModel
+import flare.client.app.ui.viewmodel.VpnViewModel
 import flare.client.app.ui.theme.FlareTheme
 import kotlin.math.PI
 import kotlin.math.cos
@@ -50,25 +50,30 @@ private data class RayProperty(
 
 @Composable
 fun FlareFireworkButton(
-    connectionState: MainViewModel.ConnectionState,
+    connectionState: flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     buttonSize: Dp = 300.dp,
-    backgroundType: Int = 1
+    backgroundType: Int = 1,
+    isCustomColorEnabled: Boolean = false,
+    isChangeLaunchButtonColorEnabled: Boolean = false
 ) {
+    val useCustomColors = isCustomColorEnabled && isChangeLaunchButtonColorEnabled
+    val accent = FlareTheme.colors.accent
+    val accentEnd = FlareTheme.colors.accentEnd
     var scale by remember { mutableStateOf(1f) }
 
     
     val totalActiveProgress by animateFloatAsState(
-        targetValue = if (connectionState == MainViewModel.ConnectionState.CONNECTING ||
-                          connectionState == MainViewModel.ConnectionState.CONNECTED) 1f else 0f,
+        targetValue = if (connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTING ||
+                          connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTED) 1f else 0f,
         animationSpec = tween(durationMillis = 600, easing = LinearOutSlowInEasing),
         label = "totalActiveProgress"
     )
 
     
     val connectedProgress by animateFloatAsState(
-        targetValue = if (connectionState == MainViewModel.ConnectionState.CONNECTED) 1f else 0f,
+        targetValue = if (connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTED) 1f else 0f,
         animationSpec = tween(durationMillis = 800, easing = LinearOutSlowInEasing),
         label = "connectedProgress"
     )
@@ -112,7 +117,7 @@ fun FlareFireworkButton(
     
     val totalRays = 42
 
-    val rayProperties = remember {
+    val rayProperties = remember(useCustomColors, accent, accentEnd) {
         List(totalRays) { i ->
             val baseAngle = (i.toFloat() / totalRays) * 2f * PI.toFloat()
             val seed1 = ((i * 97 + 31) % 100) / 100f
@@ -137,10 +142,18 @@ fun FlareFireworkButton(
                 else -> 1.2f + seed2 * 0.8f
             }
             
-            val activeColor = when (type) {
-                0 -> if (seed3 > 0.4f) Color.White else Color(0xFFFF1493) 
-                1 -> if (seed3 > 0.6f) Color(0xFFE040FB) else if (seed3 > 0.3f) Color(0xFFFF007F) else Color.White
-                else -> if (seed3 > 0.5f) Color(0xFFFF69B4) else Color(0xFFD500F9)
+            val activeColor = if (useCustomColors) {
+                when (type) {
+                    0 -> if (seed3 > 0.4f) Color.White else accent
+                    1 -> if (seed3 > 0.6f) accentEnd else if (seed3 > 0.3f) accent else Color.White
+                    else -> if (seed3 > 0.5f) lerp(accent, Color.White, 0.3f) else lerp(accent, accentEnd, 0.5f)
+                }
+            } else {
+                when (type) {
+                    0 -> if (seed3 > 0.4f) Color.White else Color(0xFFFF1493) 
+                    1 -> if (seed3 > 0.6f) Color(0xFFE040FB) else if (seed3 > 0.3f) Color(0xFFFF007F) else Color.White
+                    else -> if (seed3 > 0.5f) Color(0xFFFF69B4) else Color(0xFFD500F9)
+                }
             }
             
             val hasSpark = type == 0 || (type == 1 && seed1 > 0.4f)
@@ -182,15 +195,17 @@ fun FlareFireworkButton(
     }
 
     
-    val vignetteBrush = remember(useDarkShadow) {
+    val vignetteBrush = remember(useDarkShadow, useCustomColors, accent) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
                 val center = Offset(size.width / 2, size.height / 2)
+                val colorStart = if (useCustomColors) accent.copy(alpha = 0.2f) else Color(0xFF1A0033).copy(alpha = 0.85f)
+                val colorEnd = Color(0xFF0D001A).copy(alpha = 0.95f)
                 return RadialGradientShader(
                     colors = listOf(
-                        Color(0xFF1A0033).copy(alpha = 0.85f),
-                        Color(0xFF0D001A).copy(alpha = 0.95f),
+                        colorStart,
+                        colorEnd,
                         Color.Transparent
                     ),
                     center = center,
@@ -200,15 +215,17 @@ fun FlareFireworkButton(
         }
     }
 
-    val ambientGlowBrush = remember(useDarkShadow) {
+    val ambientGlowBrush = remember(useDarkShadow, useCustomColors, accent, accentEnd) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
                 val center = Offset(size.width / 2, size.height / 2)
+                val colorStart = if (useCustomColors) accent else Color(0xFFFF007F)
+                val colorEnd = if (useCustomColors) accentEnd else Color(0xFF7B1FA2)
                 return RadialGradientShader(
                     colors = listOf(
-                        Color(0xFFFF007F).copy(alpha = 0.4f),
-                        Color(0xFF7B1FA2).copy(alpha = 0.15f),
+                        colorStart.copy(alpha = 0.4f),
+                        colorEnd.copy(alpha = 0.15f),
                         Color.Transparent
                     ),
                     center = center,
@@ -218,15 +235,17 @@ fun FlareFireworkButton(
         }
     }
 
-    val hotPinkCoreBrush = remember {
+    val hotPinkCoreBrush = remember(useCustomColors, accent, accentEnd) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
                 val center = Offset(size.width / 2, size.height / 2)
+                val colorStart = if (useCustomColors) accent else Color(0xFFFF1493)
+                val colorEnd = if (useCustomColors) accentEnd else Color(0xFFD500F9)
                 return RadialGradientShader(
                     colors = listOf(
-                        Color(0xFFFF1493).copy(alpha = 0.9f),
-                        Color(0xFFD500F9).copy(alpha = 0.4f),
+                        colorStart.copy(alpha = 0.9f),
+                        colorEnd.copy(alpha = 0.4f),
                         Color.Transparent
                     ),
                     center = center,
@@ -236,16 +255,17 @@ fun FlareFireworkButton(
         }
     }
 
-    val blindingWhiteBrush = remember {
+    val blindingWhiteBrush = remember(useCustomColors, accent) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
                 val maxRadius = size.width / 2.3f
                 val center = Offset(size.width / 2, size.height / 2)
+                val glowColor = if (useCustomColors) accent else Color(0xFFFFB6C1)
                 return RadialGradientShader(
                     colors = listOf(
                         Color.White,
                         Color.White.copy(alpha = 0.8f),
-                        Color(0xFFFFB6C1).copy(alpha = 0.2f),
+                        glowColor.copy(alpha = 0.2f),
                         Color.Transparent
                     ),
                     center = center,
@@ -389,8 +409,18 @@ fun FlareFireworkButton(
                 val thickness = lerp(1.5f * dpToPx, prop.targetThicknessDp * dpToPx, connectedProgress)
 
                 
-                if ((prop.activeColor == Color.White || prop.activeColor == Color(0xFFFF1493)) && totalActiveProgress > 0f) {
-                    val haloColor = if (prop.activeColor == Color.White) Color(0xFFFF007F) else Color(0xFF9C27B0)
+                val isHaloTarget = if (useCustomColors) {
+                    (prop.activeColor == Color.White || prop.activeColor == accent) && totalActiveProgress > 0f
+                } else {
+                    (prop.activeColor == Color.White || prop.activeColor == Color(0xFFFF1493)) && totalActiveProgress > 0f
+                }
+
+                if (isHaloTarget) {
+                    val haloColor = if (useCustomColors) {
+                        if (prop.activeColor == Color.White) accent else accentEnd
+                    } else {
+                        if (prop.activeColor == Color.White) Color(0xFFFF007F) else Color(0xFF9C27B0)
+                    }
                     drawLine(
                         color = haloColor.copy(alpha = currentAlpha * 0.5f * totalActiveProgress),
                         start = Offset(startX, startY),
@@ -437,7 +467,11 @@ fun FlareFireworkButton(
                         
                         
                         if (totalActiveProgress > 0f) {
-                            val glowColor = if (prop.activeColor == Color.White) Color(0xFFFF007F) else prop.activeColor
+                            val glowColor = if (prop.activeColor == Color.White) {
+                                if (useCustomColors) accent else Color(0xFFFF007F)
+                            } else {
+                                prop.activeColor
+                            }
                             val sparkColorList = sparkColorLists[i]
                             sparkColorList[0] = glowColor.copy(alpha = sparkAlpha * 0.65f)
                             sparkColorList[1] = Color.Transparent

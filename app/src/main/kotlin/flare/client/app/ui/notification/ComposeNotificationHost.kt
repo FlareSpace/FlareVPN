@@ -262,7 +262,7 @@ fun NotificationCard(
             .clip(RoundedCornerShape(16.dp))
             .let { m ->
                 if (hazeState != null) {
-                    m.hazeEffect(state = hazeState) {
+                    m.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
                         blurRadius = 24.dp
                     }
                 } else m

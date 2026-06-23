@@ -53,14 +53,7 @@ import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
 import flare.client.app.ui.theme.FlareTheme
-
-
-private fun encode(s: String) = URLEncoder.encode(s, "UTF-8")
-
-private fun parseQuery(query: String?): Map<String, String> = query?.split("&")?.associate {
-    val parts = it.split("=", limit = 2)
-    URLDecoder.decode(parts[0], "UTF-8") to URLDecoder.decode(parts.getOrElse(1) { "" }, "UTF-8")
-} ?: emptyMap()
+import flare.client.app.ui.components.editor.rememberSimpleEditorState
 
 @Composable
 fun ProfileSimpleEditor(
@@ -72,431 +65,9 @@ fun ProfileSimpleEditor(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val state = rememberSimpleEditorState(profile, context)
 
-    var scheme by remember { mutableStateOf("vless") }
-    var tag by remember { mutableStateOf(profile.name) }
-    var server by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("") }
-    var uuid by remember { mutableStateOf("") }
-    var flow by remember { mutableStateOf("") }
-    var packetEncoding by remember { mutableStateOf("") }
-    var method by remember { mutableStateOf("") }
-    var isTls by remember { mutableStateOf(false) }
-    var sni by remember { mutableStateOf("") }
-    var alpn by remember { mutableStateOf("") }
-    var fingerprint by remember { mutableStateOf("chrome") }
-    var mport by remember { mutableStateOf("") }
-    var pbk by remember { mutableStateOf("") }
-    var sid by remember { mutableStateOf("") }
-    var upMbps by remember { mutableStateOf("") }
-    var downMbps by remember { mutableStateOf("") }
-    var insecure by remember { mutableStateOf(false) }
-    var pin by remember { mutableStateOf("") }
-    var obfsType by remember { mutableStateOf("") }
-    var obfsPassword by remember { mutableStateOf("") }
-    var hopInterval by remember { mutableStateOf("") }
-
-    var transport by remember { mutableStateOf("tcp") }
-    var tcpHost by remember { mutableStateOf("") }
-    var tcpPath by remember { mutableStateOf("") }
-    var kcpHost by remember { mutableStateOf("") }
-    var kcpPath by remember { mutableStateOf("") }
-    var kcpSeed by remember { mutableStateOf("") }
-    var kcpMtu by remember { mutableStateOf("1350") }
-    var kcpTti by remember { mutableStateOf("50") }
-    var wsHost by remember { mutableStateOf("") }
-    var wsPath by remember { mutableStateOf("/") }
-    var httpUpgradeHost by remember { mutableStateOf("") }
-    var httpUpgradePath by remember { mutableStateOf("/") }
-    var h2Host by remember { mutableStateOf("") }
-    var h2Path by remember { mutableStateOf("/") }
-    var quicSecurity by remember { mutableStateOf("none") }
-    var quicKey by remember { mutableStateOf("") }
-    var grpcAuthority by remember { mutableStateOf("") }
-    var grpcServiceName by remember { mutableStateOf("") }
-
-    var xhttpHost by remember { mutableStateOf("") }
-    var xhttpPath by remember { mutableStateOf("/") }
-    var xhttpMode by remember { mutableStateOf("auto") }
-    var isXhttpModeMenuExpanded by remember { mutableStateOf(false) }
-
-    var tlsType by remember { mutableStateOf("TLS") }
-
-    var isTransportMenuExpanded by remember { mutableStateOf(false) }
-    var isTlsTypeMenuExpanded by remember { mutableStateOf(false) }
-    var isAllowInsecureMenuExpanded by remember { mutableStateOf(false) }
-
-    var isFlowMenuExpanded by remember { mutableStateOf(false) }
-    var isPacketEncodingMenuExpanded by remember { mutableStateOf(false) }
-    var isMethodMenuExpanded by remember { mutableStateOf(false) }
-    var isFpMenuExpanded by remember { mutableStateOf(false) }
-    var isObfsMenuExpanded by remember { mutableStateOf(false) }
-
-    var ssNetwork by remember { mutableStateOf("tcp") }
-    var ssWsPath by remember { mutableStateOf("/") }
-    var ssWsHost by remember { mutableStateOf("") }
-    var shadowTlsPassword by remember { mutableStateOf("") }
-    var shadowTlsVersion by remember { mutableStateOf("3") }
-
-    var isSsNetworkMenuExpanded by remember { mutableStateOf(false) }
-    var isShadowTlsVersionExpanded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(profile.uri) {
-        try {
-            val uri = URI(profile.uri)
-            scheme = uri.scheme ?: "vless"
-            val queryParams = parseQuery(uri.rawQuery)
-
-            tag = profile.name
-            server = uri.host ?: ""
-            port = if (uri.port > 0) uri.port.toString() else ""
-
-            when (scheme) {
-                "vless", "trojan" -> {
-                    uuid = uri.userInfo ?: ""
-                    flow = queryParams["flow"] ?: ""
-                    packetEncoding = queryParams["packetEncoding"] ?: queryParams["packet_encoding"] ?: ""
-                    if (flow == "xtls-rprx-vision-udp443") {
-                        flow = "xtls-rprx-vision"
-                        packetEncoding = "xudp"
-                    }
-                    val sec = queryParams["security"] ?: "none"
-                    isTls = sec == "tls" || sec == "reality"
-                    tlsType = if (sec == "reality") "Reality" else "TLS"
-                    sni = queryParams["sni"] ?: uri.host ?: ""
-                    alpn = queryParams["alpn"] ?: ""
-                    fingerprint = queryParams["fp"] ?: "chrome"
-                    if (sec == "reality" || queryParams.containsKey("pbk")) {
-                        pbk = queryParams["pbk"] ?: ""
-                        sid = queryParams["sid"] ?: ""
-                    } else {
-                        pbk = ""
-                        sid = ""
-                    }
-                    insecure = queryParams["allowinsecure"] == "1" || queryParams["allowinsecure"] == "true" ||
-                            queryParams["allowInsecure"] == "1" || queryParams["allowInsecure"] == "true" ||
-                            queryParams["insecure"] == "1" || queryParams["insecure"] == "true"
-
-                    transport = queryParams["type"] ?: "tcp"
-                    
-                    tcpHost = queryParams["host"] ?: ""
-                    tcpPath = queryParams["path"] ?: ""
-                    kcpHost = queryParams["host"] ?: ""
-                    kcpPath = queryParams["path"] ?: ""
-                    kcpSeed = queryParams["seed"] ?: queryParams["kcpSeed"] ?: ""
-                    kcpMtu = queryParams["mtu"] ?: "1350"
-                    kcpTti = queryParams["tti"] ?: "50"
-                    wsHost = queryParams["host"] ?: ""
-                    wsPath = queryParams["path"] ?: "/"
-                    httpUpgradeHost = queryParams["host"] ?: ""
-                    httpUpgradePath = queryParams["path"] ?: "/"
-                    h2Host = queryParams["host"] ?: ""
-                    h2Path = queryParams["path"] ?: "/"
-                    val qSec = queryParams["quicSecurity"] ?: queryParams["security"] ?: "none"
-                    quicSecurity = if (qSec == "tls" || qSec == "reality") "none" else qSec
-                    quicKey = queryParams["key"] ?: queryParams["quicKey"] ?: ""
-                    grpcAuthority = queryParams["authority"] ?: queryParams["grpcAuthority"] ?: ""
-                    grpcServiceName = queryParams["serviceName"] ?: queryParams["grpcServiceName"] ?: ""
-                    xhttpHost = queryParams["host"] ?: ""
-                    xhttpPath = queryParams["path"] ?: "/"
-                    xhttpMode = queryParams["mode"] ?: "auto"
-                }
-                "vmess" -> {
-                    val b64 = profile.uri.removePrefix("vmess://").trim()
-                    try {
-                        val json = org.json.JSONObject(String(Base64.decode(b64, Base64.DEFAULT)))
-                        tag = profile.name
-                        server = json.optString("add")
-                        port = json.optString("port")
-                        uuid = json.optString("id")
-                        sni = json.optString("sni")
-                        alpn = json.optString("alpn")
-                        isTls = json.optString("tls") == "tls"
-                    } catch (_: Exception) {}
-                }
-                "ss", "shadowsocks" -> {
-                    val userInfo = try {
-                        String(Base64.decode(uri.userInfo ?: "", Base64.DEFAULT))
-                    } catch (_: Exception) {
-                        uri.userInfo ?: ":"
-                    }
-                    method = userInfo.substringBefore(":")
-                    uuid = userInfo.substringAfter(":")
-
-                    val pluginVal = queryParams["plugin"] ?: ""
-                    val pluginOpts = queryParams["plugin-opts"] ?: queryParams["plugin_opts"] ?: ""
-                    val combinedOpts = if (pluginVal.contains(";")) {
-                        pluginVal.substringAfter(";")
-                    } else {
-                        pluginOpts
-                    }
-                    val optsMap = combinedOpts.split(";").associate { opt ->
-                        val parts = opt.split("=", limit = 2)
-                        if (parts.size == 2) {
-                            parts[0].trim().lowercase() to parts[1].trim()
-                        } else {
-                            opt.trim().lowercase() to "true"
-                        }
-                    }
-
-                    val isWs = combinedOpts.contains("websocket") || combinedOpts.contains("mode=websocket") || optsMap["mode"] == "websocket" || queryParams["type"] == "ws"
-                    ssNetwork = if (isWs) "ws" else "tcp"
-                    ssWsPath = optsMap["path"] ?: queryParams["path"] ?: "/"
-                    ssWsHost = optsMap["host"] ?: queryParams["host"] ?: ""
-
-                    val hasTls = combinedOpts.contains("tls") || optsMap.containsKey("tls") || queryParams["security"] == "tls"
-                    val isShadowTls = pluginVal.startsWith("shadowtls") || queryParams["plugin"]?.startsWith("shadowtls") == true
-                    isTls = hasTls || isShadowTls
-                    sni = optsMap["host"] ?: optsMap["sni"] ?: queryParams["sni"] ?: queryParams["host"] ?: uri.host ?: ""
-
-                    if (isShadowTls) {
-                        shadowTlsPassword = optsMap["password"] ?: queryParams["shadowtls-password"] ?: ""
-                        shadowTlsVersion = optsMap["version"] ?: queryParams["shadowtls-version"] ?: "3"
-                    } else {
-                        shadowTlsPassword = ""
-                        shadowTlsVersion = "3"
-                    }
-                }
-                "hysteria", "hy", "hysteria2", "hy2" -> {
-                    uuid = uri.userInfo ?: ""
-                    isTls = true
-                    sni = queryParams["sni"] ?: queryParams["peer"] ?: uri.host ?: ""
-                    alpn = queryParams["alpn"] ?: ""
-                    upMbps = queryParams["upmbps"] ?: queryParams["up-mbps"] ?: queryParams["up"] ?: ""
-                    downMbps = queryParams["downmbps"] ?: queryParams["down-mbps"] ?: queryParams["down"] ?: ""
-                    insecure = queryParams["insecure"] == "1" || queryParams["insecure"] == "true" ||
-                        queryParams["allowInsecure"] == "true" || queryParams["skip-cert-verify"] == "true"
-                    pin = queryParams["pin"] ?: ""
-                    if (scheme == "hysteria2" || scheme == "hy2") {
-                        obfsType = queryParams["obfs"] ?: queryParams["obfs-type"] ?: ""
-                        obfsPassword = queryParams["obfs-password"] ?: queryParams["obfspassword"] ?: ""
-                        mport = queryParams["mport"] ?: ""
-                        hopInterval = queryParams["hop_interval"] ?: queryParams["hop-interval"] ?: queryParams["hopInterval"] ?: ""
-                    } else {
-                        obfsType = queryParams["obfs"] ?: ""
-                        obfsPassword = ""
-                        mport = queryParams["mport"] ?: ""
-                        hopInterval = ""
-                    }
-                    fingerprint = queryParams["fp"] ?: queryParams["fingerprint"] ?: "chrome"
-                }
-                else -> {
-                    uuid = uri.userInfo ?: ""
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    val isRealitySupported = scheme == "vless" || scheme == "trojan"
-    val showReality = isTls && isRealitySupported && tlsType == "Reality"
-    val isHysteria = scheme == "hysteria" || scheme == "hy" || scheme == "hysteria2" || scheme == "hy2"
-    val isHysteria2 = scheme == "hysteria2" || scheme == "hy2"
-    val isShadowsocks = scheme == "ss" || scheme == "shadowsocks"
-
-    val handleSave = {
-        try {
-            val newName = tag.trim()
-            val host = server.trim()
-            val portText = port.trim()
-            val cred = uuid.trim()
-
-            val newUri = when (scheme) {
-                "vless", "trojan" -> {
-                    val portStr = if (portText.isNotEmpty()) ":$portText" else ""
-                    val query = mutableListOf<String>()
-
-                    if (scheme == "vless") {
-                        query.add("type=$transport")
-                        when (transport) {
-                            "tcp" -> {
-                                if (tcpHost.isNotEmpty()) query.add("host=${encode(tcpHost)}")
-                                if (tcpPath.isNotEmpty()) query.add("path=${encode(tcpPath)}")
-                            }
-                            "kcp" -> {
-                                if (kcpHost.isNotEmpty()) query.add("host=${encode(kcpHost)}")
-                                if (kcpPath.isNotEmpty()) query.add("path=${encode(kcpPath)}")
-                                if (kcpSeed.isNotEmpty()) query.add("seed=${encode(kcpSeed)}")
-                                if (kcpMtu.isNotEmpty()) query.add("mtu=${encode(kcpMtu)}")
-                                if (kcpTti.isNotEmpty()) query.add("tti=${encode(kcpTti)}")
-                            }
-                            "ws" -> {
-                                if (wsHost.isNotEmpty()) query.add("host=${encode(wsHost)}")
-                                if (wsPath.isNotEmpty()) query.add("path=${encode(wsPath)}")
-                            }
-                            "httpupgrade" -> {
-                                if (httpUpgradeHost.isNotEmpty()) query.add("host=${encode(httpUpgradeHost)}")
-                                if (httpUpgradePath.isNotEmpty()) query.add("path=${encode(httpUpgradePath)}")
-                            }
-                            "h2", "http" -> {
-                                if (h2Host.isNotEmpty()) query.add("host=${encode(h2Host)}")
-                                if (h2Path.isNotEmpty()) query.add("path=${encode(h2Path)}")
-                            }
-                            "quic" -> {
-                                query.add("quicSecurity=${encode(quicSecurity)}")
-                                if (quicKey.isNotEmpty()) query.add("key=${encode(quicKey)}")
-                            }
-                            "grpc" -> {
-                                if (grpcAuthority.isNotEmpty()) query.add("authority=${encode(grpcAuthority)}")
-                                if (grpcServiceName.isNotEmpty()) query.add("serviceName=${encode(grpcServiceName)}")
-                            }
-                            "xhttp" -> {
-                                if (xhttpHost.isNotEmpty()) query.add("host=${encode(xhttpHost)}")
-                                if (xhttpPath.isNotEmpty()) query.add("path=${encode(xhttpPath)}")
-                                if (xhttpMode.isNotEmpty()) query.add("mode=${encode(xhttpMode)}")
-                            }
-                        }
-                    } else {
-                        val parsed = URI(profile.uri)
-                        val originalParams = parseQuery(parsed.rawQuery)
-                        query.add("type=" + (originalParams["type"] ?: "tcp"))
-                    }
-
-                    if (scheme == "vless" && flow.isNotEmpty()) {
-                        query.add("flow=${encode(flow)}")
-                    }
-
-                    if (scheme == "vless" && packetEncoding.isNotEmpty()) {
-                        query.add("packetEncoding=${encode(packetEncoding)}")
-                    }
-
-                    if (isTls) {
-                        if (tlsType == "Reality") {
-                            query.add("security=reality")
-                            if (pbk.isNotEmpty()) {
-                                query.add("pbk=${encode(pbk.trim())}")
-                            }
-                            if (sid.trim().isNotEmpty()) {
-                                query.add("sid=${encode(sid.trim())}")
-                            }
-                        } else {
-                            query.add("security=tls")
-                            if (insecure) {
-                                query.add("allowinsecure=1")
-                            } else {
-                                query.add("allowinsecure=0")
-                            }
-                        }
-
-                        if (sni.trim().isNotEmpty()) query.add("sni=${encode(sni.trim())}")
-                        if (alpn.trim().isNotEmpty()) query.add("alpn=${encode(alpn.trim())}")
-                        if (fingerprint.trim().isNotEmpty()) query.add("fp=${encode(fingerprint.trim())}")
-                    } else {
-                        query.add("security=none")
-                    }
-
-                    "$scheme://$cred@$host$portStr?${query.joinToString("&")}#${encode(newName)}"
-                }
-                "vmess" -> {
-                    val b64 = profile.uri.removePrefix("vmess://").trim()
-                    val json = try {
-                        org.json.JSONObject(String(Base64.decode(b64, Base64.DEFAULT)))
-                    } catch (_: Exception) {
-                        org.json.JSONObject()
-                    }
-                    json.put("ps", newName)
-                    json.put("add", host)
-                    json.put("port", portText.toIntOrNull() ?: 443)
-                    json.put("id", cred)
-                    if (isTls) {
-                        json.put("tls", "tls")
-                        json.put("sni", sni.trim())
-                        json.put("alpn", alpn.trim())
-                    } else {
-                        json.put("tls", "")
-                    }
-                    val newB64 = Base64.encodeToString(json.toString().toByteArray(), Base64.NO_WRAP)
-                    "vmess://$newB64"
-                }
-                "ss", "shadowsocks" -> {
-                    val portStr = if (portText.isNotEmpty()) ":$portText" else ""
-                    val auth = Base64.encodeToString("$method:$cred".toByteArray(), Base64.NO_WRAP)
-                    val query = mutableListOf<String>()
-
-                    if (isTls) {
-                        if (ssNetwork == "ws") {
-                            val opts = mutableListOf("mode=websocket")
-                            if (ssWsPath.isNotEmpty()) opts.add("path=${ssWsPath.trim()}")
-                            if (ssWsHost.isNotEmpty()) opts.add("host=${ssWsHost.trim()}")
-                            opts.add("tls")
-                            if (sni.trim().isNotEmpty()) opts.add("sni=${sni.trim()}")
-                            query.add("plugin=v2ray-plugin%3B${encode(opts.joinToString(";"))}")
-                            query.add("security=tls")
-                            if (sni.trim().isNotEmpty()) query.add("sni=${encode(sni.trim())}")
-                            if (ssWsPath.isNotEmpty()) query.add("path=${encode(ssWsPath.trim())}")
-                            if (ssWsHost.isNotEmpty()) query.add("host=${encode(ssWsHost.trim())}")
-                            query.add("type=ws")
-                        } else {
-                            val opts = mutableListOf<String>()
-                            if (shadowTlsPassword.isNotEmpty()) opts.add("password=${shadowTlsPassword.trim()}")
-                            if (shadowTlsVersion.isNotEmpty()) opts.add("version=${shadowTlsVersion.trim()}")
-                            if (sni.trim().isNotEmpty()) opts.add("host=${sni.trim()}")
-                            query.add("plugin=shadowtls%3B${encode(opts.joinToString(";"))}")
-                            query.add("security=tls")
-                            if (sni.trim().isNotEmpty()) query.add("sni=${encode(sni.trim())}")
-                            if (shadowTlsPassword.isNotEmpty()) query.add("shadowtls-password=${encode(shadowTlsPassword.trim())}")
-                            if (shadowTlsVersion.isNotEmpty()) query.add("shadowtls-version=${encode(shadowTlsVersion.trim())}")
-                            query.add("type=tcp")
-                        }
-                    } else {
-                        if (ssNetwork == "ws") {
-                            val opts = mutableListOf("mode=websocket")
-                            if (ssWsPath.isNotEmpty()) opts.add("path=${ssWsPath.trim()}")
-                            if (ssWsHost.isNotEmpty()) opts.add("host=${ssWsHost.trim()}")
-                            query.add("plugin=v2ray-plugin%3B${encode(opts.joinToString(";"))}")
-                            if (ssWsPath.isNotEmpty()) query.add("path=${encode(ssWsPath.trim())}")
-                            if (ssWsHost.isNotEmpty()) query.add("host=${encode(ssWsHost.trim())}")
-                            query.add("type=ws")
-                        }
-                    }
-                    val params = if (query.isNotEmpty()) "?" + query.joinToString("&") else ""
-                    "ss://$auth@$host$portStr$params#${encode(newName)}"
-                }
-                "hysteria", "hy", "hysteria2", "hy2" -> {
-                    val portStr = if (portText.isNotEmpty()) ":$portText" else ""
-                    val query = mutableListOf<String>()
-                    if (sni.trim().isNotEmpty()) query.add("sni=${encode(sni.trim())}")
-                    if (alpn.trim().isNotEmpty()) query.add("alpn=${encode(alpn.trim())}")
-                    if (insecure) query.add("insecure=true")
-                    if (pin.trim().isNotEmpty()) query.add("pin=${encode(pin.trim())}")
-                    if (upMbps.trim().isNotEmpty()) query.add("up=${encode(upMbps.trim())}")
-                    if (downMbps.trim().isNotEmpty()) query.add("down=${encode(downMbps.trim())}")
-
-                    if (scheme == "hysteria2" || scheme == "hy2") {
-                        if (obfsType.trim().isNotEmpty()) {
-                            query.add("obfs=${encode(obfsType.trim())}")
-                            if (obfsPassword.trim().isNotEmpty()) {
-                                query.add("obfs-password=${encode(obfsPassword.trim())}")
-                            }
-                        }
-                        if (hopInterval.trim().isNotEmpty()) {
-                            query.add("hop_interval=${encode(hopInterval.trim())}")
-                        }
-                    } else {
-                        if (obfsType.trim().isNotEmpty()) {
-                            query.add("obfs=${encode(obfsType.trim())}")
-                        }
-                    }
-                    if (mport.trim().isNotEmpty()) query.add("mport=${encode(mport.trim())}")
-                    
-                    val params = if (query.isNotEmpty()) "?" + query.joinToString("&") else ""
-                    "$scheme://$cred@$host$portStr$params#${encode(newName)}"
-                }
-                else -> profile.uri
-            }
-
-            val updatedProfile = ClipboardParser.buildProfileFromUri(context, newUri, profile.subscriptionId)
-            onSave(updatedProfile.copy(
-                id = profile.id,
-                name = newName,
-                isSelected = profile.isSelected,
-                serverDescription = profile.serverDescription
-            ))
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    with(state) {
 
     Box(
         modifier = Modifier
@@ -513,7 +84,7 @@ fun ProfileSimpleEditor(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier
@@ -1148,7 +719,7 @@ fun ProfileSimpleEditor(
                         Spacer(modifier = Modifier.height(24.dp))
                         EditorSectionTitle(
                             text = I18n.strings.simple_editor_reality,
-                            iconRes = R.drawable.ic_settings_advanced,
+                            iconRes = R.drawable.ic_mask,
                             accentColor = accentColor
                         )
                         EditorFieldGroup {
@@ -1297,7 +868,7 @@ fun ProfileSimpleEditor(
             } else null,
             actions = {
                 IconButton(
-                    onClick = { handleSave() },
+                    onClick = { handleSave(onSave) },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
@@ -1309,6 +880,7 @@ fun ProfileSimpleEditor(
                 }
             }
         )
+    }
     }
 }
 

@@ -41,7 +41,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -136,7 +141,7 @@ fun FlareSideNav(
                     )
                     .let {
                         if (hazeState != null) {
-                            it.hazeEffect(state = hazeState) {
+                            it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
                                 blurRadius = 2.5.dp
                             }
                         } else {
@@ -231,6 +236,7 @@ private fun VerticalLiquidPillCanvas(
 
     val glowAlpha = remember { Animatable(0f) }
     val expansion = remember { Animatable(0f) }
+    val dragGlowAlpha = remember { Animatable(0f) }
 
     val latestOnTabSelected  = rememberUpdatedState(onTabSelected)
     val latestOnDoubleTap    = rememberUpdatedState(onDoubleTapPill)
@@ -270,13 +276,6 @@ private fun VerticalLiquidPillCanvas(
 
                     if (onPill) {
                         onPillPressed(true)
-                        scope.launch {
-                            launch { glowAlpha.animateTo(1f, tween(120)) }
-                            launch {
-                                expansion.animateTo(5f, tween(200,
-                                    easing = Easing { OvershootInterpolator(1.4f).getInterpolation(it) }))
-                            }
-                        }
                     }
 
                     do {
@@ -288,6 +287,9 @@ private fun VerticalLiquidPillCanvas(
 
                         if (!dragIntercepted && abs(delta) > dragThreshold && onPill) {
                             dragIntercepted = true
+                            scope.launch {
+                                dragGlowAlpha.animateTo(1f, tween(150))
+                            }
                         }
 
                         if (dragIntercepted) {
@@ -320,11 +322,7 @@ private fun VerticalLiquidPillCanvas(
                         }
                         onPillPressed(false)
                         scope.launch {
-                            launch { glowAlpha.animateTo(0f, tween(200)) }
-                            launch {
-                                expansion.animateTo(0f, tween(300,
-                                    easing = Easing { OvershootInterpolator(1.4f).getInterpolation(it) }))
-                            }
+                            launch { dragGlowAlpha.animateTo(0f, tween(250)) }
                             val spec = tween<Float>(
                                 durationMillis = (340 * 1.2f).toInt(),
                                 easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
@@ -336,8 +334,7 @@ private fun VerticalLiquidPillCanvas(
                     } else {
                         onPillPressed(false)
                         scope.launch {
-                            launch { glowAlpha.animateTo(0f, tween(100)) }
-                            launch { expansion.animateTo(0f, tween(150)) }
+                            dragGlowAlpha.animateTo(0f, tween(150))
                         }
                         val now = System.currentTimeMillis()
                         if (touchedTab == 1 && latestSelectedIndex.value == 1 && now - lastTapMs < 350L) {
@@ -434,6 +431,69 @@ private fun VerticalLiquidPillCanvas(
                     )
                 }
                 nc.drawRoundRect(rect.left, rect.top, rect.right, rect.bottom, radius, radius, pillPaint)
+            }
+
+            val glowAlphaVal = dragGlowAlpha.value
+            if (glowAlphaVal > 0.01f) {
+                drawIntoCanvas { canvas ->
+                    val panelPath = Path().apply {
+                        addRoundRect(
+                            RoundRect(
+                                rect = Rect(0f, 0f, size.width, size.height),
+                                cornerRadius = CornerRadius(28.dp.toPx(), 28.dp.toPx())
+                            )
+                        )
+                    }
+                    clipPath(panelPath) {
+                        if (rect.height > 0.1f) {
+                            val glareHeight = rect.height * 1.5f
+                            val glareWidth = 3.dp.toPx()
+                            val glareColor = Color.White.copy(alpha = 0.9f * glowAlphaVal)
+                            val glareAccentLeft = accentStart.copy(alpha = 0.6f * glowAlphaVal)
+                            val glareAccentRight = accentEnd.copy(alpha = 0.6f * glowAlphaVal)
+
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, glareAccentLeft, Color.Transparent),
+                                    startY = centerY - glareHeight / 2,
+                                    endY = centerY + glareHeight / 2
+                                ),
+                                topLeft = Offset(-glareWidth, centerY - glareHeight / 2),
+                                size = androidx.compose.ui.geometry.Size(glareWidth * 2, glareHeight)
+                            )
+                            
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, glareColor, Color.Transparent),
+                                    startY = centerY - glareHeight / 4,
+                                    endY = centerY + glareHeight / 4
+                                ),
+                                topLeft = Offset(-glareWidth / 2, centerY - glareHeight / 4),
+                                size = androidx.compose.ui.geometry.Size(glareWidth, glareHeight / 2)
+                            )
+
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, glareAccentRight, Color.Transparent),
+                                    startY = centerY - glareHeight / 2,
+                                    endY = centerY + glareHeight / 2
+                                ),
+                                topLeft = Offset(size.width - glareWidth, centerY - glareHeight / 2),
+                                size = androidx.compose.ui.geometry.Size(glareWidth * 2, glareHeight)
+                            )
+                            
+                            drawOval(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, glareColor, Color.Transparent),
+                                    startY = centerY - glareHeight / 4,
+                                    endY = centerY + glareHeight / 4
+                                ),
+                                topLeft = Offset(size.width - glareWidth / 2, centerY - glareHeight / 4),
+                                size = androidx.compose.ui.geometry.Size(glareWidth, glareHeight / 2)
+                            )
+                        }
+                    }
+                }
             }
         }
 

@@ -1,5 +1,9 @@
 package flare.client.app.ui.components.dialogs
 
+import flare.client.app.ui.components.GeologicaRegular
+import flare.client.app.ui.components.GeologicaMedium
+import androidx.compose.foundation.background
+
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -44,6 +48,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
@@ -61,8 +67,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
-private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWeight.Normal))
+
+
 
 enum class DataMgmtStep {
     SELECTION, EXPORTING, EXPORT_SUCCESS, IMPORTING, IMPORT_SUCCESS
@@ -369,11 +375,20 @@ fun DataManagementDialog(
                     .clip(RoundedCornerShape(24.dp))
                     .let {
                         if (hazeState != null) {
-                            it.hazeEffect(
+                            val isDark = FlareTheme.colors.isDark
+                            val baseStyle = HazeMaterials.ultraThin()
+                            val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.30f
+                            val lightTint = baseStyle.tints.firstOrNull()?.color
+                                ?: Color.White.copy(alpha = 0.30f)
+                            val darkTint = Color(0xFF1A1A1A).copy(alpha = baseAlpha)
+                            val dialogStyle = HazeStyle(
+                                blurRadius  = baseStyle.blurRadius,
+                                tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
+                                noiseFactor = 0f
+                            )
+                            it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(
                                 state = hazeState,
-                                style = HazeMaterials.ultraThin(
-                                    containerColor = FlareTheme.colors.dialogGlassFill
-                                )
+                                style = dialogStyle
                             )
                         } else {
                             it.background(FlareTheme.colors.dialogGlassFill)

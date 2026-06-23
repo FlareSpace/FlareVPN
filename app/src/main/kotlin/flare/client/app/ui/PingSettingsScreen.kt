@@ -44,8 +44,8 @@ import flare.client.app.ui.components.*
 import flare.client.app.ui.theme.FlareTheme
 
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
-private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWeight.Normal))
+
+
 
 @Composable
 fun PingSettingsScreen(
@@ -55,6 +55,8 @@ fun PingSettingsScreen(
     onPingTestUrlChange: (String) -> Unit,
     pingStyleValue: String,
     onPingStyleClick: (String) -> Unit,
+    pingTimeout: Int,
+    onPingTimeoutChange: (Int) -> Unit,
     onBack: () -> Unit,
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: HazeState
@@ -78,7 +80,7 @@ fun PingSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier
@@ -223,6 +225,31 @@ fun PingSettingsScreen(
                     cornerType = flare.client.app.data.model.DisplayItem.CornerType.ALL,
                     accentColor = accentColor,
                     hazeState = hazeState
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                FlareSectionHeader(text = I18n.strings.settings_label_ping_timeout)
+
+                Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
+                    FlareSliderItem(
+                        label = I18n.strings.settings_label_ping_timeout,
+                        valueText = String.format(I18n.strings.settings_ping_timeout_sec, pingTimeout),
+                        value = pingTimeout.toFloat(),
+                        valueRange = 1f..20f,
+                        accentColor = accentColor,
+                        onValueChange = { onPingTimeoutChange(it.toInt()) },
+                        isTop = true,
+                        isBottom = true
+                    )
+                }
+
+                Text(
+                    text = I18n.strings.settings_desc_ping_timeout,
+                    fontFamily = GeologicaRegular,
+                    fontSize = 12.sp,
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 24.dp)
                 )
             }
         }

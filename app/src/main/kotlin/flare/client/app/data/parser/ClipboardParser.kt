@@ -42,7 +42,7 @@ object ClipboardParser {
         data class Error(val message: String) : ParseResult()
     }
 
-    suspend fun parse(context: Context, text: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null): ParseResult {
+    suspend fun parse(context: Context, text: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null, timeoutSeconds: Int = 15): ParseResult {
         val trimmed = text.trim()
 
         val multiLinks = extractSingleProxyLinks(trimmed)
@@ -65,7 +65,7 @@ object ClipboardParser {
             trimmed.startsWith("{") && trimmed.endsWith("}") -> parseFullJson(context, trimmed)
             singleSchemes.any { trimmed.startsWith("$it://", ignoreCase = true) } -> parseSingleProxy(context, trimmed)
             trimmed.startsWith("http://") -> ParseResult.Error(I18n.strings.error_subscription_https_required)
-            trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion, userAgent)
+            trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion, userAgent, timeoutSeconds)
             else -> ParseResult.Error(I18n.strings.error_invalid_format)
         }
     }
@@ -102,7 +102,7 @@ object ClipboardParser {
         }
     }
 
-    private suspend fun parseSubscriptionUrl(context: Context, url: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null): ParseResult {
+    private suspend fun parseSubscriptionUrl(context: Context, url: String, hwid: String? = null, deviceName: String? = null, androidVersion: String? = null, userAgent: String? = null, timeoutSeconds: Int = 15): ParseResult {
         return try {
             val ua = when (userAgent) {
                 null -> "Happ/3.21.1"
@@ -138,8 +138,13 @@ object ClipboardParser {
             }
 
             val request = requestBuilder.build()
+            val clientWithTimeout = httpClient.newBuilder()
+                .connectTimeout(timeoutSeconds.toLong(), TimeUnit.SECONDS)
+                .readTimeout(timeoutSeconds.toLong(), TimeUnit.SECONDS)
+                .build()
+
             val response = try {
-                httpClient.newCall(request).await()
+                clientWithTimeout.newCall(request).await()
             } catch (e: Exception) {
                 return ParseResult.Error(I18n.strings.error_subscription.format(e.message ?: ""))
             }

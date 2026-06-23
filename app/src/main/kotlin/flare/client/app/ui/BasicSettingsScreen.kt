@@ -36,8 +36,8 @@ import flare.client.app.ui.components.*
 import flare.client.app.ui.theme.FlareTheme
 
 
-private val GeologicaMedium = FontFamily(Font(R.font.geologica_medium, FontWeight.Medium))
-private val GeologicaRegular = FontFamily(Font(R.font.geologica_regular, FontWeight.Normal))
+
+
 
 @Composable
 fun BasicSettingsScreen(
@@ -94,8 +94,8 @@ fun BasicSettingsScreen(
     val logLevelOptions = listOf("debug", "info", "warn", "error", "fatal", "none")
     
     val bestProfileOnlyConnectedOptions = listOf(
-        I18n.strings.option_enable to true,
-        I18n.strings.option_disable to false
+        I18n.strings.option_yes to true,
+        I18n.strings.option_no to false
     )
 
     val updateFrequencyOptions = listOf(
@@ -111,7 +111,7 @@ fun BasicSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                .hazeSource(state = hazeState)
+                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
             Column(
                 modifier = Modifier
@@ -298,7 +298,7 @@ fun BasicSettingsScreen(
                             )
                             FlareSettingsValueItem(
                                 title = I18n.strings.settings_label_best_profile_only_connected,
-                                value = if (isBestProfileOnlyConnected) I18n.strings.option_enable else I18n.strings.option_disable,
+                                value = if (isBestProfileOnlyConnected) I18n.strings.option_yes else I18n.strings.option_no,
                                 menuItems = bestProfileOnlyConnectedOptions.mapIndexed { i, opt ->
                                     flare.client.app.util.GlassUtils.MenuItem(i, opt.first) {
                                         onBestProfileOnlyConnectedClick(opt.second)

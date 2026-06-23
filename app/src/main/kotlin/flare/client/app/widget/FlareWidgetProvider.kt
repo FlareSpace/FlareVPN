@@ -254,7 +254,7 @@ class FlareWidgetProvider : AppWidgetProvider() {
                     var resultLatency = -1L
                     var resultError: String? = "Timeout"
                     try {
-                        flare.client.app.util.PingHelper.pingProxyBatch(appContext, listOf(profile), settings.pingTestUrl) { _, lat, err ->
+                        flare.client.app.util.PingHelper.pingProxyBatch(appContext, listOf(profile), settings.pingTestUrl, settings.pingTimeout) { _, lat, err ->
                             resultLatency = lat
                             resultError = err
                         }
@@ -264,7 +264,7 @@ class FlareWidgetProvider : AppWidgetProvider() {
                     resultLatency to resultError
                 } else {
                     val method = if (settings.pingType == "ICMP") "ICMP" else "TCP"
-                    flare.client.app.util.PingHelper.pingDirect(profile, method)
+                    flare.client.app.util.PingHelper.pingDirect(profile, method, settings.pingTimeout)
                 }
             }
 

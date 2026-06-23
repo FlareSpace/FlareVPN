@@ -466,6 +466,7 @@ fun SubscriptionCard(
                             shape = CircleShape,
                             radius = 17.dp,
                             hazeState = hazeState,
+                            accentColor = accentColor,
                             modifier = Modifier.offset(x = 6.dp)
                         ) {
                             Row(

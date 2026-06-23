@@ -40,8 +40,8 @@ fun GlassDialogContent(
     accentColor: Int,
     accentEndColor: Int
 ) {
-    val geologicaMedium = FontFamily(Font(R.font.geologica_medium))
-    val geologicaRegular = FontFamily(Font(R.font.geologica_regular))
+    val geologicaMedium = flare.client.app.ui.components.GeologicaMedium
+    val geologicaRegular = flare.client.app.ui.components.GeologicaRegular
 
     Column(
         modifier = Modifier

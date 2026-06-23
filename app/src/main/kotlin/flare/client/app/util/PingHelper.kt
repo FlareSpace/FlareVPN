@@ -25,9 +25,29 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.regex.Pattern
 import java.net.ServerSocket
+import flare.client.app.data.model.PingState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 object PingHelper {
     private const val TAG = "PingHelper"
+
+    private val _pingStates = MutableStateFlow<Map<Long, PingState>>(emptyMap())
+    val pingStates: StateFlow<Map<Long, PingState>> = _pingStates.asStateFlow()
+
+    fun updatePingState(profileId: Long, state: PingState) {
+        _pingStates.update { it.toMutableMap().apply { put(profileId, state) } }
+    }
+
+    fun updatePingStates(states: Map<Long, PingState>) {
+        _pingStates.update { it + states }
+    }
+
+    fun clearPings() {
+        _pingStates.value = emptyMap()
+    }
     private const val PROXY_PING_BATCH_SIZE = 150
     private const val PROXY_PING_PARALLELISM = 24
 
@@ -70,7 +90,7 @@ object PingHelper {
         }
     }
 
-    suspend fun pingDirect(profile: ProfileEntity, method: String): Pair<Long, String?> =
+    suspend fun pingDirect(profile: ProfileEntity, method: String, timeoutSec: Int = 10): Pair<Long, String?> =
         withContext(Dispatchers.IO) {
             val hostPort = extractHostPort(profile) ?: return@withContext (-1L to "Config Err")
             val host = hostPort.first
@@ -89,7 +109,7 @@ object PingHelper {
                         var process: Process? = null
                         try {
                             process = Runtime.getRuntime()
-                                .exec(arrayOf("ping", "-c", "1", "-W", "2", ipAddress))
+                                .exec(arrayOf("ping", "-c", "1", "-W", timeoutSec.toString(), ipAddress))
                             val output = process.inputStream.bufferedReader().use { it.readText() }
                             val exitCode = process.waitFor()
                             if (exitCode == 0) {
@@ -105,7 +125,7 @@ object PingHelper {
                     } else {
                         val startTime = System.nanoTime()
                         Socket().use {
-                            it.connect(InetSocketAddress(ipAddress, port), 3000)
+                            it.connect(InetSocketAddress(ipAddress, port), timeoutSec * 1000)
                         }
                         ((System.nanoTime() - startTime) / 1_000_000) to null
                     }
@@ -140,6 +160,7 @@ object PingHelper {
         context: Context,
         profiles: List<ProfileEntity>,
         testUrl: String,
+        timeoutSec: Int = 10,
         onResult: suspend (Long, Long, String?) -> Unit
     ) = withContext(Dispatchers.IO) {
         ensureLibboxSetup(context)
@@ -152,6 +173,7 @@ object PingHelper {
                 runProxyPingChunk(
                     profiles = chunk,
                     testUrl = testUrl,
+                    timeoutSec = timeoutSec,
                     batchIndex = batchIndex,
                     onResult = onResult
                 )
@@ -162,6 +184,7 @@ object PingHelper {
     private suspend fun runProxyPingChunk(
         profiles: List<ProfileEntity>,
         testUrl: String,
+        timeoutSec: Int,
         batchIndex: Int,
         onResult: suspend (Long, Long, String?) -> Unit
     ) {
@@ -328,7 +351,7 @@ object PingHelper {
                             var errMsg: String? = null
                             try {
                                 val tag = "proxy-$index"
-                                val url = "http://127.0.0.1:$clashPort/proxies/${java.net.URLEncoder.encode(tag, "UTF-8")}/delay?url=${java.net.URLEncoder.encode(testUrl, "UTF-8")}&timeout=4000"
+                                val url = "http://127.0.0.1:$clashPort/proxies/${java.net.URLEncoder.encode(tag, "UTF-8")}/delay?url=${java.net.URLEncoder.encode(testUrl, "UTF-8")}&timeout=${timeoutSec * 1000}"
                                 val request = Request.Builder()
                                     .url(url)
                                     .header("Authorization", "Bearer $clashSecret")
@@ -402,12 +425,31 @@ object PingHelper {
             val outbounds = JSONArray()
             val proxyTags = ArrayList<String>()
             val outboundIndexToProfileIndex = HashMap<Int, Int>()
+            var profileDnsDirectServer = ""
 
             profiles.forEachIndexed { index, profile ->
                 if (excludedIndices.contains(index)) return@forEachIndexed
                 try {
                     val converted = V2RayConfigConverter.convertIfNeeded(profile.configJson)
                     val profileJson = JSONObject(converted)
+
+                    
+                    if (profileDnsDirectServer.isBlank()) {
+                        val pDns = profileJson.optJSONObject("dns")
+                        val pServers = pDns?.optJSONArray("servers")
+                        if (pServers != null) {
+                            for (si in 0 until pServers.length()) {
+                                val srv = pServers.optJSONObject(si) ?: continue
+                                if (srv.optString("tag") == "dns-direct" && srv.optString("detour", "").isBlank()) {
+                                    val addr = srv.optString("server", "")
+                                    if (addr.isNotBlank()) {
+                                        profileDnsDirectServer = addr
+                                        break
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     
                     
@@ -505,6 +547,17 @@ object PingHelper {
                 put("interval", "10m")
             })
 
+            
+            val proxyServerHosts = mutableSetOf<String>()
+            for (i in 0 until outbounds.length()) {
+                val ob = outbounds.optJSONObject(i) ?: continue
+                val server = ob.optString("server", "")
+                if (server.isNotBlank() && !server.matches(Regex("^[\\d.]+$")) && !server.contains(":")) {
+                    proxyServerHosts.add(server)
+                }
+            }
+            val dnsDirectServer = profileDnsDirectServer.ifBlank { "8.8.8.8" }
+
             val testHost = extractUrlHost(testUrl)
             val config = JSONObject().apply {
                 put("experimental", JSONObject().apply {
@@ -519,7 +572,7 @@ object PingHelper {
                         put(JSONObject().apply {
                             put("tag", "dns-direct")
                             put("type", "udp")
-                            put("server", "8.8.8.8")
+                            put("server", dnsDirectServer)
                         })
                         put(JSONObject().apply {
                             put("tag", "dns-cf")
@@ -541,6 +594,12 @@ object PingHelper {
                             put("outbound", JSONArray().put("direct"))
                             put("server", "dns-direct")
                         })
+                        if (proxyServerHosts.isNotEmpty()) {
+                            put(JSONObject().apply {
+                                put("domain", JSONArray().also { arr -> proxyServerHosts.forEach { arr.put(it) } })
+                                put("server", "dns-direct")
+                            })
+                        }
                         if (!testHost.isNullOrBlank()) {
                             put(JSONObject().apply {
                                 put("domain", JSONArray().apply {
