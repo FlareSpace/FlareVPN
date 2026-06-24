@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -97,11 +99,14 @@ fun FlareFireworkButton(
     LaunchedEffect(isAnimatingState.value) {
         if (isAnimatingState.value) {
             var lastTime = withFrameNanos { it }
+            val frameTimeNanos = 1_000_000_000L / 60L 
             while (true) {
                 withFrameNanos { frameTime ->
-                    val delta = (frameTime - lastTime) / 1_000_000_000f
-                    lastTime = frameTime
-                    time += delta
+                    val deltaNanos = frameTime - lastTime
+                    if (deltaNanos >= frameTimeNanos) {
+                        time += deltaNanos / 1_000_000_000f
+                        lastTime = frameTime
+                    }
                 }
             }
         }
@@ -174,27 +179,71 @@ fun FlareFireworkButton(
         }
     }
 
-    
-    val rayColorLists = remember {
-        List(totalRays) {
-            java.util.ArrayList<Color>(3).apply {
-                add(Color.Transparent)
-                add(Color.Transparent)
-                add(Color.Transparent)
+    val distinctActiveColors = remember(rayProperties) { rayProperties.map { it.activeColor }.distinct() }
+
+    val sharedMatrix = remember { android.graphics.Matrix() }
+
+    val offPaints = remember(offColor) {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.STROKE
+            strokeCap = android.graphics.Paint.Cap.ROUND
+            shader = android.graphics.LinearGradient(
+                0f, 0f, 1f, 0f,
+                intArrayOf(
+                    offColor.toArgb(),
+                    offColor.copy(alpha = 0.9f).toArgb(),
+                    offColor.copy(alpha = 0.05f).toArgb()
+                ),
+                null,
+                android.graphics.Shader.TileMode.CLAMP
+            )
+        }
+    }
+
+    val activePaints = remember(distinctActiveColors) {
+        distinctActiveColors.associateWith { activeColor ->
+            android.graphics.Paint().apply {
+                isAntiAlias = true
+                style = android.graphics.Paint.Style.STROKE
+                strokeCap = android.graphics.Paint.Cap.ROUND
+                shader = android.graphics.LinearGradient(
+                    0f, 0f, 1f, 0f,
+                    intArrayOf(
+                        activeColor.toArgb(),
+                        activeColor.copy(alpha = 0.9f).toArgb(),
+                        activeColor.copy(alpha = 0.05f).toArgb()
+                    ),
+                    null,
+                    android.graphics.Shader.TileMode.CLAMP
+                )
             }
         }
     }
 
-    val sparkColorLists = remember {
-        List(totalRays) {
-            java.util.ArrayList<Color>(2).apply {
-                add(Color.Transparent)
-                add(Color.Transparent)
+    val sparkPaints = remember(distinctActiveColors, useCustomColors, accent) {
+        distinctActiveColors.associateWith { activeColor ->
+            val glowColor = if (activeColor == Color.White) {
+                if (useCustomColors) accent else Color(0xFFFF007F)
+            } else {
+                activeColor
+            }
+            android.graphics.Paint().apply {
+                isAntiAlias = true
+                style = android.graphics.Paint.Style.FILL
+                shader = android.graphics.RadialGradient(
+                    0f, 0f, 1f,
+                    intArrayOf(
+                        glowColor.copy(alpha = 0.65f).toArgb(),
+                        Color.Transparent.toArgb()
+                    ),
+                    null,
+                    android.graphics.Shader.TileMode.CLAMP
+                )
             }
         }
     }
 
-    
     val vignetteBrush = remember(useDarkShadow, useCustomColors, accent) {
         object : ShaderBrush() {
             override fun createShader(size: Size): Shader {
@@ -374,6 +423,7 @@ fun FlareFireworkButton(
             }
 
             
+            
             for (i in 0 until totalRays) {
                 val prop = rayProperties[i]
 
@@ -401,8 +451,6 @@ fun FlareFireworkButton(
                 val endX = center.x + cos(currentAngle) * currentLength
                 val endY = center.y + sin(currentAngle) * currentLength
 
-                val rayColor = lerp(offColor, prop.activeColor, totalActiveProgress)
-                
                 val onAlpha = 0.85f + 0.15f * sin(time * 4f + i * 2f)
                 val currentAlpha = lerp(prop.offAlpha, onAlpha, totalActiveProgress)
                 
@@ -431,24 +479,41 @@ fun FlareFireworkButton(
                 }
 
                 
-                val colorList = rayColorLists[i]
-                colorList[0] = rayColor.copy(alpha = currentAlpha)
-                colorList[1] = rayColor.copy(alpha = currentAlpha * 0.9f)
-                colorList[2] = rayColor.copy(alpha = currentAlpha * 0.05f) 
+                val dx = endX - startX
+                val dy = endY - startY
+                val distance = currentLength - currentInner
+                val angleDeg = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
 
-                val lineBrush = Brush.linearGradient(
-                    colors = colorList,
-                    start = Offset(startX, startY),
-                    end = Offset(endX, endY)
-                )
+                sharedMatrix.reset()
+                sharedMatrix.postScale(distance, 1f)
+                sharedMatrix.postRotate(angleDeg)
+                sharedMatrix.postTranslate(startX, startY)
 
-                drawLine(
-                    brush = lineBrush,
-                    start = Offset(startX, startY),
-                    end = Offset(endX, endY),
-                    strokeWidth = thickness,
-                    cap = StrokeCap.Round
-                )
+                val nativeCanvas = drawContext.canvas.nativeCanvas
+
+                
+                if (totalActiveProgress < 1f) {
+                    val alphaOff = (currentAlpha * (1f - totalActiveProgress) * 255).toInt()
+                    if (alphaOff > 0) {
+                        offPaints.alpha = alphaOff
+                        offPaints.strokeWidth = thickness
+                        offPaints.shader.setLocalMatrix(sharedMatrix)
+                        nativeCanvas.drawLine(startX, startY, endX, endY, offPaints)
+                    }
+                }
+                
+                if (totalActiveProgress > 0f) {
+                    val alphaOn = (currentAlpha * totalActiveProgress * 255).toInt()
+                    if (alphaOn > 0) {
+                        val activePaint = activePaints[prop.activeColor]
+                        if (activePaint != null) {
+                            activePaint.alpha = alphaOn
+                            activePaint.strokeWidth = thickness
+                            activePaint.shader.setLocalMatrix(sharedMatrix)
+                            nativeCanvas.drawLine(startX, startY, endX, endY, activePaint)
+                        }
+                    }
+                }
                 
                 
                 if (prop.hasSpark && connectedProgress > 0.1f) {
@@ -467,24 +532,19 @@ fun FlareFireworkButton(
                         
                         
                         if (totalActiveProgress > 0f) {
-                            val glowColor = if (prop.activeColor == Color.White) {
-                                if (useCustomColors) accent else Color(0xFFFF007F)
-                            } else {
-                                prop.activeColor
+                            val alphaGlow = (sparkAlpha * 0.65f * totalActiveProgress * 255).toInt()
+                            if (alphaGlow > 0) {
+                                val sPaint = sparkPaints[prop.activeColor]
+                                if (sPaint != null) {
+                                    sPaint.alpha = alphaGlow
+                                    val sparkGlowRadius = sparkRadius * 3.5f
+                                    sharedMatrix.reset()
+                                    sharedMatrix.postScale(sparkGlowRadius, sparkGlowRadius)
+                                    sharedMatrix.postTranslate(sparkX, sparkY)
+                                    sPaint.shader.setLocalMatrix(sharedMatrix)
+                                    nativeCanvas.drawCircle(sparkX, sparkY, sparkGlowRadius, sPaint)
+                                }
                             }
-                            val sparkColorList = sparkColorLists[i]
-                            sparkColorList[0] = glowColor.copy(alpha = sparkAlpha * 0.65f)
-                            sparkColorList[1] = Color.Transparent
-
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = sparkColorList,
-                                    center = Offset(sparkX, sparkY),
-                                    radius = sparkRadius * 3.5f
-                                ),
-                                radius = sparkRadius * 3.5f,
-                                center = Offset(sparkX, sparkY)
-                            )
                         }
                         
                         

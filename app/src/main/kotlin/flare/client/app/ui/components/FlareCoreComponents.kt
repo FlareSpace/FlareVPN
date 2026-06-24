@@ -93,7 +93,6 @@ import androidx.compose.ui.geometry.CornerRadius
 
 
 
-@OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 fun FlareTopBar(
     title: String,
@@ -126,14 +125,12 @@ fun FlareTopBar(
         Color.Black.copy(alpha = 0.08f * scrollProgress)
     }
     
-    val baseStyle = HazeMaterials.regular(containerColor = FlareTheme.colors.bgSurface)
-    val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.60f
-    val lightTint = Color(0xFFEFF1F4).copy(alpha = baseAlpha)
-    val darkTint = Color(0xFF222225).copy(alpha = baseAlpha)
+    val lightTint = Color(0xFFEFF1F4).copy(alpha = 0.3f)
+    val darkTint = Color(0xFF24262A).copy(alpha = 0.55f)
     val hazeStyle = HazeStyle(
-        blurRadius  = baseStyle.blurRadius,
+        blurRadius  = 45.dp,
         tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
-        noiseFactor = 0f
+        noiseFactor = 0.01f
     )
 
     Row(

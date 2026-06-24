@@ -113,6 +113,7 @@ private const val LIQUID_GLASS_AGSL = """
     uniform float has_outline;
     uniform float outline_thickness;
     uniform float density;
+    uniform float is_liquid_glass_enabled;
     
     half sdfRect(half2 p, half4 r) {
       r.xy = (p.x > 0.0) ? r.xy : r.zw;
@@ -133,6 +134,17 @@ private const val LIQUID_GLASS_AGSL = """
       half2 uv = fragCoord;
     
       if (sd < 0.0) {
+        if (is_liquid_glass_enabled < 0.5) {
+            half4 bg = img.eval(uv);
+            half4 result = srcOver(half4(foreground_color_premultiplied), bg);
+            if (is_dark_mode <= 0.5 && has_outline > 0.5) {
+                half edgeDist = -sd;
+                half outlineMask = smoothstep(outline_thickness, 0.0, edgeDist);
+                result.rgb = mix(result.rgb, half3(0.0), outlineMask * 0.15);
+            }
+            return result;
+        }
+
         half sdX = sdfRect(p + half2(1.0, 0.0), radius);
         half sdY = sdfRect(p + half2(0.0, 1.0), radius);
     
@@ -192,7 +204,8 @@ fun Modifier.flareGlass(
     hasOutline: Boolean = false,
     outlineThickness: Float = 1.0f
 ): Modifier = composed {
-    if (FlareTheme.effects.isLiquidGlassEnabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+    val isLiquidGlassEnabled = FlareTheme.effects.isLiquidGlassEnabled
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
         this.graphicsLayer {
             val shader = android.graphics.RuntimeShader(LIQUID_GLASS_AGSL)
             val dp = density
@@ -222,6 +235,7 @@ fun Modifier.flareGlass(
             shader.setFloatUniform("has_outline", if (hasOutline) 1f else 0f)
             shader.setFloatUniform("outline_thickness", outlineThickness * dp)
             shader.setFloatUniform("density", dp)
+            shader.setFloatUniform("is_liquid_glass_enabled", if (isLiquidGlassEnabled) 1f else 0f)
 
             renderEffect = android.graphics.RenderEffect.createRuntimeShaderEffect(shader, "img").asComposeRenderEffect()
         }
@@ -230,6 +244,7 @@ fun Modifier.flareGlass(
             if (isDark) Color(0xCC1A1C1E) else Color(0xCCFFFFFF),
             RoundedCornerShape(radius.dp)
         )
+        .clip(RoundedCornerShape(radius.dp))
     }
 }
 
