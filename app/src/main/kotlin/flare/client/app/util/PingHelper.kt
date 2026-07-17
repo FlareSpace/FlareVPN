@@ -4,7 +4,10 @@ import android.content.Context
 import android.util.Log
 import flare.client.app.data.model.ProfileEntity
 import flare.client.app.data.parser.V2RayConfigConverter
+import android.net.ConnectivityManager
+import android.net.Network
 import io.nekohasekai.libbox.*
+import flare.client.app.singbox.LocalResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -128,9 +131,7 @@ object PingHelper {
                         }
                     } else {
                         val startTime = System.nanoTime()
-                        val socket = Socket()
-                        flare.client.app.singbox.SingBoxManager.currentVpnService?.protect(socket)
-                        socket.use {
+                        Socket().use {
                             it.connect(InetSocketAddress(ipAddress, port), timeoutSec * 1000)
                         }
                         ((System.nanoTime() - startTime) / 1_000_000) to null
@@ -209,70 +210,22 @@ object PingHelper {
         }
 
         val platform = object : PlatformInterface {
-            private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
-
-            override fun autoDetectInterfaceControl(fd: Int) {
-                flare.client.app.singbox.SingBoxManager.currentVpnService?.protect(fd)
-            }
+            override fun autoDetectInterfaceControl(fd: Int) {}
             override fun clearDNSCache() {}
-            override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
-                    networkCallback?.let {
-                        try {
-                            cm.unregisterNetworkCallback(it)
-                        } catch (e: Exception) {
-                            Log.e(TAG, "unregisterNetworkCallback failed", e)
-                        }
-                    }
-                    networkCallback = null
-                }
-            }
+            override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
             override fun findConnectionOwner(
                 p0: Int, p1: String?, p2: Int, p3: String?, p4: Int
             ): ConnectionOwner? = null
             override fun getInterfaces(): NetworkInterfaceIterator? = null
             override fun includeAllNetworks(): Boolean = false
-            override fun localDNSTransport(): LocalDNSTransport? = flare.client.app.singbox.LocalResolver
+            override fun localDNSTransport(): LocalDNSTransport? = LocalResolver
             override fun openTun(o: TunOptions?): Int = -1
             override fun readWIFIState(): WIFIState? = null
             override fun sendNotification(n: Notification?) {}
-            override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener?) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
-                    networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
-                        private fun notifyNetworkChange(network: android.net.Network) {
-                            try {
-                                val caps = cm.getNetworkCapabilities(network)
-                                val props = cm.getLinkProperties(network)
-                                val isExpensive = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == false
-                                val interfaceName = props?.interfaceName
-                                var idx = -1
-                                if (interfaceName != null) {
-                                    try {
-                                        val ni = java.net.NetworkInterface.getByName(interfaceName)
-                                        if (ni != null) idx = ni.index
-                                    } catch (e: Exception) {}
-                                }
-                                listener?.updateDefaultInterface(interfaceName ?: "", idx, isExpensive, false)
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error in notifyNetworkChange", e)
-                            }
-                        }
-                        override fun onAvailable(network: android.net.Network) { notifyNetworkChange(network) }
-                        override fun onCapabilitiesChanged(network: android.net.Network, networkCapabilities: android.net.NetworkCapabilities) { notifyNetworkChange(network) }
-                        override fun onLinkPropertiesChanged(network: android.net.Network, linkProperties: android.net.LinkProperties) { notifyNetworkChange(network) }
-                    }
-                    try {
-                        cm.registerDefaultNetworkCallback(networkCallback!!)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "registerDefaultNetworkCallback failed", e)
-                    }
-                }
-            }
+            override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
             override fun systemCertificates(): StringIterator? = null
             override fun underNetworkExtension(): Boolean = false
-            override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
+            override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
             override fun useProcFS(): Boolean = true
 
             override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
@@ -302,7 +255,7 @@ object PingHelper {
             var serviceStarted = false
             var retryCount = 0
             val maxRetries = 15
-            var batchResult = buildBatchConfig(profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
+            var batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
 
             while (!serviceStarted && retryCount < maxRetries) {
                 if (batchResult == null || excludedIndices.size >= profiles.size) {
@@ -368,7 +321,7 @@ object PingHelper {
                     }
 
                     retryCount++
-                    batchResult = buildBatchConfig(profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
+                    batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
                 }
             }
 
@@ -423,16 +376,7 @@ object PingHelper {
                                         errMsg = if (body.isNotEmpty()) {
                                             try {
                                                 val msg = JSONObject(body).optString("message", "")
-                                                when {
-                                                    msg.contains("timeout", ignoreCase = true) -> "Timeout"
-                                                    msg.contains("TLS", ignoreCase = true) -> "TLS Failed"
-                                                    msg.contains("unreachable", ignoreCase = true) -> "Unreachable"
-                                                    msg.contains("connection refused", ignoreCase = true) -> "Refused"
-                                                    msg.contains("error occurred", ignoreCase = true) -> "Failed"
-                                                    msg.length > 20 -> msg.substring(0, 17) + ".."
-                                                    msg.isNotBlank() -> msg
-                                                    else -> "${response.code}"
-                                                }
+                                                classifyProxyError(msg, response.code)
                                             } catch (_: Exception) {
                                                 "${response.code}"
                                             }
@@ -445,8 +389,7 @@ object PingHelper {
                                 Log.e(TAG, "Ping failed for profile ${profile.id}: ${e.message}")
                                 errMsg = when {
                                     e is java.net.SocketTimeoutException -> "Timeout"
-                                    e.message?.contains("timeout", ignoreCase = true) == true -> "Timeout"
-                                    else -> "Error"
+                                    else -> classifyProxyError(e.message ?: "Error")
                                 }
                             }
                             onResult(profile.id, rtt, errMsg)
@@ -470,6 +413,7 @@ object PingHelper {
     }
 
     private suspend fun buildBatchConfig(
+        context: Context,
         profiles: List<ProfileEntity>,
         testUrl: String,
         clashPort: Int,
@@ -612,6 +556,24 @@ object PingHelper {
                     proxyServerHosts.add(server)
                 }
             }
+
+            // Pre-resolve proxy server hostnames to IPs on underlying (non-VPN) network
+            val resolvedHosts = preResolveHosts(context, proxyServerHosts)
+            for (i in 0 until outbounds.length()) {
+                val ob = outbounds.optJSONObject(i) ?: continue
+                val server = ob.optString("server", "")
+                val resolvedIp = resolvedHosts[server]
+                if (resolvedIp != null) {
+                    ob.put("server", resolvedIp)
+                    // Preserve original hostname for TLS SNI
+                    ob.optJSONObject("tls")?.let { tls ->
+                        if (tls.optString("server_name", "").isBlank()) {
+                            tls.put("server_name", server)
+                        }
+                    }
+                }
+            }
+
             val dnsDirectServer = profileDnsDirectServer.ifBlank { "8.8.8.8" }
 
             val testHost = extractUrlHost(testUrl)
@@ -624,6 +586,7 @@ object PingHelper {
                 })
                 put("log", JSONObject().apply { put("level", "error") })
                 put("dns", JSONObject().apply {
+                    put("independent_cache", true)
                     put("servers", JSONArray().apply {
                         put(JSONObject().apply {
                             put("tag", "dns-direct")
@@ -648,12 +611,12 @@ object PingHelper {
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
                             put("outbound", JSONArray().put("direct"))
-                            put("server", "dns-local")
+                            put("server", "dns-direct")
                         })
                         if (proxyServerHosts.isNotEmpty()) {
                             put(JSONObject().apply {
                                 put("domain", JSONArray().also { arr -> proxyServerHosts.forEach { arr.put(it) } })
-                                put("server", "dns-local")
+                                put("server", "dns-direct")
                             })
                         }
                         if (!testHost.isNullOrBlank()) {
@@ -670,7 +633,7 @@ object PingHelper {
                             })
                         }
                     })
-                    put("final", "dns-local")
+                    put("final", "dns-direct")
                 })
                 put("inbounds", JSONArray())
                 put("outbounds", outbounds.apply {
@@ -735,6 +698,72 @@ object PingHelper {
         } catch (e: Exception) {
             9094
         }
+    }
+
+    private fun classifyProxyError(message: String, httpCode: Int = 0): String {
+        val msg = message.lowercase()
+        return when {
+            msg.contains("timeout") || msg.contains("deadline exceeded") ||
+            msg.contains("i/o timeout") -> "Timeout"
+            msg.contains("tls") || msg.contains("certificate") ||
+            msg.contains("handshake") || msg.contains("x509") -> "TLS Failed"
+            msg.contains("unreachable") || msg.contains("no route") -> "Unreachable"
+            msg.contains("refused") -> "Refused"
+            msg.contains("reset") || msg.contains("eof") ||
+            msg.contains("closed") || msg.contains("broken pipe") -> "Reset"
+            msg.contains("dns") || msg.contains("resolve") ||
+            msg.contains("lookup") || msg.contains("no such host") -> "DNS Fail"
+            msg.contains("authentication") || msg.contains("unauthorized") -> "Auth Fail"
+            msg.contains("error occurred") -> "Failed"
+            message.length > 20 -> message.substring(0, 17) + ".."
+            message.isNotBlank() -> message
+            else -> if (httpCode != 0) "$httpCode" else "Failed"
+        }
+    }
+
+    private fun getUnderlyingNetwork(context: Context): Network? {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
+        val active = cm.activeNetwork
+        val caps = if (active != null) cm.getNetworkCapabilities(active) else null
+        if (caps != null && !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) {
+            return active
+        }
+        for (network in cm.allNetworks) {
+            val netCaps = cm.getNetworkCapabilities(network) ?: continue
+            if (netCaps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+                (netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
+                 netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                 netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))) {
+                return network
+            }
+        }
+        return active
+    }
+
+    private fun preResolveHosts(context: Context, hosts: Set<String>): Map<String, String> {
+        if (hosts.isEmpty()) return emptyMap()
+        val resolved = HashMap<String, String>()
+        val network = getUnderlyingNetwork(context)
+        for (host in hosts) {
+            try {
+                val addresses = if (network != null) {
+                    network.getAllByName(host)
+                } else {
+                    InetAddress.getAllByName(host)
+                }
+                val ipv4 = addresses.firstOrNull { it is java.net.Inet4Address }
+                val ip = (ipv4 ?: addresses.firstOrNull())?.hostAddress
+                if (!ip.isNullOrBlank()) {
+                    resolved[host] = ip
+                    if (flare.client.app.BuildConfig.DEBUG) {
+                        Log.d(TAG, "Pre-resolved $host -> $ip")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to pre-resolve $host: ${e.message}")
+            }
+        }
+        return resolved
     }
 
     private fun extractUrlHost(urlStr: String): String? {
