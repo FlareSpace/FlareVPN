@@ -257,7 +257,7 @@ class SimpleEditorState(
                     if (scheme == "vless") {
                         query.add("type=$transport")
                         when (transport) {
-                            "tcp" -> {
+                            "tcp", "raw" -> {
                                 if (tcpHost.isNotEmpty()) query.add("host=${encode(tcpHost)}")
                                 if (tcpPath.isNotEmpty()) query.add("path=${encode(tcpPath)}")
                             }

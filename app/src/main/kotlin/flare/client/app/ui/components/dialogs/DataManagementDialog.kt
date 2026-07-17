@@ -376,7 +376,7 @@ fun DataManagementDialog(
                     .let {
                         if (hazeState != null) {
                             val isDark = FlareTheme.colors.isDark
-                            val baseStyle = HazeMaterials.ultraThin()
+                            val baseStyle = HazeMaterials.thin()
                             val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.30f
                             val lightTint = baseStyle.tints.firstOrNull()?.color
                                 ?: Color.White.copy(alpha = 0.30f)

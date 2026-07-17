@@ -1,0 +1,16 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    
+    <group android:translateY="-2.5">
+        <path
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="1.5"
+            android:strokeLineJoin="round"
+            android:strokeLineCap="round"
+            android:pathData="M4.35,5.04 L4.99,10.77 L5.65,7.58 L10.67,12.64 L6.50,9.97 L5.94,12.11 L0.99,17.93 L3.96,17.22 L7.78,18.69 L5.56,18.55 L8.48,20.19 L11.09,23.71 L11.08,22.27 L13.07,22.39 L12.50,23.90 L18.27,18.57 L16.29,18.69 L17.78,17.64 L22.99,17.81 L17.49,10.14 L13.30,12.65 L18.34,8.06 L19.04,10.97 L20.17,8.18 L19.74,5.04 L13.90,10.35 L12.50,9.26 L11.54,9.22 L10.24,10.32 Z M17.50,14.47 L17.42,14.64 L16.83,15.00 L16.50,16.02 L15.91,16.72 L15.45,17.02 L13.94,17.64 L13.16,18.50 L13.54,16.45 L13.80,15.92 L14.32,15.28 L14.78,14.91 L15.60,14.55 L16.50,14.41 Z M6.62,14.54 L6.88,14.41 L8.12,14.47 L8.96,14.75 L9.63,15.19 L10.18,15.84 L10.45,16.38 L10.86,18.38 L10.76,18.43 L10.28,17.85 L9.89,17.53 L8.68,17.08 L8.12,16.72 L7.63,16.09 L7.21,15.01 Z" />
+    </group>
+</vector>

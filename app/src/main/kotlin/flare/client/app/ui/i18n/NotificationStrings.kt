@@ -15,11 +15,11 @@ interface NotificationStrings {
 }
 
 object RuNotificationStrings : NotificationStrings {
-    override val notif_adaptive_tunnel_changed_body : String = "Профиль был изменен на %1\$s после обрыва соединения."
-    override val notif_adaptive_tunnel_changed_title : String = "Профиль изменен"
-    override val notif_best_profile_body : String = "Выбор профиля был обновлен на %1\$s с пингом %2\$dms"
+    override val notif_adaptive_tunnel_changed_body : String = "Профиль был изменён на %1\$s после обрыва соединения."
+    override val notif_adaptive_tunnel_changed_title : String = "Профиль изменён"
+    override val notif_best_profile_body : String = "Автоматически выбран профиль %1\$s с пингом %2\$d мс."
     override val notif_best_profile_title : String = "Обновление профиля"
-    override val notif_language_changed : String = "Язык приложения изменен на %s"
+    override val notif_language_changed : String = "Язык приложения изменён на %s."
     override val notif_language_changed_auto : String = "Язык приложения был изменен!"
     override val notif_theme_changed : String = "Тема приложения была успешно изменена!"
     override val notif_theme_changed_auto : String = "Тема приложения была изменена автоматически!"

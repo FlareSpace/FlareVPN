@@ -26,6 +26,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import androidx.compose.ui.platform.LocalContext
 import flare.client.app.ui.theme.FlareTheme
 
 @Composable
@@ -39,12 +45,14 @@ fun FlareSliderItem(
     modifier: Modifier = Modifier,
     isTop: Boolean = false,
     isBottom: Boolean = false,
-    isMiddle: Boolean = false
+    isMiddle: Boolean = false,
+    step: Float = 1f
 ) {
     val colors = FlareTheme.colors
     val backgroundColor = colors.bgItem.copy(alpha = 0.85f)
     val inactiveTrackColor = colors.textSecondary.copy(alpha = 0.2f)
 
+    val context = LocalContext.current
     val density = LocalDensity.current
     val baseThumbWidthPx = with(density) { 35.dp.toPx() }
     val baseThumbHeightPx = with(density) { 22.dp.toPx() }
@@ -52,6 +60,13 @@ fun FlareSliderItem(
 
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var isDragging by remember { mutableStateOf(false) }
+    var lastVibratedValue by remember { mutableStateOf(value) }
+
+    SideEffect {
+        if (!isDragging) {
+            lastVibratedValue = value
+        }
+    }
 
     val currentFraction = ((value - valueRange.start) / (valueRange.endInclusive - valueRange.start)).coerceIn(0f, 1f)
 
@@ -79,7 +94,20 @@ fun FlareSliderItem(
             val fraction = ((xOffset - startX) / usableWidth).coerceIn(0f, 1f)
             val rawValue = valueRange.start + fraction * (valueRange.endInclusive - valueRange.start)
             val roundedValue = (kotlin.math.round(rawValue * 100f) / 100f).coerceIn(valueRange.start, valueRange.endInclusive)
-            onValueChange(roundedValue)
+            
+            val steppedValue = if (step > 0f) {
+                val stepsCount = kotlin.math.round((roundedValue - valueRange.start) / step)
+                (valueRange.start + stepsCount * step).coerceIn(valueRange.start, valueRange.endInclusive)
+            } else {
+                roundedValue
+            }
+
+            if (steppedValue != lastVibratedValue) {
+                lastVibratedValue = steppedValue
+                triggerSliderVibration(context)
+            }
+
+            onValueChange(steppedValue)
         }
     }
 
@@ -263,5 +291,28 @@ fun FlareSliderItem(
                 cornerRadius = CornerRadius(thumbWidthPx / 2, thumbWidthPx / 2)
             )
         }
+    }
+}
+
+private fun triggerSliderVibration(context: Context) {
+    try {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            vibrator.vibrate(30)
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("FlareSliderItem", "Failed to vibrate", e)
     }
 }

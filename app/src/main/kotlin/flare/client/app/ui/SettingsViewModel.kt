@@ -32,6 +32,8 @@ class SettingsViewModel : ViewModel() {
 
     
     var composeThemeMode by mutableStateOf(0)
+    var composeAppIcon by mutableStateOf("main")
+    var composeAppearanceType by mutableStateOf(1)
     var composeSystemIsDark by mutableStateOf(false)
     var composeIsGradientEnabled by mutableStateOf(true)
     var composeBackgroundType by mutableStateOf(0)
@@ -161,6 +163,8 @@ class SettingsViewModel : ViewModel() {
 
     fun syncTheme(settings: SettingsManager) {
         composeThemeMode = settings.themeMode
+        composeAppIcon = settings.appIcon
+        composeAppearanceType = settings.appearanceType
         composeIsGradientEnabled = settings.isBackgroundGradientEnabled
         composeBackgroundType = settings.backgroundType
         composeIsAnimationEnabled = settings.isGradientAnimationEnabled

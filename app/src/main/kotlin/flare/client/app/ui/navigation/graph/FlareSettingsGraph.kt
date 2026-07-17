@@ -44,6 +44,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
     homeListState: androidx.compose.foundation.lazy.LazyListState,
     settings: SettingsManager,
     onRestartRequired: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
     onChangeAppsClick: () -> Unit,
     onLogLevelClick: (String) -> Unit,
     onBestProfileOnlyConnectedClick: (Boolean) -> Unit,
@@ -58,11 +59,13 @@ internal fun NavGraphBuilder.flareSettingsGraph(
     onThemeClick: (Int) -> Unit,
     onLanguageSelected: (String) -> Unit,
     onFontSelect: (String) -> Unit,
+    onAppIconSelect: (String) -> Unit,
     accentColor: () -> Int,
     isClipboardLoading: () -> Boolean,
     isAnySubscriptionExpanded: () -> Boolean,
     appHazeState: dev.chrisbanes.haze.HazeState,
     sharedBasicSettingsScrollState: ScrollState,
+    sharedSettingsScrollState: ScrollState,
     onDataManagementClick: () -> Unit
 ) {
     val navigateHome = {
@@ -78,7 +81,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
@@ -100,14 +103,11 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                 },
                 isStatusNotificationEnabled = settingsViewModel.composeIsStatusNotificationEnabled,
                 onStatusNotificationChange = {
-                    settings.isStatusNotificationEnabled = it
-                    settingsViewModel.composeIsStatusNotificationEnabled = it
                     if (it) {
-                        AppNotificationManager.showNotification(
-                            NotificationType.SUCCESS,
-                            I18n.strings.notif_notifications_enabled,
-                            3
-                        )
+                        onRequestNotificationPermission()
+                    } else {
+                        settings.isStatusNotificationEnabled = false
+                        settingsViewModel.composeIsStatusNotificationEnabled = false
                     }
                 },
                 isNotificationSpeedEnabled = settingsViewModel.composeIsNotificationSpeedEnabled,
@@ -129,19 +129,22 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                 coreLogLevel = settingsViewModel.composeCoreLogLevel,
                 onLogLevelClick = onLogLevelClick,
                 onViewJournalClick = {
-                    navController.navigate(Destination.Journal.route)
+                    if (navController.currentDestination?.route == Destination.BasicSettings.route) {
+                        navController.navigate(Destination.Journal.route)
+                    }
                 },
                 isBestProfileEnabled = settingsViewModel.composeIsBestProfileEnabled,
                 onBestProfileChange = {
                     settings.isBestProfileEnabled = it
                     settingsViewModel.composeIsBestProfileEnabled = it
-                    vpnViewModel.startBestProfileJob()
                 },
                 bestProfileInterval = settingsViewModel.composeBestProfileInterval,
                 onBestProfileIntervalChange = {
                     settings.bestProfileInterval = it
                     settingsViewModel.composeBestProfileInterval = it
-                    vpnViewModel.startBestProfileJob()
+                    
+                    
+                    settings.lastBestProfileRunTime = 0L
                 },
                 isBestProfileOnlyConnected = settingsViewModel.composeIsBestProfileOnlyConnected,
                 onBestProfileOnlyConnectedClick = onBestProfileOnlyConnectedClick,
@@ -174,7 +177,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
@@ -280,7 +283,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
@@ -318,7 +321,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
@@ -346,7 +349,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
@@ -397,6 +400,44 @@ internal fun NavGraphBuilder.flareSettingsGraph(
         }
     }
 
+    composable(Destination.VpnSubscription.route) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val authManager = androidx.compose.runtime.remember { flare.client.app.data.auth.AuthManager(context, settings) }
+        val application = context.applicationContext as android.app.Application
+        val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<flare.client.app.ui.subscription.SubscriptionViewModel>(
+            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return flare.client.app.ui.subscription.SubscriptionViewModel(application, authManager, settings) as T
+                }
+            }
+        )
+        
+        SettingsDetailContainer(
+            route = Destination.VpnSubscription.route,
+            currentRoute = currentRoute(),
+            morphRequest = pendingSettingsMorph(),
+            onMorphFinished = onMorphFinished,
+            settingsViewModel = settingsViewModel,
+            onBack = { navController.popBackStack() },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
+            onDismissLeft = { navigateHome() },
+            backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
+            hazeState = appHazeState
+        ) {
+            flare.client.app.ui.subscription.SubscriptionScreen(
+                authManager = authManager,
+                hazeState = appHazeState,
+                viewModel = viewModel,
+                onImportSubscription = { link ->
+                    profilesViewModel.importFromClipboard(link)
+                    navController.popBackStack()
+                },
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+    }
+
     composable(Destination.ThemeSettings.route) {
         SettingsDetailContainer(
             route = Destination.ThemeSettings.route,
@@ -405,13 +446,14 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState
         ) {
             ThemeSettingsScreen(
                 themeMode = settingsViewModel.composeThemeMode,
+                appearanceType = settingsViewModel.composeAppearanceType,
                 backgroundType = settingsViewModel.composeBackgroundType,
                 isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled,
                 gradientSpeed = settingsViewModel.composeGradientSpeed,
@@ -421,6 +463,10 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                 isChangeLaunchButtonColorEnabled = settingsViewModel.composeIsChangeLaunchButtonColorEnabled,
                 onBack = { navController.popBackStack() },
                 onThemeClick = onThemeClick,
+                onAppearanceTypeClick = {
+                    settings.appearanceType = it
+                    settingsViewModel.composeAppearanceType = it
+                },
                 onBackgroundTypeClick = {
                     settings.backgroundType = it
                     settingsViewModel.composeBackgroundType = it
@@ -497,10 +543,6 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                                     }
 
                                     val body = response.body
-                                    if (body == null) {
-                                        response.close()
-                                        return@withContext false
-                                    }
 
                                     val context = navController.context
                                     val outFile = java.io.File(context.filesDir, "background_photo.jpg")
@@ -555,6 +597,8 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                 },
                 fontFamily = settingsViewModel.composeFontFamily,
                 onFontSelect = onFontSelect,
+                appIcon = settingsViewModel.composeAppIcon,
+                onAppIconSelect = onAppIconSelect,
                 hazeState = appHazeState
             )
         }
@@ -568,7 +612,7 @@ internal fun NavGraphBuilder.flareSettingsGraph(
             onMorphFinished = onMorphFinished,
             settingsViewModel = settingsViewModel,
             onBack = { navController.popBackStack() },
-            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, appHazeState) },
+            backgroundContentRight = { SettingsBackgroundContent(settingsViewModel, sharedSettingsScrollState, appHazeState) },
             onDismissLeft = { navigateHome() },
             backgroundContentLeft = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) },
             hazeState = appHazeState

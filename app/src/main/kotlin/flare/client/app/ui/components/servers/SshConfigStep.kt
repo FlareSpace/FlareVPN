@@ -6,6 +6,10 @@ import flare.client.app.ui.components.GeologicaMedium
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.Font
@@ -22,7 +26,16 @@ import flare.client.app.ui.components.FlareWizardIpPortField
 import flare.client.app.ui.i18n.I18n
 import flare.client.app.ui.theme.FlareTheme
 
-
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 
 
 @Composable
@@ -42,8 +55,31 @@ fun SshConfigStep(
     accentColor: Color
 ) {
     val titleText = I18n.strings.servers_ssh_title
+    
+    val ipFocusRequester = remember { FocusRequester() }
+    val usernameFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    var isUsernameFocused by remember { mutableStateOf(false) }
+    var isPasswordFocused by remember { mutableStateOf(false) }
+
+    val isShifted = isUsernameFocused || isPasswordFocused
+    val offsetProgress by animateDpAsState(
+        targetValue = if (isShifted) (-80).dp else 0.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "card_offset"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(y = offsetProgress)
+    ) {
         Text(
             text = titleText,
             fontFamily = GeologicaMedium,
@@ -66,7 +102,9 @@ fun SshConfigStep(
                 accentColor = accentColor,
                 isValid = profileName.isNotBlank(),
                 icon = R.drawable.ic_cloud,
-                hint = I18n.strings.servers_ssh_profile_name_hint
+                hint = I18n.strings.servers_ssh_profile_name_hint,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { ipFocusRequester.requestFocus() })
             )
             
             Spacer(modifier = Modifier.height(20.dp))
@@ -77,7 +115,15 @@ fun SshConfigStep(
                 portValue = port,
                 onPortChange = onPortChange,
                 accentColor = accentColor,
-                icon = R.drawable.ic_language_filled
+                icon = R.drawable.ic_language_filled,
+                ipFocusRequester = ipFocusRequester,
+                ipKeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                ipKeyboardActions = KeyboardActions(onNext = { usernameFocusRequester.requestFocus() }),
+                portKeyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Next
+                ),
+                portKeyboardActions = KeyboardActions(onNext = { usernameFocusRequester.requestFocus() })
             )
             
             Spacer(modifier = Modifier.height(20.dp))
@@ -89,7 +135,11 @@ fun SshConfigStep(
                 accentColor = accentColor,
                 isValid = user.isNotBlank(),
                 icon = R.drawable.ic_suitcase,
-                hint = "root"
+                hint = "root",
+                focusRequester = usernameFocusRequester,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
+                onFocusChanged = { isUsernameFocused = it }
             )
             
             Spacer(modifier = Modifier.height(20.dp))
@@ -100,9 +150,19 @@ fun SshConfigStep(
                 onValueChange = onPassChange,
                 accentColor = accentColor,
                 isValid = pass.isNotBlank(),
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                keyboardType = KeyboardType.Password,
                 icon = R.drawable.ic_vpn_key,
-                hint = "••••••••"
+                hint = "••••••••",
+                focusRequester = passwordFocusRequester,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                }),
+                onFocusChanged = { isPasswordFocused = it }
             )
         }
     }

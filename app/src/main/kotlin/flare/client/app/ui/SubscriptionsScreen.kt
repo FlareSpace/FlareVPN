@@ -125,6 +125,7 @@ fun SubscriptionsScreen(
                         valueText = String.format(I18n.strings.settings_ping_timeout_sec, subUpdateTimeout),
                         value = subUpdateTimeout.toFloat(),
                         valueRange = 1f..25f,
+                        step = 1f,
                         accentColor = accentColor,
                         onValueChange = { onSubUpdateTimeoutChange(it.toInt()) },
                         isTop = true,
@@ -197,7 +198,7 @@ fun SubscriptionsScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_subscriptions_title,
             hazeState = hazeState,
             scrollState = scrollState,

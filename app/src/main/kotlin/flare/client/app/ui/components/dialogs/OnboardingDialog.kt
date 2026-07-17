@@ -146,8 +146,14 @@ fun OnboardingDialog(
         SideEffect {
             dialogWindow?.let { window ->
                 window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                window.setDimAmount(0.35f)
+                window.setDimAmount(0.60f)
                 window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    val params = window.attributes
+                    params.blurBehindRadius = (15 * context.resources.displayMetrics.density).toInt()
+                    window.attributes = params
+                }
             }
         }
 
@@ -164,19 +170,19 @@ fun OnboardingDialog(
                     .let {
                         if (hazeState != null) {
                             val isDark = FlareTheme.colors.isDark
-                            val baseStyle = HazeMaterials.regular()
-                            val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.60f
+                            val baseStyle = HazeMaterials.thin()
+                            val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.30f
                             val lightTint = baseStyle.tints.firstOrNull()?.color
-                                ?: Color.White.copy(alpha = 0.70f)
+                                ?: Color.White.copy(alpha = 0.30f)
                             val darkTint = Color(0xFF1A1A1A).copy(alpha = baseAlpha)
-                            val regularStyle = HazeStyle(
+                            val dialogStyle = HazeStyle(
                                 blurRadius  = baseStyle.blurRadius,
                                 tints       = listOf(HazeTint(color = if (isDark) darkTint else lightTint)),
                                 noiseFactor = 0f
                             )
-                            it.hazeEffect(
+                            it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(
                                 state = hazeState,
-                                style = regularStyle
+                                style = dialogStyle
                             )
                         } else {
                             it.background(FlareTheme.colors.dialogGlassFill)

@@ -517,8 +517,8 @@ private fun VerticalLiquidPillCanvas(
                 modifier = cellWeightModifier
             )
             NavTabIcon(
-                outlineRes = R.drawable.ic_nav_spark,
-                filledRes = R.drawable.ic_nav_spark_filled,
+                outlineRes = R.drawable.ic_nav_fox,
+                filledRes = R.drawable.ic_nav_fox_filled,
                 influence = influence1,
                 accentColor = accentStart,
                 modifier = cellWeightModifier

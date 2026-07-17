@@ -56,13 +56,20 @@ fun GlassDialog(
         )
     ) {
         val view = androidx.compose.ui.platform.LocalView.current
+        val context = androidx.compose.ui.platform.LocalContext.current
         val dialogWindow = (view.parent as? DialogWindowProvider)?.window
 
         SideEffect {
             dialogWindow?.let { window ->
                 window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                window.setDimAmount(0.35f)
+                window.setDimAmount(0.60f)
                 window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                    val params = window.attributes
+                    params.blurBehindRadius = (15 * context.resources.displayMetrics.density).toInt()
+                    window.attributes = params
+                }
             }
         }
 
@@ -109,7 +116,7 @@ fun GlassDialog(
                     .let {
                         if (hazeState != null) {
                             val isDark = FlareTheme.colors.isDark
-                            val baseStyle = HazeMaterials.ultraThin()
+                            val baseStyle = HazeMaterials.thin()
                             val baseAlpha = baseStyle.tints.firstOrNull()?.color?.alpha ?: 0.30f
                             val lightTint = baseStyle.tints.firstOrNull()?.color
                                 ?: Color.White.copy(alpha = 0.30f)

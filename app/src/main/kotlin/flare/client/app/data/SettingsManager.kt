@@ -3,12 +3,20 @@ package flare.client.app.data
 import android.content.Context
 import android.content.SharedPreferences
 
-class SettingsManager(context: Context) {
+class SettingsManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("flare_settings", Context.MODE_PRIVATE)
 
     var isFragmentationEnabled: Boolean
         get() = prefs.getBoolean("frag_enabled", false)
         set(value) = prefs.edit().putBoolean("frag_enabled", value).apply()
+
+    var jwtToken: String?
+        get() = prefs.getString("jwt_token", null)
+        set(value) = prefs.edit().putString("jwt_token", value).apply()
+
+    var isAnonymousSession: Boolean
+        get() = prefs.getBoolean("is_anon_session", false)
+        set(value) = prefs.edit().putBoolean("is_anon_session", value).apply()
 
     var packetType: String
         get() {
@@ -102,11 +110,11 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("mux_enabled", value).apply()
 
     var muxProtocol: String
-        get() = prefs.getString("mux_protocol", "smux") ?: "h2mux"
+        get() = prefs.getString("mux_protocol", "h2mux") ?: "h2mux"
         set(value) = prefs.edit().putString("mux_protocol", value).apply()
 
     var muxMaxStreams: String
-        get() = prefs.getString("mux_max_streams", "8") ?: "8"
+        get() = prefs.getString("mux_max_streams", "4") ?: "4"
         set(value) = prefs.edit().putString("mux_max_streams", value).apply()
 
     var muxPadding: Boolean
@@ -137,6 +145,14 @@ class SettingsManager(context: Context) {
         get() = prefs.getInt("theme_mode", 0)
         set(value) = prefs.edit().putInt("theme_mode", value).apply()
 
+    var appIcon: String
+        get() = prefs.getString("app_icon", "main") ?: "main"
+        set(value) = prefs.edit().putString("app_icon", value).apply()
+
+    var appearanceType: Int
+        get() = prefs.getInt("appearance_type", 1)
+        set(value) = prefs.edit().putInt("appearance_type", value).apply()
+
     var backgroundType: Int
         get() = prefs.getInt("background_type", if (isBackgroundGradientEnabled) 1 else 0)
         set(value) = prefs.edit().putInt("background_type", value).apply()
@@ -161,11 +177,11 @@ class SettingsManager(context: Context) {
         set(value) = prefs.edit().putBoolean("liquid_glass_enabled", value).apply()
 
     var isStatusNotificationEnabled: Boolean
-        get() = prefs.getBoolean("status_notification_enabled", true)
+        get() = prefs.getBoolean("status_notification_enabled", false)
         set(value) = prefs.edit().putBoolean("status_notification_enabled", value).apply()
 
     var isNotificationSpeedEnabled: Boolean
-        get() = prefs.getBoolean("notification_speed_enabled", true)
+        get() = prefs.getBoolean("notification_speed_enabled", false)
         set(value) = prefs.edit().putBoolean("notification_speed_enabled", value).apply()
 
     var photoSeed: String
@@ -195,6 +211,11 @@ class SettingsManager(context: Context) {
     var isBestProfileNotificationEnabled: Boolean
         get() = prefs.getBoolean("best_profile_notification_enabled", false)
         set(value) = prefs.edit().putBoolean("best_profile_notification_enabled", value).apply()
+
+    
+    var lastBestProfileRunTime: Long
+        get() = prefs.getLong("best_profile_last_run_time", 0L)
+        set(value) = prefs.edit().putLong("best_profile_last_run_time", value).apply()
 
     var isOnboardingCompleted: Boolean
         get() = prefs.getBoolean("onboarding_completed", false)
@@ -236,6 +257,27 @@ class SettingsManager(context: Context) {
     var isHwidEnabled: Boolean
         get() = prefs.getBoolean("hwid_enabled", true)
         set(value) = prefs.edit().putBoolean("hwid_enabled", value).apply()
+
+    val anonymousHwid: String
+        get() {
+            var id = prefs.getString("anonymous_hwid", null)
+            if (id == null) {
+                id = java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16).lowercase()
+                prefs.edit().putString("anonymous_hwid", id).apply()
+            }
+            return id
+        }
+
+    fun getHardwareId(): String {
+        return if (isHwidEnabled) {
+            android.provider.Settings.Secure.getString(
+                context.contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            ) ?: "unknown_hwid"
+        } else {
+            anonymousHwid
+        }
+    }
 
     var isCoreLogEnabled: Boolean
         get() = prefs.getBoolean("core_log_enabled", false)
@@ -395,6 +437,18 @@ class SettingsManager(context: Context) {
     var virtualSubscriptionPinnedTime: Long
         get() = prefs.getLong("virtual_sub_pinned_time", 0L)
         set(value) = prefs.edit().putLong("virtual_sub_pinned_time", value).apply()
+
+    var mergedSubscriptionIds: Set<String>
+        get() = prefs.getStringSet("merged_sub_ids", emptySet()) ?: emptySet()
+        set(value) = prefs.edit().putStringSet("merged_sub_ids", value).apply()
+
+    var isMergedSubscriptionPinned: Boolean
+        get() = prefs.getBoolean("merged_sub_pinned", false)
+        set(value) = prefs.edit().putBoolean("merged_sub_pinned", value).apply()
+
+    var mergedSubscriptionPinnedTime: Long
+        get() = prefs.getLong("merged_sub_pinned_time", 0L)
+        set(value) = prefs.edit().putLong("merged_sub_pinned_time", value).apply()
 }
 
 

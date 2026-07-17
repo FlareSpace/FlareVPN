@@ -32,6 +32,13 @@ interface ProfileDao {
     @Query("UPDATE profiles SET isSelected = 1 WHERE id = :id")
     suspend fun selectProfile(id: Long)
 
+    
+    @Transaction
+    suspend fun selectProfileAtomic(id: Long) {
+        clearSelection()
+        selectProfile(id)
+    }
+
     @Query("SELECT * FROM profiles WHERE isSelected = 1 LIMIT 1")
     suspend fun getSelectedProfile(): ProfileEntity?
 

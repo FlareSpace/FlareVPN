@@ -44,8 +44,7 @@ class ProfileRepository(
         subscriptionDao.deleteById(id)
 
     suspend fun selectProfile(id: Long) {
-        profileDao.clearSelection()
-        profileDao.selectProfile(id)
+        profileDao.selectProfileAtomic(id)
     }
 
     suspend fun getSelectedProfile(): ProfileEntity? = profileDao.getSelectedProfile()

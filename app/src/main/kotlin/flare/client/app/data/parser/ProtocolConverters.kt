@@ -13,7 +13,7 @@ object ProtocolConverters {
         sbOb.put("server", vnext.optString("address"))
         sbOb.put("server_port", vnext.optInt("port"))
         sbOb.put("uuid", user.optString("id"))
-        var flow = user.optString("flow", "")
+        var flow = user.optString("flow", "").takeIf { it != "null" } ?: ""
         var pe = if (xrayOb.has("packet_encoding")) {
             xrayOb.optString("packet_encoding", "")
         } else {

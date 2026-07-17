@@ -36,12 +36,9 @@ interface ServerStrings {
     val servers_subscription_failed_title: String
     val servers_tariff_title: String
     val tariff_free_title: String
-    val tariff_plus_title: String
     val tariff_premium_title: String
     val tariff_free_desc: String
     val tariff_free_price: String
-    val tariff_plus_desc: String
-    val tariff_plus_price: String
     val tariff_premium_desc: String
     val tariff_premium_price: String
     val tariff_success_title: String
@@ -91,6 +88,27 @@ interface ServerStrings {
     val ssh_status_waiting: String
     val wizard_setup_configuring: String
     val wizard_setup_free_title: String
+    val wizard_setup_auth_title: String
+    val wizard_setup_auth_waiting: String
+    val wizard_setup_auth_desc: String
+    val wizard_setup_auth_error_title: String
+    val wizard_setup_auth_retry: String
+    val wizard_setup_auth_error_timeout: String
+    val wizard_setup_auth_error_network: String
+    val wizard_setup_buy_title: String
+    val wizard_setup_buy_action: String
+    val wizard_setup_buy_desc: String
+    val wizard_setup_buy_open_tg: String
+    val wizard_setup_buy_already_purchased: String
+    val wizard_setup_free_auth_prompt_title: String
+    val wizard_setup_free_auth_prompt_subtitle: String
+    val wizard_setup_free_auth_prompt_desc: String
+    val wizard_setup_free_auth_prompt_with: String
+    val wizard_setup_free_auth_prompt_without: String
+    val wizard_setup_free_status: String
+    val wizard_setup_free_limit_exceeded: String
+    val wizard_setup_free_telegram_required: String
+    val wizard_setup_free_parse_error: String
     val wizard_setup_optimizing: String
     val wizard_setup_ready: String
     val wizard_setup_saving: String
@@ -161,16 +179,16 @@ object RuServerStrings : ServerStrings {
     override val wizard_step_settings : String = "Настройки"
     override val wizard_step_setup : String = "Установка"
     override val servers_desc_create : String = "Ваш собственный сервер, который контролируете только вы."
-    override val servers_desc_flare : String = "Flare Servers: анонимные, не хранят логи, работают быстро и доступны 24/7."
+    override val servers_desc_flare : String = "FlareVPN — это быстрый, не хранящий логов и доступный 24/7 VPN."
     override val servers_protocol_shadowsocks_desc : String = "Энергоэффективный и быстрый протокол шифрования на базе SOCKS5 с методами AEAD. Обеспечивает высокую производительность и защиту данных при минимальной нагрузке."
     override val servers_protocol_shadowsocks_title : String = "ShadowSocks"
     override val servers_protocol_title : String = "Выберите протокол"
     override val servers_protocol_wireguard_desc : String = "Легковесный и современный протокол сетевого уровня на базе UDP с передовой криптографией. Обеспечивает мгновенное подключение и максимальную пропускную способность."
     override val servers_protocol_wireguard_title : String = "WireGuard"
-    override val servers_protocol_xray_desc : String = "Xray с REALITY маскирует VPN-Трафик под веб-трафик. Высокая устойчивость к обнаружению, обеспечивает высокую приватность и скорость"
+    override val servers_protocol_xray_desc : String = "Xray с REALITY маскирует VPN-трафик под веб-трафик. Обладает высокой устойчивостью к обнаружению, обеспечивает высокую приватность и скорость."
     override val servers_protocol_xray_title : String = "Xray с REALITY"
     override val servers_setup_success : String = "Сервер был успешно создан!"
-    override val servers_setup_success_desc : String = "Вы можете найти его внутри подписки \"Мои сервера\""
+    override val servers_setup_success_desc : String = "Вы можете найти его в подписке «Мои серверы»."
     override val servers_setup_title : String = "Настройка сервера..."
     override val servers_ssh_ip : String = "IP-адрес"
     override val servers_ssh_password : String = "Пароль или ключ SSH"
@@ -180,7 +198,7 @@ object RuServerStrings : ServerStrings {
     override val servers_ssh_profile_name_hint : String = "Мой сервер"
     override val servers_ssh_username : String = "Имя пользователя SSH"
     override val servers_title_create : String = "Создать свой сервер"
-    override val servers_title_flare : String = "Сервера Flare"
+    override val servers_title_flare : String = "Серверы Flare"
     override val servers_ssh_title : String = "Параметры подключения SSH"
     override val servers_xray_title : String = "Параметры Xray"
     override val servers_hysteria2_title : String = "Параметры Hysteria 2"
@@ -191,19 +209,16 @@ object RuServerStrings : ServerStrings {
     override val servers_subscription_failed_title : String = "Ошибка добавления"
     override val servers_tariff_title : String = "Выберите план"
     override val tariff_free_title : String = "Free"
-    override val tariff_plus_title : String = "Plus"
     override val tariff_premium_title : String = "Premium"
-    override val tariff_free_desc : String = "Средняя скорость, обеспечивает базовый доступ ко многим сервисам"
+    override val tariff_free_desc : String = "Те же быстрые серверы из Premium, но с ограничением трафика и устройств"
     override val tariff_free_price : String = "0р/мес"
-    override val tariff_plus_desc : String = "Высокая скорость, низкая задержка, доступ ко всем сервисам, обход белых списков"
-    override val tariff_plus_price : String = "200р/мес"
-    override val tariff_premium_desc : String = "Максимальная стабильность и скорость, больше серверов"
-    override val tariff_premium_price : String = "400р/мес"
+    override val tariff_premium_desc : String = "Максимальная стабильность и скорость, безлимитный трафик"
+    override val tariff_premium_price : String = "250р/мес"
     override val tariff_success_title : String = "Подписка Free добавлена"
-    override val tariff_success_desc : String = "вы найдете ее в списке"
+    override val tariff_success_desc : String = "Вы найдёте её в списке."
     override val tariff_error_title : String = "Не удалось добавить подписку Free"
-    override val tariff_error_desc : String = "попробуйте позже"
-    override val servers_xray_port_desc : String = "Порт, на котором будет работать ваш VPN сервеp. 443 — стандартный порт для маскировки под HTTPS."
+    override val tariff_error_desc : String = "Попробуйте позже."
+    override val servers_xray_port_desc : String = "Порт, на котором будет работать ваш VPN-сервер. 443 — стандартный порт для маскировки под HTTPS."
     override val servers_xray_port_label : String = "Порт Xray"
     override val servers_xray_setup_title : String = "Настройка Xray"
     override val servers_xray_sni_desc : String = "Домен, под который будет маскироваться ваш трафик. Google.com — надежный вариант по умолчанию."
@@ -224,7 +239,7 @@ object RuServerStrings : ServerStrings {
     override val simple_editor_sid : String = "Short ID"
     override val simple_editor_sni : String = "SNI"
     override val simple_editor_tag : String = "Имя профиля"
-    override val simple_editor_title : String = "Редактор профиля"
+    override val simple_editor_title : String = "Редактор"
     override val simple_editor_tls : String = "Настройки TLS"
     override val simple_editor_uuid_pwd : String = "UUID / Пароль"
     override val simple_editor_up_mbps : String = "Скорость отдачи (Up Mbps)"
@@ -232,7 +247,7 @@ object RuServerStrings : ServerStrings {
     override val simple_editor_allow_insecure : String = "Разрешить небезопасный TLS (Insecure)"
     override val simple_editor_hysteria_settings : String = "Настройки Hysteria"
     override val simple_editor_hop_interval : String = "Интервал смены порта (Hop interval)"
-    override val ssh_error_config_write : String = "Файл конфига не был записан на сервер"
+    override val ssh_error_config_write : String = "Конфигурационный файл не был записан на сервер."
     override val ssh_error_generic : String = "Ошибка: %s"
     override val ssh_error_keys : String = "Не удалось получить ключи REALITY."
     override val ssh_error_port_not_listening : String = "Xray запущен, но не слушает порт %d!"
@@ -244,8 +259,29 @@ object RuServerStrings : ServerStrings {
     override val ssh_status_installing_xray : String = "Установка Xray..."
     override val ssh_status_restarting : String = "Перезапуск сервиса Xray..."
     override val ssh_status_waiting : String = "Ожидание запуска..."
-    override val wizard_setup_configuring : String = "Настройка сервера..."
+    override val wizard_setup_configuring : String = "Настройка конфигурации..."
     override val wizard_setup_free_title : String = "Настраиваем вашу подписку..."
+    override val wizard_setup_auth_title: String = "Авторизация"
+    override val wizard_setup_auth_waiting: String = "Ожидание входа в Telegram..."
+    override val wizard_setup_auth_desc: String = "Пожалуйста, перейдите в бота FlareVPN и подтвердите авторизацию. Этот экран обновится автоматически."
+    override val wizard_setup_auth_error_title: String = "Ошибка авторизации"
+    override val wizard_setup_auth_retry: String = "Повторить"
+    override val wizard_setup_auth_error_timeout: String = "Время ожидания истекло. Попробуйте еще раз."
+    override val wizard_setup_auth_error_network: String = "Ошибка соединения с сервером"
+    override val wizard_setup_buy_title: String = "Покупка подписки"
+    override val wizard_setup_buy_action: String = "Пополнение баланса"
+    override val wizard_setup_buy_desc: String = "Пополните баланс любым удобным способом: криптовалютой прямо в приложении или через нашего официального Telegram-бота."
+    override val wizard_setup_buy_open_tg: String = "Открыть Telegram"
+    override val wizard_setup_buy_already_purchased: String = "Я уже купил(а)"
+    override val wizard_setup_free_auth_prompt_title: String = "Бесплатная подписка"
+    override val wizard_setup_free_auth_prompt_subtitle: String = "Выбор типа подписки"
+    override val wizard_setup_free_auth_prompt_desc: String = "Вы можете добавить базовую бесплатную подписку без авторизации с лимитом 1.5 гб на 24 часа. С авторизацией вы можете добавить бесплатную подписку с лимитом 10 гб на 30 дней. Бесплатную подписку можно получать каждый месяц."
+    override val wizard_setup_free_auth_prompt_with: String = "С авторизацией (10 ГБ / 30 дней)"
+    override val wizard_setup_free_auth_prompt_without: String = "Без авторизации (1.5 ГБ / 24 часа)"
+    override val wizard_setup_free_status: String = "Создание и настройка подписки..."
+    override val wizard_setup_free_limit_exceeded: String = "Лимит бесплатных ключей превышен"
+    override val wizard_setup_free_telegram_required: String = "Для получения ключа 10 ГБ необходимо войти через Telegram"
+    override val wizard_setup_free_parse_error: String = "Ошибка парсинга"
     override val wizard_setup_optimizing : String = "Оптимизация..."
     override val wizard_setup_ready : String = "Сервер готов!"
     override val wizard_setup_saving : String = "Сохранение..."
@@ -316,7 +352,7 @@ object EnServerStrings : ServerStrings {
     override val wizard_step_settings : String = "Settings"
     override val wizard_step_setup : String = "Setup"
     override val servers_desc_create : String = "Your own server that only you control."
-    override val servers_desc_flare : String = "Flare Servers: anonymous, no logs, fast and available 24/7."
+    override val servers_desc_flare : String = "FlareVPN is a fast, no-logs, and 24/7 available VPN."
     override val servers_protocol_shadowsocks_desc : String = "Energy-efficient and fast SOCKS5-based encryption protocol with AEAD ciphers. Provides high performance and data protection with minimal overhead."
     override val servers_protocol_shadowsocks_title : String = "ShadowSocks"
     override val servers_protocol_title : String = "Select protocol"
@@ -325,7 +361,7 @@ object EnServerStrings : ServerStrings {
     override val servers_protocol_xray_desc : String = "Xray with REALITY masks VPN traffic as web traffic. High detection resistance, provides high privacy and speed"
     override val servers_protocol_xray_title : String = "Xray with REALITY"
     override val servers_setup_success : String = "Server created successfully!"
-    override val servers_setup_success_desc : String = "You can find it inside \\\"My servers\\\" subscription"
+    override val servers_setup_success_desc : String = "You can find it in the \\\"My Servers\\\" subscription."
     override val servers_setup_title : String = "Server setup..."
     override val servers_ssh_ip : String = "IP address"
     override val servers_ssh_password : String = "SSH Password or Key"
@@ -346,18 +382,15 @@ object EnServerStrings : ServerStrings {
     override val servers_subscription_failed_title : String = "Setup Failed"
     override val servers_tariff_title : String = "Select Plan"
     override val tariff_free_title : String = "Free"
-    override val tariff_plus_title : String = "Plus"
     override val tariff_premium_title : String = "Premium"
-    override val tariff_free_desc : String = "Average speed, provides basic access to many services"
-    override val tariff_free_price : String = "0$/mon"
-    override val tariff_plus_desc : String = "High speed, security, access to all services"
-    override val tariff_plus_price : String = "3$/mon"
-    override val tariff_premium_desc : String = "Maximum stability and speed, more servers"
-    override val tariff_premium_price : String = "6$/mon"
+    override val tariff_free_desc : String = "Same fast Premium servers, but with traffic and device limits"
+    override val tariff_free_price : String = "$0/mo"
+    override val tariff_premium_desc : String = "Maximum stability and speed, unlimited traffic"
+    override val tariff_premium_price : String = "$3.50/mo"
     override val tariff_success_title : String = "Free subscription added"
-    override val tariff_success_desc : String = "you will find it in the list"
+    override val tariff_success_desc : String = "You will find it in the list."
     override val tariff_error_title : String = "Failed to add Free subscription"
-    override val tariff_error_desc : String = "please try again later"
+    override val tariff_error_desc : String = "Please try again later."
     override val servers_xray_port_desc : String = "Port for your VPN server. 443 — standard port for HTTPS masking."
     override val servers_xray_port_label : String = "Xray Port"
     override val servers_xray_setup_title : String = "Xray Setup"
@@ -379,7 +412,7 @@ object EnServerStrings : ServerStrings {
     override val simple_editor_sid : String = "Short ID"
     override val simple_editor_sni : String = "SNI"
     override val simple_editor_tag : String = "Profile name"
-    override val simple_editor_title : String = "Profile Editor"
+    override val simple_editor_title : String = "Editor"
     override val simple_editor_tls : String = "TLS Settings"
     override val simple_editor_uuid_pwd : String = "UUID / Password"
     override val simple_editor_up_mbps : String = "Upload Speed (Up Mbps)"
@@ -399,8 +432,29 @@ object EnServerStrings : ServerStrings {
     override val ssh_status_installing_xray : String = "Installing Xray..."
     override val ssh_status_restarting : String = "Restarting Xray service..."
     override val ssh_status_waiting : String = "Waiting for startup..."
-    override val wizard_setup_configuring : String = "Configuring server..."
+    override val wizard_setup_configuring : String = "Configuring setup..."
     override val wizard_setup_free_title : String = "Setting up your subscription..."
+    override val wizard_setup_auth_title: String = "Authorization"
+    override val wizard_setup_auth_waiting: String = "Waiting for Telegram login..."
+    override val wizard_setup_auth_desc: String = "Please go to the FlareVPN bot and confirm authorization. This screen will update automatically."
+    override val wizard_setup_auth_error_title: String = "Authorization Error"
+    override val wizard_setup_auth_retry: String = "Retry"
+    override val wizard_setup_auth_error_timeout: String = "Request timed out. Please try again."
+    override val wizard_setup_auth_error_network: String = "Server connection error"
+    override val wizard_setup_buy_title: String = "Subscription Purchase"
+    override val wizard_setup_buy_action: String = "Top Up Balance"
+    override val wizard_setup_buy_desc: String = "Top up your balance in any convenient way: with cryptocurrency directly in the app or via our official Telegram bot."
+    override val wizard_setup_buy_open_tg: String = "Open Telegram"
+    override val wizard_setup_buy_already_purchased: String = "I already purchased"
+    override val wizard_setup_free_auth_prompt_title: String = "Free Subscription"
+    override val wizard_setup_free_auth_prompt_subtitle: String = "Select subscription type"
+    override val wizard_setup_free_auth_prompt_desc: String = "You can add a basic free subscription without authorization with a 1.5 GB limit for 24 hours. With authorization, you can add a free subscription with a 10 GB limit for 30 days. The free subscription can be obtained every month."
+    override val wizard_setup_free_auth_prompt_with: String = "With authorization (10 GB / 30 days)"
+    override val wizard_setup_free_auth_prompt_without: String = "Without authorization (1.5 GB / 24 hours)"
+    override val wizard_setup_free_status: String = "Creating and setting up subscription..."
+    override val wizard_setup_free_limit_exceeded: String = "Free keys limit exceeded"
+    override val wizard_setup_free_telegram_required: String = "To get the 10 GB key, you must log in via Telegram"
+    override val wizard_setup_free_parse_error: String = "Parse error"
     override val wizard_setup_optimizing : String = "Optimizing..."
     override val wizard_setup_ready : String = "Server ready!"
     override val wizard_setup_saving : String = "Saving..."

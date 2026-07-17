@@ -52,7 +52,11 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
 
     companion object {
         const val VIRTUAL_SUB_ID = -1L
+        const val MERGED_SUB_ID = -2L
     }
+
+    private val settings by lazy { SettingsManager(application) }
+    private val mergedSubIds = MutableStateFlow<Set<Long>>(emptySet())
 
     private val expandedSubs = MutableStateFlow<Set<Long>>(emptySet())
     private val _refreshingSubs = MutableStateFlow<Set<Long>>(emptySet())
@@ -103,6 +107,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun initialize() {
+        mergedSubIds.value = settings.mergedSubscriptionIds.mapNotNull { it.toLongOrNull() }.toSet()
+
         viewModelScope.launch {
             repository.getAllProfiles().collect { profiles ->
                 _selectedProfileId.value = profiles.find { it.isSelected }?.id
@@ -130,19 +136,30 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                 expandedSubs,
                 _selectedProfileId,
                 pingStates,
-                _refreshingSubs
+                _refreshingSubs,
+                mergedSubIds
             ) { args ->
                 @Suppress("UNCHECKED_CAST")
                 val subs = args[0] as List<SubscriptionEntity>
+                @Suppress("UNCHECKED_CAST")
                 val allProfiles = args[1] as List<ProfileSummary>
+                @Suppress("UNCHECKED_CAST")
                 val expanded = args[2] as Set<Long>
                 val selId = args[3] as Long?
+                @Suppress("UNCHECKED_CAST")
                 val pings = args[4] as Map<Long, PingState>
+                @Suppress("UNCHECKED_CAST")
                 val refreshing = args[5] as Set<Long>
+                @Suppress("UNCHECKED_CAST")
+                val merged = args[6] as Set<Long>
 
                 val profilesBySub = allProfiles.groupBy { it.subscriptionId }
                 val standalone = allProfiles.filter { it.subscriptionId == null }
-                buildDisplayList(subs, standalone, profilesBySub, expanded, selId, pings, refreshing)
+                
+                val activeMergedIds = merged.intersect(subs.map { it.id }.toSet())
+                val mergedProfiles = allProfiles.filter { it.subscriptionId in activeMergedIds }
+
+                buildDisplayList(subs, standalone, mergedProfiles, activeMergedIds, profilesBySub, expanded, selId, pings, refreshing)
             }
                 .onEach { items ->
                     _displayItems.value = items
@@ -154,7 +171,17 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun buildDisplayList(subs: List<SubscriptionEntity>, standalone: List<ProfileSummary>, profilesBySub: Map<Long?, List<ProfileSummary>>, expanded: Set<Long>, selId: Long?, pings: Map<Long, PingState>, refreshing: Set<Long>): List<DisplayItem> {
+    private fun buildDisplayList(
+        subs: List<SubscriptionEntity>,
+        standalone: List<ProfileSummary>,
+        mergedProfiles: List<ProfileSummary>,
+        activeMergedIds: Set<Long>,
+        profilesBySub: Map<Long?, List<ProfileSummary>>,
+        expanded: Set<Long>,
+        selId: Long?,
+        pings: Map<Long, PingState>,
+        refreshing: Set<Long>
+    ): List<DisplayItem> {
         val settings = SettingsManager(getApplication())
         val allSubs = subs.toMutableList()
         if (standalone.isNotEmpty()) {
@@ -165,6 +192,15 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                 pinned = if (settings.isVirtualSubscriptionPinned) settings.virtualSubscriptionPinnedTime else 0L
             )
             allSubs.add(virtualSub)
+        }
+        if (activeMergedIds.isNotEmpty()) {
+            val virtualMergedSub = SubscriptionEntity(
+                id = MERGED_SUB_ID,
+                name = I18n.strings.sub_merged_profiles,
+                url = "",
+                pinned = if (settings.isMergedSubscriptionPinned) settings.mergedSubscriptionPinnedTime else 0L
+            )
+            allSubs.add(virtualMergedSub)
         }
 
         val sortedSubs = allSubs.sortedWith { s1, s2 ->
@@ -179,9 +215,17 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
             } else if (isP2) {
                 1
             } else {
-                if (s1.id == VIRTUAL_SUB_ID) 1
-                else if (s2.id == VIRTUAL_SUB_ID) -1
-                else s1.id.compareTo(s2.id)
+                val isV1 = s1.id == VIRTUAL_SUB_ID || s1.id == MERGED_SUB_ID
+                val isV2 = s2.id == VIRTUAL_SUB_ID || s2.id == MERGED_SUB_ID
+                if (isV1 && isV2) {
+                    s1.id.compareTo(s2.id)
+                } else if (isV1) {
+                    1
+                } else if (isV2) {
+                    -1
+                } else {
+                    s1.id.compareTo(s2.id)
+                }
             }
         }
 
@@ -195,10 +239,38 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                     actualExpanded.add(VIRTUAL_SUB_ID)
                 }
                 val isRefreshing = VIRTUAL_SUB_ID in refreshing
-                items += DisplayItem.SubscriptionItem(sub, standalone, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
+                val totalProfiles = standalone.size
+                val loadingProfiles = standalone.count { pings[it.id] is PingState.Loading }
+                val checkedProfiles = standalone.count { pings[it.id] is PingState.Result }
+                val isPinging = loadingProfiles > 0
+                val pingProgressText = if (isPinging) "$checkedProfiles/$totalProfiles" else ""
+                items += DisplayItem.SubscriptionItem(
+                    sub, standalone, isExpanded, isRefreshing, isPinging, pingProgressText,
+                    if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                )
                 if (isExpanded) {
                     standalone.forEachIndexed { i, p ->
                         items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == standalone.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
+                    }
+                }
+            } else if (sub.id == MERGED_SUB_ID) {
+                val isExpanded = MERGED_SUB_ID in expanded
+                if (isExpanded) {
+                    actualExpanded.add(MERGED_SUB_ID)
+                }
+                val isRefreshing = MERGED_SUB_ID in refreshing
+                val totalProfiles = mergedProfiles.size
+                val loadingProfiles = mergedProfiles.count { pings[it.id] is PingState.Loading }
+                val checkedProfiles = mergedProfiles.count { pings[it.id] is PingState.Result }
+                val isPinging = loadingProfiles > 0
+                val pingProgressText = if (isPinging) "$checkedProfiles/$totalProfiles" else ""
+                items += DisplayItem.SubscriptionItem(
+                    sub, mergedProfiles, isExpanded, isRefreshing, isPinging, pingProgressText,
+                    if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                )
+                if (isExpanded) {
+                    mergedProfiles.forEachIndexed { i, p ->
+                        items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == mergedProfiles.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
                     }
                 }
             } else {
@@ -208,7 +280,15 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                     actualExpanded.add(sub.id)
                 }
                 val isRefreshing = sub.id in refreshing
-                items += DisplayItem.SubscriptionItem(sub, subProfiles, isExpanded, isRefreshing, if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL)
+                val totalProfiles = subProfiles.size
+                val loadingProfiles = subProfiles.count { pings[it.id] is PingState.Loading }
+                val checkedProfiles = subProfiles.count { pings[it.id] is PingState.Result }
+                val isPinging = loadingProfiles > 0
+                val pingProgressText = if (isPinging) "$checkedProfiles/$totalProfiles" else ""
+                items += DisplayItem.SubscriptionItem(
+                    sub, subProfiles, isExpanded, isRefreshing, isPinging, pingProgressText,
+                    if (isExpanded) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                )
                 if (isExpanded) {
                     subProfiles.forEachIndexed { i, p ->
                         items += DisplayItem.ProfileItem(p, p.id == selId, pings[p.id] ?: PingState.None, if (i == subProfiles.size - 1) DisplayItem.CornerType.BOTTOM else DisplayItem.CornerType.NONE)
@@ -296,9 +376,9 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         val selectedBefore = repository.getSelectedProfile()
         val app = getApplication<Application>()
         val settings = SettingsManager(app)
-        val hwid = if (settings.isHwidEnabled) getHwid() else null
-        val model = android.os.Build.MODEL
-        val osVersion = android.os.Build.VERSION.RELEASE
+        val hwid = settings.getHardwareId()
+        val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+        val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
         
         coroutineScope {
             val deferreds = subsToUpdate.map { sub ->
@@ -310,11 +390,19 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                         }
                         if (result is ClipboardParser.ParseResult.Subscription) {
                             repository.replaceSubscriptionProfiles(sub.id, result.profiles)
-                            repository.updateSubscription(result.subscription.copy(id = sub.id))
+                            repository.updateSubscription(result.subscription.copy(id = sub.id, pinned = sub.pinned))
                             true
-                        } else false
+                        } else {
+                            repository.updateSubscription(sub.copy(lastUpdated = System.currentTimeMillis()))
+                            false
+                        }
                     } catch (e: Exception) {
                         Log.e("ProfilesViewModel", "Failed to refresh ${sub.name}", e)
+                        try {
+                            repository.updateSubscription(sub.copy(lastUpdated = System.currentTimeMillis()))
+                        } catch (dbEx: Exception) {
+                            Log.e("ProfilesViewModel", "Failed to update db lastUpdated for ${sub.name}", dbEx)
+                        }
                         false
                     } finally {
                         _refreshingSubs.update { it - sub.id }
@@ -354,9 +442,9 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         val selectedBefore = repository.getSelectedProfile()
         val app = getApplication<Application>()
         val settings = SettingsManager(app)
-        val hwid = if (settings.isHwidEnabled) getHwid() else null
-        val model = android.os.Build.MODEL
-        val osVersion = android.os.Build.VERSION.RELEASE
+        val hwid = settings.getHardwareId()
+        val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+        val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
         
         coroutineScope {
             val deferreds = subs.map { sub ->
@@ -368,11 +456,19 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                         }
                         if (result is ClipboardParser.ParseResult.Subscription) {
                             repository.replaceSubscriptionProfiles(sub.id, result.profiles)
-                            repository.updateSubscription(result.subscription.copy(id = sub.id))
+                            repository.updateSubscription(result.subscription.copy(id = sub.id, pinned = sub.pinned))
                             true
-                        } else false
+                        } else {
+                            repository.updateSubscription(sub.copy(lastUpdated = System.currentTimeMillis()))
+                            false
+                        }
                     } catch (e: Exception) {
                         Log.e("ProfilesViewModel", "Failed to refresh ${sub.name}", e)
+                        try {
+                            repository.updateSubscription(sub.copy(lastUpdated = System.currentTimeMillis()))
+                        } catch (dbEx: Exception) {
+                            Log.e("ProfilesViewModel", "Failed to update db lastUpdated for ${sub.name}", dbEx)
+                        }
                         false
                     } finally {
                         _refreshingSubs.update { it - sub.id }
@@ -404,13 +500,12 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                 4
             )
         } else {
+            settings.lastSubUpdateTime = System.currentTimeMillis()
             flare.client.app.ui.notification.AppNotificationManager.showNotification(
                 flare.client.app.ui.notification.NotificationType.ERROR,
                 I18n.strings.sub_update_error,
                 4
             )
-            
-            delay(60000L)
         }
     }
 
@@ -419,9 +514,9 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
             _refreshingSubs.update { it + sub.id }
             val app = getApplication<Application>()
             val settings = SettingsManager(app)
-            val hwid = if (settings.isHwidEnabled) getHwid() else null
-            val model = android.os.Build.MODEL
-            val osVersion = android.os.Build.VERSION.RELEASE
+            val hwid = settings.getHardwareId()
+            val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+            val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
             try {
                 val selectedBefore = repository.getSelectedProfile()
                 val result = withTimeoutOrNull(settings.subUpdateTimeout * 1000L + 2000L) {
@@ -429,7 +524,7 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                 }
                 if (result is ClipboardParser.ParseResult.Subscription) {
                     repository.replaceSubscriptionProfiles(sub.id, result.profiles)
-                    repository.updateSubscription(result.subscription.copy(id = sub.id))
+                    repository.updateSubscription(result.subscription.copy(id = sub.id, pinned = sub.pinned))
                     if (selectedBefore != null) {
                         if (selectedBefore.subscriptionId == sub.id) {
                             val allAfter = repository.getAllProfiles().first()
@@ -489,6 +584,15 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                     settings.isVirtualSubscriptionPinned = true
                     settings.virtualSubscriptionPinnedTime = System.currentTimeMillis()
                 }
+            } else if (subId == MERGED_SUB_ID) {
+                val wasPinned = settings.isMergedSubscriptionPinned
+                if (wasPinned) {
+                    settings.isMergedSubscriptionPinned = false
+                    settings.mergedSubscriptionPinnedTime = 0L
+                } else {
+                    settings.isMergedSubscriptionPinned = true
+                    settings.mergedSubscriptionPinnedTime = System.currentTimeMillis()
+                }
             } else {
                 val subs = repository.getAllSubscriptions().first()
                 val targetSub = subs.find { it.id == subId } ?: return@launch
@@ -500,19 +604,23 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun deleteSubscription(subId: Long) {
-        val subName = if (subId == VIRTUAL_SUB_ID) {
-            I18n.strings.sub_single_profiles
-        } else {
-            val rawName = displayItems.value.filterIsInstance<DisplayItem.SubscriptionItem>().find { it.entity.id == subId }?.entity?.name ?: I18n.strings.label_unknown
-            if (I18n.isMyServers(rawName)) {
-                I18n.strings.sub_my_servers
-            } else {
-                rawName
+        val subName = when (subId) {
+            VIRTUAL_SUB_ID -> I18n.strings.sub_single_profiles
+            MERGED_SUB_ID -> I18n.strings.sub_merged_profiles
+            else -> {
+                val rawName = displayItems.value.filterIsInstance<DisplayItem.SubscriptionItem>().find { it.entity.id == subId }?.entity?.name ?: I18n.strings.label_unknown
+                if (I18n.isMyServers(rawName)) {
+                    I18n.strings.sub_my_servers
+                } else {
+                    rawName
+                }
             }
         }
         viewModelScope.launch {
             if (subId == VIRTUAL_SUB_ID) {
                 repository.deleteStandaloneProfiles()
+            } else if (subId == MERGED_SUB_ID) {
+                clearMergedSubscriptions()
             } else {
                 repository.deleteSubscriptionById(subId)
             }
@@ -527,14 +635,41 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
 
     fun speedTestSubscription(subId: Long) {
         viewModelScope.launch {
-            val profiles = if (subId == VIRTUAL_SUB_ID) {
-                repository.getAllProfiles().first().filter { it.subscriptionId == null }
-            } else {
-                repository.getAllProfiles().first().filter { it.subscriptionId == subId }
+            val profiles = when (subId) {
+                VIRTUAL_SUB_ID -> {
+                    repository.getAllProfiles().first().filter { it.subscriptionId == null }
+                }
+                MERGED_SUB_ID -> {
+                    val activeMerged = mergedSubIds.value
+                    repository.getAllProfiles().first().filter { it.subscriptionId in activeMerged }
+                }
+                else -> {
+                    repository.getAllProfiles().first().filter { it.subscriptionId == subId }
+                }
             }
             if (profiles.isEmpty()) return@launch
             speedTestProfile(profiles)
         }
+    }
+
+    fun addSubscriptionToMerged(subId: Long) {
+        val current = mergedSubIds.value
+        val next = current + subId
+        mergedSubIds.value = next
+        settings.mergedSubscriptionIds = next.map { it.toString() }.toSet()
+        
+        val subName = displayItems.value.filterIsInstance<DisplayItem.SubscriptionItem>().find { it.entity.id == subId }?.entity?.name ?: ""
+        
+        flare.client.app.ui.notification.AppNotificationManager.showNotification(
+            flare.client.app.ui.notification.NotificationType.SUCCESS,
+            I18n.strings.success_subscription_added.format(subName),
+            3
+        )
+    }
+
+    fun clearMergedSubscriptions() {
+        mergedSubIds.value = emptySet()
+        settings.mergedSubscriptionIds = emptySet()
     }
 
     fun speedTestProfile(profiles: List<ProfileSummary>) {
@@ -595,35 +730,63 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun updateProfileConfig(id: Long, json: String) { viewModelScope.launch(Dispatchers.IO) { repository.updateProfileConfig(id, json) } }
+    fun updateProfileConfig(id: Long, json: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.updateProfileConfig(id, json)
+            } catch (e: Exception) {
+                Log.e("ProfilesViewModel", "updateProfileConfig failed: ${e.message}")
+            }
+        }
+    }
     
     fun updateProfile(id: Long, name: String, json: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val protocol = try {
-                val outbounds = org.json.JSONObject(json).optJSONArray("outbounds")
-                outbounds?.optJSONObject(0)?.optString("type")
-            } catch (_: Exception) { null }
-            val desc = flare.client.app.data.parser.ProfileParsingHelper.parseTransportAndSecurityFromJson(json)
-            repository.updateProfile(id, name, json, protocol, desc)
+            try {
+                val protocol = try {
+                    val outbounds = org.json.JSONObject(json).optJSONArray("outbounds")
+                    outbounds?.optJSONObject(0)?.optString("type")
+                } catch (_: Exception) { null }
+                val desc = flare.client.app.data.parser.ProfileParsingHelper.parseTransportAndSecurityFromJson(json)
+                repository.updateProfile(id, name, json, protocol, desc)
+            } catch (e: Exception) {
+                Log.e("ProfilesViewModel", "updateProfile failed: ${e.message}")
+            }
         }
     }
 
-    fun updateProfileFull(profile: ProfileEntity) { viewModelScope.launch(Dispatchers.IO) { repository.updateProfileFull(profile) } }
+    fun updateProfileFull(profile: ProfileEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                repository.updateProfileFull(profile)
+            } catch (e: Exception) {
+                Log.e("ProfilesViewModel", "updateProfileFull failed: ${e.message}")
+            }
+        }
+    }
     
     fun deleteProfile(id: Long, name: String) {
         viewModelScope.launch {
-            repository.deleteProfile(id)
-            flare.client.app.ui.notification.AppNotificationManager.showNotification(
-                flare.client.app.ui.notification.NotificationType.SUCCESS,
-                I18n.strings.profile_deleted_success.format(name),
-                3
-            )
+            try {
+                repository.deleteProfile(id)
+                flare.client.app.ui.notification.AppNotificationManager.showNotification(
+                    flare.client.app.ui.notification.NotificationType.SUCCESS,
+                    I18n.strings.profile_deleted_success.format(name),
+                    3
+                )
+            } catch (e: Exception) {
+                Log.e("ProfilesViewModel", "deleteProfile failed: ${e.message}")
+            }
         }
     }
 
     fun updateSubscription(id: Long, name: String, url: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            repository.updateSubscription(id, name, url)
+            try {
+                repository.updateSubscription(id, name, url)
+            } catch (e: Exception) {
+                Log.e("ProfilesViewModel", "updateSubscription failed: ${e.message}")
+            }
         }
     }
 
@@ -633,9 +796,9 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
             try {
                 val app = getApplication<Application>()
                 val settings = SettingsManager(app)
-                val hwid = if (settings.isHwidEnabled) getHwid() else null
-                val model = android.os.Build.MODEL
-                val osVersion = android.os.Build.VERSION.RELEASE
+                val hwid = settings.getHardwareId()
+                val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+                val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
                 
                 kotlinx.coroutines.withTimeout(settings.subUpdateTimeout * 1000L + 2000L) {
                     when (val result = ClipboardParser.parse(app, text, hwid, model, osVersion, settings.subUserAgent, settings.subUpdateTimeout)) {
@@ -660,9 +823,6 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                         is ClipboardParser.ParseResult.Error -> {
                             _importEvent.emit(ImportEvent.Error(result.message))
                         }
-                        else -> {
-                            _importEvent.emit(ImportEvent.Error(I18n.strings.error_import_failed))
-                        }
                     }
                 }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -673,10 +833,5 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun getHwid(): String {
-        return android.provider.Settings.Secure.getString(
-            getApplication<Application>().contentResolver,
-            android.provider.Settings.Secure.ANDROID_ID
-        ) ?: "unknown_hwid"
-    }
+
 }

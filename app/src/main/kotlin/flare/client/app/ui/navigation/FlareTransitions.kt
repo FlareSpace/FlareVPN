@@ -13,10 +13,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
 
-internal const val ROOT_TAB_EXIT_DURATION = 220
-internal const val ROOT_TAB_ENTER_DURATION = 260
-internal const val SETTINGS_EXIT_DURATION = 220
-internal const val SETTINGS_ENTER_DURATION = 220
+internal const val ROOT_TAB_EXIT_DURATION = 300
+internal const val ROOT_TAB_ENTER_DURATION = 300
+internal const val SETTINGS_EXIT_DURATION = 300
+internal const val SETTINGS_ENTER_DURATION = 300
 internal const val ROOT_TAB_BLUR = 0f
 internal const val SETTINGS_BLUR = 25f
 internal const val MORPH_DURATION = 450
@@ -34,6 +34,7 @@ internal fun isSettingsDetailRoute(route: String?): Boolean = when (route) {
     Destination.RoutingSettings.route,
     Destination.BasicSettings.route,
     Destination.SubscriptionsSettings.route,
+    Destination.VpnSubscription.route,
     Destination.ThemeSettings.route,
     Destination.LanguageSettings.route,
     Destination.Journal.route -> true

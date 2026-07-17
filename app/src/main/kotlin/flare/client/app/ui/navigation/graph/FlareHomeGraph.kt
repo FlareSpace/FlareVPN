@@ -7,11 +7,15 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
+import flare.client.app.data.SettingsManager
+import flare.client.app.data.auth.AuthManager
 import flare.client.app.data.model.ProfileSummary
 import flare.client.app.data.model.SubscriptionEntity
 import flare.client.app.ui.HomeScreen
@@ -27,6 +31,7 @@ import flare.client.app.ui.navigation.ROOT_TAB_BLUR
 import flare.client.app.ui.navigation.ROOT_TAB_ENTER_DURATION
 import flare.client.app.ui.navigation.ROOT_TAB_EXIT_DURATION
 import flare.client.app.ui.navigation.TransitionBlurContainer
+import flare.client.app.ui.subscription.SubscriptionViewModel
 import flare.client.app.ui.theme.FlareTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -54,7 +59,8 @@ internal fun NavGraphBuilder.flareHomeGraph(
     onQrScanClick: () -> Unit,
     onImportFileClick: () -> Unit,
     appHazeState: dev.chrisbanes.haze.HazeState,
-    navigateToSettingsDetail: (String, android.view.View?) -> Unit
+    navigateToSettingsDetail: (String, android.view.View?) -> Unit,
+    sharedSettingsScrollState: androidx.compose.foundation.ScrollState
 ) {
     composable(Destination.Home.route) {
         TransitionBlurContainer(
@@ -64,11 +70,15 @@ internal fun NavGraphBuilder.flareHomeGraph(
             enterDuration = ROOT_TAB_ENTER_DURATION,
             exitDuration = ROOT_TAB_EXIT_DURATION
         ) {
-            HorizontalPager(
-                state = rootPagerState,
-                modifier = Modifier.fillMaxSize(),
-                userScrollEnabled = true
-            ) { page ->
+            @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.foundation.LocalOverscrollFactory provides null
+            ) {
+                HorizontalPager(
+                    state = rootPagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    userScrollEnabled = true
+                ) { page ->
                 when (page) {
                     0 -> {
                         SettingsScreen(
@@ -77,12 +87,14 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             onRoutingSettingsClick = { navigateToSettingsDetail(Destination.RoutingSettings.route, it) },
                             onPingSettingsClick = { navigateToSettingsDetail(Destination.PingSettings.route, it) },
                             onSubscriptionsSettingsClick = { navigateToSettingsDetail(Destination.SubscriptionsSettings.route, it) },
+                            onVpnSubscriptionClick = { navigateToSettingsDetail(Destination.VpnSubscription.route, it) },
                             onThemeSettingsClick = { navigateToSettingsDetail(Destination.ThemeSettings.route, it) },
                             onLanguageSettingsClick = { navigateToSettingsDetail(Destination.LanguageSettings.route, it) },
                             isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
                             isAnimationEnabled = settingsViewModel.composeIsAnimationEnabled && rootPagerState.currentPage == 0,
                             gradientSpeed = settingsViewModel.composeGradientSpeed,
-                            hazeState = appHazeState
+                            hazeState = appHazeState,
+                            scrollState = sharedSettingsScrollState
                         )
                     }
                     1 -> {
@@ -112,13 +124,18 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             onShareProfile = onShareProfile,
                             onQrProfile = onQrProfile,
                             onEditProfileJson = { profile ->
-                                profilesViewModel.setEditingProfile(null)
-                                navController.navigate(Destination.JsonEditor.createRoute(profile.id, Destination.JsonEditor.TYPE_PROFILE))
+                                if (navController.currentDestination?.route == Destination.Home.route) {
+                                    profilesViewModel.setEditingProfile(null)
+                                    navController.navigate(Destination.JsonEditor.createRoute(profile.id, Destination.JsonEditor.TYPE_PROFILE))
+                                }
                             },
                             onEditProfileSimple = { profile ->
-                                profilesViewModel.setEditingProfile(null)
-                                navController.navigate(Destination.SimpleEditor.createRoute(profile.id))
+                                if (navController.currentDestination?.route == Destination.Home.route) {
+                                    profilesViewModel.setEditingProfile(null)
+                                    navController.navigate(Destination.SimpleEditor.createRoute(profile.id))
+                                }
                             },
+                            onProfileTest = { profile -> profilesViewModel.speedTestProfile(listOf(profile)) },
                             onSubscriptionToggle = { sub -> profilesViewModel.toggleSubscriptionExpanded(sub.id) },
                             onSubscriptionDelete = { id -> profilesViewModel.deleteSubscription(id) },
                             onSubscriptionSpeedTest = { id -> profilesViewModel.speedTestSubscription(id) },
@@ -127,6 +144,7 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             onSubscriptionPinToggle = { sub -> profilesViewModel.toggleSubscriptionPinned(sub.id) },
                             onSubscriptionShare = onShareSubscription,
                             onSubscriptionQr = onQrSubscription,
+                            onSubscriptionMerge = { id -> profilesViewModel.addSubscriptionToMerged(id) },
                             onClipboardClick = onClipboardClick,
                             onManualInputClick = onManualInputClick,
                             onQrScanClick = onQrScanClick,
@@ -137,11 +155,24 @@ internal fun NavGraphBuilder.flareHomeGraph(
                         )
                     }
                     2 -> {
+                        val context = LocalContext.current
+                        val settings = remember { SettingsManager(context) }
+                        val authManager = remember { AuthManager(context, settings) }
+                        val application = context.applicationContext as android.app.Application
+                        val subscriptionViewModel = androidx.lifecycle.viewmodel.compose.viewModel<SubscriptionViewModel>(
+                            factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                                    @Suppress("UNCHECKED_CAST")
+                                    return SubscriptionViewModel(application, authManager, settings) as T
+                                }
+                            }
+                        )
                         ServersScreen(
                             currentStep = wizardViewModel.composeWizardStep,
                             selectedServerType = wizardViewModel.composeSelectedServerType,
                             accentColor = Color(accentColor()),
                             isFreeSuccess = wizardViewModel.composeFreeSubscriptionSuccess,
+                            freeError = wizardViewModel.composeFreeSubscriptionError,
                             onFlareServersClick = { 
                                 val wasSelected = wizardViewModel.composeSelectedServerType == ServerType.FLARE
                                 wizardViewModel.composeSelectedServerType = if (wasSelected) null else ServerType.FLARE 
@@ -154,6 +185,12 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             },
                             selectedTariff = wizardViewModel.composeSelectedTariff,
                             onTariffSelect = { wizardViewModel.composeSelectedTariff = it },
+                            onFreeWithoutAuthClick = { wizardViewModel.selectFreeWithoutAuth() },
+                            onFreeWithAuthClick = { wizardViewModel.selectFreeWithAuth() },
+                            onFreeAuthSuccess = { wizardViewModel.onFreeAuthSuccess() },
+                            onPremiumAuthSuccess = { wizardViewModel.onPremiumAuthSuccess() },
+                            authManager = authManager,
+                            subscriptionViewModel = subscriptionViewModel,
                             sshProfileName = wizardViewModel.composeSshProfileName,
                             onSshProfileNameChange = { wizardViewModel.composeSshProfileName = it },
                             sshIp = wizardViewModel.composeSshIp,
@@ -183,6 +220,11 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             setupStatus = wizardViewModel.composeSetupStatus,
                             setupProgress = wizardViewModel.composeSetupProgress,
                             setupError = wizardViewModel.composeSetupError,
+                            authError = wizardViewModel.composeAuthError,
+                            isAuthPolling = wizardViewModel.composeIsAuthPolling,
+                            onOpenTelegramAuthClick = { wizardViewModel.startAuthAndPoll() },
+                            onOpenTelegramBuyClick = { wizardViewModel.openTelegramBuy() },
+                            onCompleteBuyClick = { wizardViewModel.completeBuy() },
                             onGoHomeClick = { 
                                 wizardViewModel.reset()
                                 coroutineScope.launch { rootPagerState.animateScrollToPage(1) }
@@ -210,6 +252,7 @@ internal fun NavGraphBuilder.flareHomeGraph(
                         )
                     }
                 }
+            }
             }
         }
     }

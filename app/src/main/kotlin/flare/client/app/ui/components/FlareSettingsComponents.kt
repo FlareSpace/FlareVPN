@@ -24,6 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -557,6 +560,8 @@ fun FlareSettingsInputItem(
     var isFocused by remember { mutableStateOf(false) }
     var showTooltip by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val baseCardColor = FlareTheme.colors.bgItem.copy(alpha = 0.85f)
     val cardBgColor by animateColorAsState(
@@ -708,6 +713,12 @@ fun FlareSettingsInputItem(
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                             keyboardType = keyboardType,
                             imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            }
                         ),
                         singleLine = true,
                         decorationBox = { innerTextField ->

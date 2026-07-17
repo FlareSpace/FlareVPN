@@ -12,6 +12,7 @@ sealed class Destination(val route: String) {
     object RoutingSettings : Destination("settings/routing")
     object BasicSettings : Destination("settings/basic")
     object SubscriptionsSettings : Destination("settings/subscriptions")
+    object VpnSubscription : Destination("settings/vpn_subscription")
     object ThemeSettings : Destination("settings/theme")
     object LanguageSettings : Destination("settings/language")
 

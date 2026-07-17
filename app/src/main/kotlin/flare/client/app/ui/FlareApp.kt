@@ -145,6 +145,7 @@ fun FlareApp(
     onPingStyleClick: (String) -> Unit,
     onThemeClick: (Int) -> Unit,
     onFontSelect: (String) -> Unit,
+    onAppIconSelect: (String) -> Unit,
     onEditSubscriptionClick: (flare.client.app.data.model.SubscriptionEntity) -> Unit,
     onChangeAppsClick: () -> Unit,
     onViewJournalClick: (android.view.View) -> Unit,
@@ -158,6 +159,7 @@ fun FlareApp(
     onDataManagementClick: () -> Unit,
     settings: SettingsManager,
     onRestartRequired: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
     isDark: Boolean = false,
     appHazeState: dev.chrisbanes.haze.HazeState
 ) {
@@ -237,7 +239,32 @@ fun FlareApp(
         var pendingSettingsMorph by remember { mutableStateOf<SettingsMorphRequest?>(null) }
         var showDataManagementDialog by remember { mutableStateOf(false) }
         val sharedBasicSettingsScrollState = androidx.compose.foundation.rememberScrollState()
+        val sharedSettingsScrollState = androidx.compose.foundation.rememberScrollState()
         val homeListState = rememberLazyListState()
+
+        LaunchedEffect(currentRoute, rootPagerState.currentPage) {
+            val isBasicSettingsOrJournal = currentRoute == Destination.BasicSettings.route || currentRoute == Destination.Journal.route
+            if (!isBasicSettingsOrJournal && sharedBasicSettingsScrollState.value != 0) {
+                sharedBasicSettingsScrollState.scrollTo(0)
+            }
+
+            val isSettingsRoute = when (currentRoute) {
+                Destination.BasicSettings.route,
+                Destination.AdvancedSettings.route,
+                Destination.RoutingSettings.route,
+                Destination.PingSettings.route,
+                Destination.SubscriptionsSettings.route,
+                Destination.VpnSubscription.route,
+                Destination.ThemeSettings.route,
+                Destination.LanguageSettings.route,
+                Destination.Journal.route -> true
+                Destination.Home.route -> rootPagerState.currentPage == 0
+                else -> false
+            }
+            if (!isSettingsRoute && sharedSettingsScrollState.value != 0) {
+                sharedSettingsScrollState.scrollTo(0)
+            }
+        }
 
         
         
@@ -278,9 +305,12 @@ fun FlareApp(
                     WizardStep.XRAY_CONFIG -> wizardViewModel.isXrayConfigValid
                     WizardStep.PROGRESS -> wizardViewModel.composeSetupProgress >= 100f
                     WizardStep.SUCCESS -> false
-                    WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff == TariffType.FREE
+                    WizardStep.FLARE_TARIFFS -> wizardViewModel.composeSelectedTariff != null
+                    WizardStep.FLARE_AUTH -> false
+                    WizardStep.FLARE_BUY -> false
                     WizardStep.FLARE_PROGRESS -> false
                     WizardStep.FLARE_SUCCESS -> false
+                    WizardStep.FLARE_FREE_AUTH_PROMPT -> false
                 }
             } else {
                 true
@@ -319,6 +349,9 @@ fun FlareApp(
         }
 
         fun navigateToSettingsDetail(route: String, anchorView: android.view.View? = null) {
+            if (navController.currentDestination?.route != Destination.Home.route) {
+                return
+            }
             pendingSettingsMorph = anchorView?.let { rememberMorphRequestFor(it, route) }
             navController.navigate(route)
         }
@@ -448,7 +481,8 @@ fun FlareApp(
                     onQrScanClick = onQrScanClick,
                     onImportFileClick = onImportFileClick,
                     appHazeState = appHazeState,
-                    navigateToSettingsDetail = { route, anchor -> navigateToSettingsDetail(route, anchor) }
+                    navigateToSettingsDetail = { route, anchor -> navigateToSettingsDetail(route, anchor) },
+                    sharedSettingsScrollState = sharedSettingsScrollState
                 )
 
                 flareSettingsGraph(
@@ -465,6 +499,7 @@ fun FlareApp(
                     homeListState = homeListState,
                     settings = settings,
                     onRestartRequired = onRestartRequired,
+                    onRequestNotificationPermission = onRequestNotificationPermission,
                     onChangeAppsClick = onChangeAppsClick,
                     onLogLevelClick = onLogLevelClick,
                     onBestProfileOnlyConnectedClick = onBestProfileOnlyConnectedClick,
@@ -479,11 +514,13 @@ fun FlareApp(
                     onThemeClick = onThemeClick,
                     onLanguageSelected = onLanguageSelected,
                     onFontSelect = onFontSelect,
+                    onAppIconSelect = onAppIconSelect,
                     accentColor = { accentColor },
                     isClipboardLoading = { isClipboardLoading },
                     isAnySubscriptionExpanded = { isAnySubscriptionExpanded },
                     appHazeState = appHazeState,
                     sharedBasicSettingsScrollState = sharedBasicSettingsScrollState,
+                    sharedSettingsScrollState = sharedSettingsScrollState,
                     onDataManagementClick = { showDataManagementDialog = true }
                 )
 

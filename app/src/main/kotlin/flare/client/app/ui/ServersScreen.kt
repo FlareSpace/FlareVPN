@@ -39,6 +39,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import flare.client.app.R
+import flare.client.app.data.auth.AuthManager
 import flare.client.app.data.model.DisplayItem
 import flare.client.app.ui.components.*
 import flare.client.app.ui.theme.FlareTheme
@@ -52,6 +53,12 @@ import flare.client.app.ui.components.servers.SetupSuccessStep
 import flare.client.app.ui.components.servers.TariffCard
 import flare.client.app.ui.components.servers.FlareProgressStep
 import flare.client.app.ui.components.servers.WizardStepper
+import flare.client.app.ui.components.servers.FreeAuthPromptStep
+import flare.client.app.ui.subscription.AuthFlowSection
+import flare.client.app.ui.subscription.SubscriptionViewModel
+import flare.client.app.ui.subscription.TopUpDialog
+import flare.client.app.util.GlassUtils
+import androidx.compose.ui.platform.LocalContext
 
 
 
@@ -61,11 +68,20 @@ fun ServersScreen(
     selectedServerType: ServerType?,
     accentColor: Color,
     isFreeSuccess: Boolean = true,
+    freeError: String? = null,
     onFlareServersClick: () -> Unit,
     onCreateServerClick: () -> Unit,
     
     selectedTariff: TariffType?,
     onTariffSelect: (TariffType) -> Unit,
+    
+    onFreeWithoutAuthClick: () -> Unit,
+    onFreeWithAuthClick: () -> Unit,
+    onFreeAuthSuccess: () -> Unit,
+    onPremiumAuthSuccess: () -> Unit,
+    
+    authManager: AuthManager,
+    subscriptionViewModel: SubscriptionViewModel,
     
     sshProfileName: String,
     onSshProfileNameChange: (String) -> Unit,
@@ -101,12 +117,21 @@ fun ServersScreen(
     setupProgress: Float,
     setupError: String?,
     
+    authError: String?,
+    isAuthPolling: Boolean,
+    onOpenTelegramAuthClick: () -> Unit,
+    onOpenTelegramBuyClick: () -> Unit,
+    onCompleteBuyClick: () -> Unit,
+    
     onGoHomeClick: () -> Unit,
     onBack: () -> Unit,
     onNextClick: () -> Unit,
     isSshConfigValid: Boolean,
     hazeState: HazeState
 ) {
+    var showTopUpDialog by remember { mutableStateOf(false) }
+    var showTopUpMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     BackHandler(enabled = currentStep != WizardStep.CARDS || selectedServerType != null || selectedTariff != null) {
         onBack()
     }
@@ -320,15 +345,6 @@ fun ServersScreen(
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                                 TariffCard(
-                                    title = I18n.strings.tariff_plus_title,
-                                    description = I18n.strings.tariff_plus_desc,
-                                    price = I18n.strings.tariff_plus_price,
-                                    isSelected = selectedTariff == TariffType.PLUS,
-                                    accentColor = accentColor,
-                                    onClick = { onTariffSelect(TariffType.PLUS) }
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                TariffCard(
                                     title = I18n.strings.tariff_premium_title,
                                     description = I18n.strings.tariff_premium_desc,
                                     price = I18n.strings.tariff_premium_price,
@@ -336,12 +352,128 @@ fun ServersScreen(
                                     accentColor = accentColor,
                                     onClick = { onTariffSelect(TariffType.PREMIUM) }
                                 )
+                                
+
                             }
                             WizardStep.FLARE_PROGRESS -> {
                                 FlareProgressStep(
-                                    status = I18n.strings.wizard_setup_free_title,
+                                    status = setupStatus.ifEmpty { I18n.strings.wizard_setup_free_title },
                                     accentColor = accentColor
                                 )
+                            }
+                            WizardStep.FLARE_FREE_AUTH_PROMPT -> {
+                                FreeAuthPromptStep(
+                                    accentColor = accentColor,
+                                    onWithoutAuthClick = onFreeWithoutAuthClick,
+                                    onWithAuthClick = onFreeWithAuthClick
+                                )
+                            }
+                            WizardStep.FLARE_AUTH -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = I18n.strings.wizard_setup_auth_title,
+                                        fontFamily = GeologicaMedium,
+                                        fontSize = 15.sp,
+                                        color = FlareTheme.colors.textPrimary,
+                                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp).align(Alignment.Start)
+                                    )
+                                    
+                                    val onAuthSuccessCallback: () -> Unit = if (selectedTariff == TariffType.FREE) onFreeAuthSuccess else onPremiumAuthSuccess
+                                    AuthFlowSection(
+                                        authManager = authManager,
+                                        onAuthSuccess = onAuthSuccessCallback
+                                    )
+                                }
+                            }
+                            WizardStep.FLARE_BUY -> {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = I18n.strings.wizard_setup_buy_title,
+                                        fontFamily = GeologicaMedium,
+                                        fontSize = 15.sp,
+                                        color = FlareTheme.colors.textPrimary,
+                                        modifier = Modifier.padding(bottom = 12.dp, start = 4.dp).align(Alignment.Start)
+                                    )
+
+                                    FlareCard(
+                                        cornerType = DisplayItem.CornerType.ALL,
+                                        paddingHorizontal = 20.dp,
+                                        paddingVertical = 28.dp,
+                                        borderColor = accentColor.copy(alpha = 0.3f),
+                                        borderWidth = 0.5.dp
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(R.drawable.ic_cloud_star),
+                                                contentDescription = null,
+                                                tint = accentColor,
+                                                modifier = Modifier.size(64.dp).padding(bottom = 24.dp)
+                                            )
+                                            Text(
+                                                text = I18n.strings.wizard_setup_buy_action,
+                                                fontFamily = GeologicaMedium,
+                                                fontSize = 22.sp,
+                                                color = FlareTheme.colors.textPrimary,
+                                                modifier = Modifier.padding(bottom = 12.dp),
+                                                textAlign = TextAlign.Center
+                                            )
+                                            Text(
+                                                text = I18n.strings.wizard_setup_buy_desc,
+                                                fontFamily = GeologicaRegular,
+                                                fontSize = 15.sp,
+                                                color = FlareTheme.colors.textSecondary,
+                                                textAlign = TextAlign.Center
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.height(32.dp))
+                                            
+                                            
+                                            Box(modifier = Modifier.fillMaxWidth()) {
+                                                FlareButton(
+                                                    text = I18n.strings.sub_connect_btn_text,
+                                                    onClick = { showTopUpMenu = true },
+                                                    accentColor = accentColor,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                                FlareGlassMenu(
+                                                    expanded = showTopUpMenu,
+                                                    onDismissRequest = { showTopUpMenu = false },
+                                                    items = listOf(
+                                                        GlassUtils.MenuItem(0, I18n.strings.sub_topup_telegram) {
+                                                            onOpenTelegramBuyClick()
+                                                            showTopUpMenu = false
+                                                        },
+                                                        GlassUtils.MenuItem(1, I18n.strings.sub_topup_app) {
+                                                            showTopUpDialog = true
+                                                            showTopUpMenu = false
+                                                        }
+                                                    ),
+                                                    hazeState = hazeState,
+                                                    alignment = Alignment.TopCenter,
+                                                    offset = androidx.compose.ui.unit.IntOffset(0, 0)
+                                                )
+                                            }
+                                            
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            
+                                            FlareButton(
+                                                text = I18n.strings.wizard_setup_buy_already_purchased,
+                                                onClick = onCompleteBuyClick,
+                                                accentColor = accentColor,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             WizardStep.FLARE_SUCCESS -> {
                                 val titleText = if (isFreeSuccess) I18n.strings.servers_subscription_added_title else I18n.strings.servers_subscription_failed_title
@@ -385,7 +517,7 @@ fun ServersScreen(
                                             )
                                             
                                             Text(
-                                                text = if (isFreeSuccess) I18n.strings.tariff_success_desc else I18n.strings.tariff_error_desc,
+                                                text = if (isFreeSuccess) I18n.strings.tariff_success_desc else (freeError ?: I18n.strings.tariff_error_desc),
                                                 fontFamily = GeologicaRegular,
                                                 fontSize = 15.sp,
                                                 color = FlareTheme.colors.textSecondary,
@@ -418,5 +550,17 @@ fun ServersScreen(
             scrollState = scrollState,
             onBack = if (showBackButton) onBack else null
         )
+        
+        
+        if (showTopUpDialog) {
+            TopUpDialog(
+                viewModel = subscriptionViewModel,
+                onDismiss = {
+                    showTopUpDialog = false
+                    subscriptionViewModel.resetPaymentState()
+                },
+                hazeState = hazeState
+            )
+        }
     }
 }

@@ -45,15 +45,16 @@ fun SettingsScreen(
     onRoutingSettingsClick: (android.view.View) -> Unit,
     onPingSettingsClick: (android.view.View) -> Unit,
     onSubscriptionsSettingsClick: (android.view.View) -> Unit,
+    onVpnSubscriptionClick: (android.view.View) -> Unit,
     onThemeSettingsClick: (android.view.View) -> Unit,
     onLanguageSettingsClick: (android.view.View) -> Unit,
     isGradientEnabled: Boolean,
     isAnimationEnabled: Boolean,
     gradientSpeed: Float,
-    hazeState: HazeState
+    hazeState: HazeState,
+    scrollState: androidx.compose.foundation.ScrollState = androidx.compose.foundation.rememberScrollState()
 ) {
     val strings = I18n.strings
-    val scrollState = rememberScrollState()
 
     Box(
         modifier = Modifier
@@ -119,6 +120,8 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+
+
                 FlareSectionHeader(text = strings.settings_header_appearance)
                 
                 FlareSettingsItem(
@@ -134,6 +137,18 @@ fun SettingsScreen(
                     cornerType = DisplayItem.CornerType.BOTTOM,
                     onClick = onLanguageSettingsClick,
                     iconBgColor = Color(0xFFFF9500)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                FlareSectionHeader(text = "FlareVPN")
+                
+                FlareSettingsItem(
+                    title = strings.sub_manage_title,
+                    icon = R.drawable.ic_settings_dashboard,
+                    cornerType = DisplayItem.CornerType.ALL,
+                    onClick = onVpnSubscriptionClick,
+                    iconBgColor = Color(0xFF5856D6)
                 )
             }
         }

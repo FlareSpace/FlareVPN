@@ -84,13 +84,22 @@ fun AppSelectionDialog(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-        Text(
-            text = I18n.strings.dialog_apps_title,
-            color = FlareTheme.colors.textPrimary,
-            fontSize = 18.sp,
-            fontFamily = geologicaMedium,
+        AnimatedContent(
+            targetState = if (tabIndex == 0) I18n.strings.dialog_apps_title else I18n.strings.dialog_domens_title,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(350)) + slideInVertically(animationSpec = tween(350)) { -it / 2 }) togetherWith
+                (fadeOut(animationSpec = tween(350)) + slideOutVertically(animationSpec = tween(350)) { it / 2 })
+            },
+            label = "titleTransition",
             modifier = Modifier.padding(bottom = 12.dp)
-        )
+        ) { titleText ->
+            Text(
+                text = titleText,
+                color = FlareTheme.colors.textPrimary,
+                fontSize = 18.sp,
+                fontFamily = geologicaMedium
+            )
+        }
 
         
         

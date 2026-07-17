@@ -17,20 +17,16 @@ android {
             localPropertiesFile.inputStream().use { load(it) }
         }
     }
-    val freeServersUrl = localProperties.getProperty("FREE_SERVERS_URL") ?: "https://example.com/placeholder"
-
     defaultConfig {
         applicationId = "flare.client.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 28
-        versionName = "1.3.3"
+        versionCode = 31
+        versionName = "1.3.6"
 
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
         }
-
-        buildConfigField("String", "FREE_SERVERS_URL", "\"$freeServersUrl\"")
     }
 
     splits {

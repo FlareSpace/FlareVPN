@@ -80,7 +80,7 @@ fun RoutingScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_routing_title,
             hazeState = hazeState,
             scrollState = scrollState,

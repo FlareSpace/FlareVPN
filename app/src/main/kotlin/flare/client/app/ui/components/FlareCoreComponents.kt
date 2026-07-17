@@ -6,6 +6,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -142,7 +143,7 @@ fun FlareTopBar(
             }
             .drawBehind {
                 if (scrollProgress > 0f) {
-                    val strokeWidth = 1.dp.toPx()
+                    val strokeWidth = 0.5.dp.toPx()
                     val y = size.height - strokeWidth / 2
                     drawLine(
                         color = lineColor,
@@ -179,10 +180,396 @@ fun FlareTopBar(
         ) {
             Text(
                 text = title,
+                modifier = Modifier.basicMarquee(),
                 fontFamily = GeologicaMedium,
                 fontWeight = FontWeight.Medium,
                 fontSize = 22.sp,
-                color = FlareTheme.colors.textPrimary
+                color = FlareTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+            )
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                subtitle()
+            }
+        }
+        
+        if (actions != null) {
+            actions()
+        }
+    }
+}
+
+@Composable
+fun FlareSubScreenTopBar(
+    title: String,
+    hazeState: HazeState,
+    scrollState: ScrollState? = null,
+    lazyListState: LazyListState? = null,
+    onBack: (() -> Unit)? = null,
+    subtitle: @Composable (() -> Unit)? = null,
+    actions: @Composable (RowScope.() -> Unit)? = null
+) {
+    val isDark = FlareTheme.colors.isDark
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE) }
+    var appearanceType by remember { mutableStateOf(prefs.getInt("appearance_type", 1)) }
+    
+    androidx.compose.runtime.DisposableEffect(prefs) {
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { sharedPreferences, key ->
+            if (key == "appearance_type") {
+                appearanceType = sharedPreferences.getInt("appearance_type", 1)
+            }
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
+    }
+
+    Crossfade(targetState = appearanceType, label = "appearanceCrossfade") { type ->
+        when (type) {
+            0 -> {
+                FlareTopBar(
+                    title = title,
+                    hazeState = hazeState,
+                    scrollState = scrollState,
+                    lazyListState = lazyListState,
+                    onBack = onBack,
+                    subtitle = subtitle,
+                    actions = actions
+                )
+            }
+            1 -> {
+                val blurEnabled = flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled
+
+            val scrollOffset = when {
+                scrollState != null -> scrollState.value
+                lazyListState != null -> {
+                    if (lazyListState.firstVisibleItemIndex > 0) 500 else lazyListState.firstVisibleItemScrollOffset
+                }
+                else -> 0
+            }
+            
+            val density = LocalDensity.current
+            val maxScrollPx = with(density) { 48.dp.toPx() }
+            val scrollProgress = (scrollOffset / maxScrollPx).coerceIn(0f, 1f)
+
+            val collapsedHeight = if (subtitle != null) 56.dp else 48.dp
+            val expandedHeight = if (subtitle != null) 80.dp else 64.dp
+            val currentHeight = expandedHeight - (expandedHeight - collapsedHeight) * scrollProgress
+
+            val expandedFontSize = if (subtitle != null) 22f else 24f
+            val collapsedFontSize = 18f
+            val currentFontSize = (expandedFontSize - (expandedFontSize - collapsedFontSize) * scrollProgress).sp
+
+            val maxPadding = if (onBack != null || actions != null) {
+                (20 + 52 * scrollProgress).dp
+            } else {
+                20.dp
+            }
+            val startPadding = maxPadding
+            val endPadding = maxPadding
+
+            val hazeTintColor = if (isDark) {
+                Color.Transparent
+            } else {
+                Color.White.copy(alpha = 0.15f)
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (blurEnabled) {
+                            Modifier.hazeEffect(state = hazeState) {
+                                blurRadius = 25.dp
+                                progressive = HazeProgressive.verticalGradient(
+                                    startIntensity = 1f,
+                                    endIntensity = 0f,
+                                    preferPerformance = true
+                                )
+                                tints = listOf(HazeTint(color = hazeTintColor))
+                                noiseFactor = 0f
+                            }
+                        } else {
+                            val baseColor = if (isDark) Color.Black else Color.White
+                            Modifier.background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        baseColor.copy(alpha = 0.5f),
+                                        baseColor.copy(alpha = 0.2f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                        }
+                    )
+                    .statusBarsPadding()
+                    .padding(top = 4.dp, bottom = 12.dp)
+                    .height(currentHeight)
+            ) {
+                if (onBack != null) {
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.92f else 1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        ),
+                        label = "backBtnScale"
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 16.dp)
+                            .size(48.dp)
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                onClick = onBack
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .border(
+                                    width = if (isDark) 0.5.dp else 1.dp,
+                                    brush = if (isDark) {
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0.15f),
+                                                Color.Transparent
+                                            )
+                                        )
+                                    } else {
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0.65f),
+                                                Color(0x09000000)
+                                            )
+                                        )
+                                    },
+                                    shape = CircleShape
+                                )
+                                .flareGlass(
+                                    isDark = isDark,
+                                    radius = 24f,
+                                    intensity = 1.6f,
+                                    index = 1.5f,
+                                    glassHeight = 0.5f,
+                                    thickness = 5f,
+                                    hasOutline = false
+                                )
+                                .then(
+                                    if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) {
+                                        Modifier
+                                            .background(Color.Transparent)
+                                            .hazeEffect(state = hazeState) {
+                                                blurRadius = 10.dp
+                                                tints = listOf(HazeTint(color = if (isDark) Color.Black.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.2f)))
+                                                noiseFactor = 0f
+                                            }
+                                    } else {
+                                        Modifier.background(
+                                            color = if (isDark) Color(0xA0202228) else Color(0x87FFFFFF),
+                                            shape = CircleShape
+                                        )
+                                    }
+                                )
+                        )
+
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_left),
+                            contentDescription = null,
+                            tint = FlareTheme.colors.textPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .height(currentHeight)
+                        .fillMaxWidth()
+                        .padding(start = startPadding, end = endPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (subtitle == null) {
+                        Text(
+                            text = title,
+                            modifier = Modifier.basicMarquee(),
+                            fontFamily = GeologicaMedium,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = currentFontSize,
+                            color = FlareTheme.colors.textPrimary,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = title,
+                                modifier = Modifier.basicMarquee(),
+                                fontFamily = GeologicaMedium,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = currentFontSize,
+                                color = FlareTheme.colors.textPrimary,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center
+                            )
+                            if (scrollProgress < 0.95f) {
+                                Spacer(modifier = Modifier.height((4 * (1f - scrollProgress)).dp))
+                                Box(
+                                    modifier = Modifier
+                                        .graphicsLayer {
+                                            alpha = 1f - scrollProgress
+                                            scaleX = 1f - 0.1f * scrollProgress
+                                            scaleY = 1f - 0.1f * scrollProgress
+                                        }
+                                ) {
+                                    subtitle()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (actions != null) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 16.dp)
+                            .height(48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        content = actions
+                    )
+                }
+            }
+            }
+            else -> {
+                FlareTopOled(
+                    title = title,
+                    hazeState = hazeState,
+                    scrollState = scrollState,
+                    lazyListState = lazyListState,
+                    onBack = onBack,
+                    subtitle = subtitle,
+                    actions = actions
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FlareTopOled(
+    title: String,
+    hazeState: HazeState,
+    scrollState: ScrollState? = null,
+    lazyListState: LazyListState? = null,
+    onBack: (() -> Unit)? = null,
+    subtitle: @Composable (() -> Unit)? = null,
+    actions: @Composable (RowScope.() -> Unit)? = null
+) {
+    val isDark = FlareTheme.colors.isDark
+    
+    val scrollOffset = when {
+        scrollState != null -> scrollState.value
+        lazyListState != null -> {
+            if (lazyListState.firstVisibleItemIndex > 0) 500 else lazyListState.firstVisibleItemScrollOffset
+        }
+        else -> 0
+    }
+    
+    val density = LocalDensity.current
+    val maxScrollPx = with(density) { 30.dp.toPx() }
+    val scrollProgress = (scrollOffset / maxScrollPx).coerceIn(0f, 1f)
+    
+    val lineColor = if (isDark) {
+        Color.White.copy(alpha = 0.15f * scrollProgress)
+    } else {
+        Color.Black.copy(alpha = 0.12f * scrollProgress)
+    }
+    
+    val bgColor = if (isDark) Color.Black else Color.White
+    
+    val hazeStyle = HazeStyle(
+        blurRadius = 45.dp,
+        tints = listOf(HazeTint(color = bgColor.copy(alpha = 0.5f))),
+        noiseFactor = 0.01f
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) Color.Transparent else bgColor.copy(alpha = 0.95f))
+            .hazeEffect(state = hazeState, style = hazeStyle) {
+                alpha = 1f
+            }
+            .drawBehind {
+                if (scrollProgress > 0f) {
+                    val strokeWidth = 0.5.dp.toPx()
+                    val y = size.height - strokeWidth / 2
+                    drawLine(
+                        color = lineColor,
+                        start = Offset(0f, y),
+                        end = Offset(size.width, y),
+                        strokeWidth = strokeWidth
+                    )
+                }
+            }
+            .statusBarsPadding()
+            .padding(horizontal = if (onBack != null) 8.dp else 20.dp)
+            .padding(top = 2.dp, bottom = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (onBack != null) {
+            FlareGlassButton(
+                onClick = onBack,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_arrow_left),
+                    contentDescription = null,
+                    tint = FlareTheme.colors.textPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (onBack != null) 8.dp else 4.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = title,
+                modifier = Modifier.basicMarquee(),
+                fontFamily = GeologicaMedium,
+                fontWeight = FontWeight.Medium,
+                fontSize = 22.sp,
+                color = FlareTheme.colors.textPrimary,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(4.dp))

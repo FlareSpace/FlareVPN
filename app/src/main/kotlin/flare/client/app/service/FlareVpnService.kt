@@ -11,6 +11,9 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import flare.client.app.R
@@ -34,6 +37,8 @@ class FlareVpnService : VpnService() {
         private const val TAG = "FlareVpnService"
         const val ACTION_START = "flare.client.app.START_VPN"
         const val ACTION_STOP = "flare.client.app.STOP_VPN"
+        const val ACTION_RECOVER = "flare.client.app.RECOVER_VPN"
+        const val ACTION_STOP_MONITORING = "flare.client.app.STOP_MONITORING"
         const val EXTRA_CONFIG = "flare.client.app.CONFIG_JSON"
         const val EXTRA_PROFILE_NAME = "flare.client.app.PROFILE_NAME"
         const val BROADCAST_STATE = "flare.client.app.VPN_STATE"
@@ -41,6 +46,7 @@ class FlareVpnService : VpnService() {
         const val EXTRA_ERROR = "error"
         const val EXTRA_ERROR_MESSAGE = "error_message"
         const val EXTRA_PERMISSION_REQUIRED = "permission_required"
+        const val EXTRA_SELECTED_PROFILE_ID = "selected_profile_id"
         private const val NOTIF_CHANNEL = "flare_vpn"
         private const val NOTIF_ID = 1001
     }
@@ -54,8 +60,56 @@ class FlareVpnService : VpnService() {
     @Volatile
     private var latestStartId = -1
 
+    private lateinit var backgroundManager: VpnBackgroundManager
+
     override fun onCreate() {
         super.onCreate()
+        backgroundManager = VpnBackgroundManager(
+            context = this,
+            serviceScope = serviceScope,
+            onProfileSelected = { newProfileId ->
+                val db = flare.client.app.data.db.AppDatabase.getInstance(this)
+                val repo = flare.client.app.data.repository.ProfileRepository(
+                    db.profileDao(), db.subscriptionDao()
+                )
+                try {
+                    repo.selectProfile(newProfileId)
+                    try { flare.client.app.widget.FlareWidgetProvider.updateAllWidgets(this) }
+                    catch (e: Exception) { Log.e(TAG, "Widget update failed: ${e.message}") }
+                } catch (e: Exception) {
+                    Log.e(TAG, "onProfileSelected: DB write failed: ${e.message}")
+                    return@VpnBackgroundManager
+                }
+                broadcastState(connected = SingBoxManager.isRunning, newSelectedProfileId = newProfileId)
+            },
+            onRestartVpn = {
+                serviceScope.launch {
+                    try {
+                        val db = flare.client.app.data.db.AppDatabase.getInstance(this@FlareVpnService)
+                        val repo = flare.client.app.data.repository.ProfileRepository(
+                            db.profileDao(), db.subscriptionDao()
+                        )
+                        val profile = repo.getSelectedProfile() ?: return@launch
+                        val settings = flare.client.app.data.SettingsManager(this@FlareVpnService)
+                        val config = SingBoxManager.prepareConfigWithChaining(
+                            this@FlareVpnService, profile.configJson, settings
+                        )
+                        val intent = Intent(this@FlareVpnService, FlareVpnService::class.java).apply {
+                            action = ACTION_START
+                            putExtra(EXTRA_CONFIG, config)
+                            putExtra(EXTRA_PROFILE_NAME, profile.name)
+                        }
+                        try {
+                            startService(intent)
+                        } catch (e: IllegalStateException) {
+                            Log.e(TAG, "onRestartVpn: startService failed: ${e.message}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "onRestartVpn: failed to load profile: ${e.message}")
+                    }
+                }
+            }
+        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -92,13 +146,14 @@ class FlareVpnService : VpnService() {
                             stopSelf()
                             return@withLock
                         }
-
                         if (configJson != null) {
                             profileName = name
                             startVpnInternal(configJson, startId)
                         }
                     }
                     ACTION_STOP -> stopVpnInternal(startId)
+                    ACTION_RECOVER -> backgroundManager.startRecovery()
+                    ACTION_STOP_MONITORING -> backgroundManager.cancelRecovery()
                 }
             }
         }
@@ -127,16 +182,16 @@ class FlareVpnService : VpnService() {
         CoroutineScope(Dispatchers.IO).launch {
             commandMutex.withLock {
                 if (!wasDeinitialized) {
-                    kotlinx.coroutines.withTimeoutOrNull(5000) {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                        kotlinx.coroutines.withTimeoutOrNull(5000) {
                             SingBoxManager.stop()
-                        }
+                        } ?: Log.e(TAG, "SingBoxManager.stop() timed out in onDestroy!")
                     }
                 }
-                kotlinx.coroutines.withTimeoutOrNull(5000) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    kotlinx.coroutines.withTimeoutOrNull(5000) {
                         SingBoxManager.destroy()
-                    }
+                    } ?: Log.e(TAG, "SingBoxManager.destroy() timed out in onDestroy!")
                 }
             }
         }
@@ -196,7 +251,9 @@ class FlareVpnService : VpnService() {
             }
 
             broadcastState(true)
+            triggerHapticFeedback()
             startStatsPolling()
+            backgroundManager.startMonitoring()
         } catch (e: Exception) {
             Log.e(TAG, "Error starting VPN", e)
             stopVpnOnError(startId)
@@ -268,19 +325,21 @@ class FlareVpnService : VpnService() {
         isDeinitialized = true
         Log.i(TAG, "stopVpnInternal: begin (startId=$startId)")
         statsJob?.cancel()
+        backgroundManager.stopMonitoring()
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIF_ID)
         
-        kotlinx.coroutines.withTimeoutOrNull(5000) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+            kotlinx.coroutines.withTimeoutOrNull(5000) {
                 SingBoxManager.stop()
-            }
-        } ?: Log.e(TAG, "SingBoxManager.stop() timed out inside FlareVpnService!")
+            } ?: Log.e(TAG, "SingBoxManager.stop() timed out inside FlareVpnService!")
+        }
         
         Log.i(TAG, "stopVpnInternal: engine stopped")
         
         
         broadcastState(false)
+        triggerHapticFeedback()
         
         stopSelf()
     }
@@ -299,6 +358,7 @@ class FlareVpnService : VpnService() {
         isDeinitialized = true
         Log.i(TAG, "stopVpnOnError: startId=$startId, error=$errorMessage, permission=$permissionRequired")
         statsJob?.cancel()
+        backgroundManager.stopMonitoring()
         broadcastState(false, error = true, permissionRequired = permissionRequired, errorMessage = errorMessage)
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.cancel(NOTIF_ID)
@@ -308,13 +368,22 @@ class FlareVpnService : VpnService() {
         stopSelf()
     }
 
-    private fun broadcastState(connected: Boolean, error: Boolean = false, permissionRequired: Boolean = false, errorMessage: String? = null) {
+    internal fun broadcastState(
+        connected: Boolean,
+        error: Boolean = false,
+        permissionRequired: Boolean = false,
+        errorMessage: String? = null,
+        newSelectedProfileId: Long? = null
+    ) {
         sendBroadcast(
                 Intent(BROADCAST_STATE).apply {
                     putExtra(EXTRA_CONNECTED, connected)
                     putExtra(EXTRA_ERROR, error)
                     putExtra(EXTRA_ERROR_MESSAGE, errorMessage)
                     putExtra(EXTRA_PERMISSION_REQUIRED, permissionRequired)
+                    if (newSelectedProfileId != null) {
+                        putExtra(EXTRA_SELECTED_PROFILE_ID, newSelectedProfileId)
+                    }
                     `package` = packageName
                 }
         )
@@ -364,5 +433,28 @@ class FlareVpnService : VpnService() {
                 .addAction(R.drawable.ic_vpn_key, I18n.strings.vpn_disconnect, stopIntent)
                 .setOngoing(true)
                 .build()
+    }
+
+    private fun triggerHapticFeedback() {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                vibratorManager.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK))
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(30)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to vibrate", e)
+        }
     }
 }

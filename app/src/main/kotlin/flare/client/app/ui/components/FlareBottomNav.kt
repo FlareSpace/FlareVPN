@@ -11,6 +11,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.EaseInQuad
 import androidx.compose.animation.core.EaseOutQuad
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -163,8 +164,8 @@ fun FlareBottomNav(
     val visibilityProgress by animateFloatAsState(
         targetValue = if (isVisible && isReady) 1f else 0f,
         animationSpec = if (isVisible) spring(
-            dampingRatio = Spring.DampingRatioLowBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.75f,
+            stiffness = 500f
         ) else spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
@@ -175,19 +176,12 @@ fun FlareBottomNav(
     val containerWidthFraction by animateFloatAsState(
         targetValue = if (isShrunk) 0f else 1f,
         animationSpec = spring(
-            dampingRatio = 0.5f, 
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.75f, 
+            stiffness = 500f
         ), label = "widthFrac"
     )
 
-    
-    val tabsAlpha by animateFloatAsState(
-        targetValue = if (isShrunk) 0f else 1f,
-        animationSpec = tween(
-            durationMillis = if (isShrunk) 150 else 250,
-            delayMillis = if (isShrunk) 0 else 100
-        ), label = "tabsAlpha"
-    )
+    val tabsAlpha = ((containerWidthFraction - 0.2f) / 0.6f).coerceIn(0f, 1f)
 
     
     val arrowAlpha by animateFloatAsState(
@@ -200,12 +194,20 @@ fun FlareBottomNav(
     val arrowScale by animateFloatAsState(
         targetValue = if (isShrunk) 1f else 0.5f,
         animationSpec = if (isShrunk) spring(
-            dampingRatio = 0.5f,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = 0.75f,
+            stiffness = 500f
         ) else spring(
             dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMedium
         ), label = "arrowScale"
+    )
+
+    val expandScale by animateFloatAsState(
+        targetValue = if (isShrunk) 0.95f else 1f,
+        animationSpec = spring(
+            dampingRatio = 0.75f,
+            stiffness = 500f
+        ), label = "expandScale"
     )
 
     BoxWithConstraints(
@@ -213,10 +215,11 @@ fun FlareBottomNav(
             .fillMaxWidth()
             .height(100.dp) 
             .graphicsLayer {
-                val scale = 0.3f + 0.7f * visibilityProgress
+                val visScale = 0.3f + 0.7f * visibilityProgress
+                val totalScale = visScale * expandScale
                 this.alpha = visibilityProgress.coerceIn(0f, 1f)
-                this.scaleX = scale
-                this.scaleY = scale
+                this.scaleX = totalScale
+                this.scaleY = totalScale
                 this.transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 1f)
             },
         contentAlignment = Alignment.BottomCenter
@@ -310,8 +313,7 @@ fun FlareBottomNav(
             
             Box(
                 modifier = Modifier
-                    .requiredWidth(fullWidthDp)
-                    .fillMaxHeight()
+                    .matchParentSize()
                     .graphicsLayer { alpha = tabsAlpha },
                 contentAlignment = Alignment.BottomCenter
             ) {
@@ -359,7 +361,7 @@ fun FlareBottomNav(
             ) {
                 Icon(
                     painter = painterResource(
-                        id = if (isShrunkToHome || selectedIndex == 1) R.drawable.ic_nav_spark else R.drawable.ic_arrow_right
+                        id = if (isShrunkToHome || selectedIndex == 1) R.drawable.ic_nav_fox else R.drawable.ic_arrow_right
                     ),
                     contentDescription = null,
                     tint = FlareTheme.colors.navIconTint,
@@ -402,8 +404,13 @@ private fun LiquidPillCanvas(
     val scope = rememberCoroutineScope()
 
     var isTapped by remember { mutableStateOf(false) }
-    var isTapTransition by remember { mutableStateOf(false) }
-    val tapTransitionFrac = remember { Animatable(0f) }
+    
+    val oldPillL = remember { mutableStateOf(selectedIndex / 3f) }
+    val oldPillR = remember { mutableStateOf((selectedIndex + 1) / 3f) }
+    
+    val crossFadeProgress = remember { Animatable(1f) }
+    
+    val oldPillAlpha = remember { Animatable(0f) }
     
     val pillSpringScale = remember { Animatable(1f) }
 
@@ -415,33 +422,25 @@ private fun LiquidPillCanvas(
         if (animate) {
             if (isTapped) {
                 isTapped = false
-                isTapTransition = true
-
+                oldPillL.value = leftFrac.value
+                oldPillR.value = rightFrac.value
                 leftFrac.snapTo(newL)
                 rightFrac.snapTo(newR)
-
                 
                 launch {
-                    tapTransitionFrac.snapTo(0f)
-                    tapTransitionFrac.animateTo(
-                        targetValue = 1f,
-                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                    )
-                    isTapTransition = false
+                    crossFadeProgress.snapTo(0f)
+                    crossFadeProgress.animateTo(1f, tween(150, easing = EaseOutQuad))
                 }
                 
                 launch {
-                    pillSpringScale.snapTo(0.82f)
-                    pillSpringScale.animateTo(
-                        targetValue = 1f,
-                        animationSpec = spring(
-                            dampingRatio = 0.55f,          
-                            stiffness = Spring.StiffnessMediumLow  
-                        )
-                    )
+                    oldPillAlpha.snapTo(1f)
+                    oldPillAlpha.animateTo(0f, tween(350, easing = EaseOutCubic))
                 }
+                launch { pillSpringScale.snapTo(1f) }
             } else {
-                isTapTransition = false
+                
+                launch { crossFadeProgress.snapTo(1f) }
+                launch { oldPillAlpha.snapTo(0f) }
                 val spec = tween<Float>(
                     durationMillis = (340 * 1.2f).toInt(),
                     easing = Easing { AnticipateOvershootInterpolator(0.6f, 1.2f).getInterpolation(it) }
@@ -450,7 +449,8 @@ private fun LiquidPillCanvas(
                 launch { rightFrac.animateTo(newR, spec) }
             }
         } else {
-            isTapTransition = false
+            crossFadeProgress.snapTo(1f)
+            oldPillAlpha.snapTo(0f)
             leftFrac.snapTo(newL)
             rightFrac.snapTo(newR)
         }
@@ -746,46 +746,48 @@ private fun LiquidPillCanvas(
                 }
             }
 
-            if (isTapTransition) {
-                val frac = tapTransitionFrac.value
-                val springS = pillSpringScale.value
-                val oldL = lastIndex.coerceAtLeast(0) / 3f
-                val oldR = (lastIndex.coerceAtLeast(0) + 1) / 3f
-                val newL = selectedIndex / 3f
-                val newR = (selectedIndex + 1) / 3f
+            val crossProgress = crossFadeProgress.value
+            val oldAlpha = oldPillAlpha.value
 
-                
-                drawPillAt(oldL, oldR, scaleVal = 1f, alphaMult = 1f - frac)
-                
-                drawPillAt(newL, newR, scaleVal = springS, alphaMult = frac)
+            
+            if (oldAlpha > 0.001f) {
+                drawPillAt(oldPillL.value, oldPillR.value, scaleVal = 1f, alphaMult = oldAlpha.coerceIn(0f, 1f))
+            }
+            
+            if (crossProgress < 0.999f) {
+                val newScale = 0.80f + 0.15f * crossProgress
+                drawPillAt(leftFrac.value, rightFrac.value, scaleVal = newScale, alphaMult = crossProgress.coerceIn(0f, 1f))
             } else {
                 drawPillAt(leftFrac.value, rightFrac.value, scaleVal = pillSpringScale.value, alphaMult = 1f)
             }
         }
 
         val centerFrac = (leftFrac.value + rightFrac.value) / 2f
-        val influence0 = if (isTapTransition) {
+        val crossProgress = crossFadeProgress.value
+        
+        val oldTabIndex = ((oldPillL.value + oldPillR.value) / 2f * 3f).toInt().coerceIn(0, 2)
+        val influence0 = if (crossProgress < 0.999f) {
             when (0) {
-                selectedIndex -> tapTransitionFrac.value
-                lastIndex -> 1f - tapTransitionFrac.value
+                selectedIndex -> crossProgress
+                oldTabIndex -> 1f - crossProgress
                 else -> 0f
             }
         } else {
             (1f - abs(centerFrac - 1f / 6f) / (1f / 3f)).coerceIn(0f, 1f)
         }
-        val influence1 = if (isTapTransition) {
+        val influence1 = if (crossProgress < 0.999f) {
             when (1) {
-                selectedIndex -> tapTransitionFrac.value
-                lastIndex -> 1f - tapTransitionFrac.value
+                selectedIndex -> crossProgress
+                oldTabIndex -> 1f - crossProgress
                 else -> 0f
             }
         } else {
             (1f - abs(centerFrac - 0.5f) / (1f / 3f)).coerceIn(0f, 1f)
         }
-        val influence2 = if (isTapTransition) {
+        val influence2 = if (crossProgress < 0.999f) {
             when (2) {
-                selectedIndex -> tapTransitionFrac.value
-                lastIndex -> 1f - tapTransitionFrac.value
+                selectedIndex -> crossProgress
+                oldTabIndex -> 1f - crossProgress
                 else -> 0f
             }
         } else {
@@ -806,8 +808,8 @@ private fun LiquidPillCanvas(
                 modifier = Modifier.weight(1f)
             )
             NavTabIcon(
-                outlineRes = R.drawable.ic_nav_spark,
-                filledRes = R.drawable.ic_nav_spark_filled,
+                outlineRes = R.drawable.ic_nav_fox,
+                filledRes = R.drawable.ic_nav_fox_filled,
                 influence = influence1,
                 accentColor = accentStart,
                 modifier = Modifier.weight(1f)

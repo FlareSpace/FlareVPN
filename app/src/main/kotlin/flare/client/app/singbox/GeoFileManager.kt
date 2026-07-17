@@ -44,7 +44,13 @@ object GeoFileManager {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        val request = okhttp3.Request.Builder().url(url).build()
+        val request = try {
+            okhttp3.Request.Builder().url(url).build()
+        } catch (e: IllegalArgumentException) {
+            Log.e(TAG, "Invalid URL for download: $url — ${e.message}")
+            onError("Invalid URL: ${e.message}")
+            return
+        }
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
                 onError(e.message ?: "Download failed")

@@ -139,7 +139,11 @@ object SingBoxFixer {
                 val ob = outbounds.optJSONObject(i) ?: continue
                 val type = ob.optString("type", "")
                 if (type == "vless") {
-                    val flow = ob.optString("flow", "")
+                    var flow = ob.optString("flow", "")
+                    if (flow == "null") {
+                        flow = ""
+                        ob.put("flow", flow)
+                    }
                     if (flow == "xtls-rprx-vision-udp443") {
                         ob.put("flow", "xtls-rprx-vision")
                         ob.put("packet_encoding", "xudp")

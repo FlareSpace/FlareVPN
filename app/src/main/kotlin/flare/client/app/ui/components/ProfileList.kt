@@ -33,6 +33,7 @@ fun ProfileList(
     onQrProfile: (ProfileSummary) -> Unit,
     onEditProfileJson: (ProfileSummary) -> Unit,
     onEditProfileSimple: (ProfileSummary) -> Unit,
+    onProfileTest: (ProfileSummary) -> Unit,
     onSubscriptionToggle: (SubscriptionEntity) -> Unit,
     onSubscriptionDelete: (Long) -> Unit,
     onSubscriptionSpeedTest: (Long) -> Unit,
@@ -41,6 +42,7 @@ fun ProfileList(
     onSubscriptionPinToggle: (SubscriptionEntity) -> Unit,
     onSubscriptionQr: (SubscriptionEntity) -> Unit,
     onSubscriptionShare: (SubscriptionEntity) -> Unit,
+    onSubscriptionMerge: (Long) -> Unit,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val showTop by remember { derivedStateOf { listState.canScrollBackward } }
@@ -100,6 +102,7 @@ fun ProfileList(
                                     }
                                 },
                                 onEditSimpleClick = { onEditProfileSimple(item.entity) },
+                                onTestClick = { onProfileTest(item.entity) },
                                 accentColor = accentColor,
                                 hazeState = hazeState
                             )
@@ -122,6 +125,8 @@ fun ProfileList(
                             updateInterval = item.entity.updateInterval,
                             isExpanded = item.isExpanded,
                             isRefreshing = item.isRefreshing,
+                            isPinging = item.isPinging,
+                            pingProgress = item.pingProgressText,
                             cornerType = item.cornerType,
                             onUpdateClick = { onSubscriptionUpdate(item.entity) },
                             onSpeedTestClick = { onSubscriptionSpeedTest(item.entity.id) },
@@ -129,10 +134,13 @@ fun ProfileList(
                             onDeleteClick = { onSubscriptionDelete(item.entity.id) },
                             onClick = { onSubscriptionToggle(item.entity) },
                             isPinned = item.entity.pinned > 0L,
-                            showQrAndLink = item.entity.id != -1L,
+                            showQrAndLink = item.entity.id != -1L && item.entity.id != -2L,
                             onPinClick = { onSubscriptionPinToggle(item.entity) },
                             onQrClick = { onSubscriptionQr(item.entity) },
                             onShareLinkClick = { onSubscriptionShare(item.entity) },
+                            onMergeClick = if (item.entity.id != -1L && item.entity.id != -2L) {
+                                { onSubscriptionMerge(item.entity.id) }
+                            } else null,
                             accentColor = accentColor,
                             hazeState = hazeState
                         )
@@ -234,6 +242,7 @@ private fun getProtocolDisplay(entity: ProfileSummary): String {
         if (!typeVal.isNullOrBlank()) {
             transport = when (typeVal) {
                 "tcp" -> "TCP"
+                "raw" -> "RAW"
                 "ws" -> "WS"
                 "grpc" -> "gRPC"
                 "httpupgrade" -> "HTTPUpgrade"

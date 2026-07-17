@@ -37,6 +37,7 @@ fun SwipeToReveal(
     modifier: Modifier = Modifier,
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.NONE,
     isChained: Boolean = false,
+    isCustomColorEnabled: Boolean = false,
     onDeleteClick: () -> Unit,
     onChainClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
@@ -89,7 +90,7 @@ fun SwipeToReveal(
                 .background(Color.Transparent)
         ) {
             
-            val redColor = FlareTheme.colors.disconnectedRed
+            val redColor = if (isCustomColorEnabled) FlareTheme.colors.accent else FlareTheme.colors.disconnectedRed
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -130,7 +131,7 @@ fun SwipeToReveal(
 
             
             if (onChainClick != null) {
-                val chainColor = if (isChained) FlareTheme.colors.disconnectedRed else FlareTheme.colors.connectedGreen
+                val chainColor = if (isCustomColorEnabled) FlareTheme.colors.accent else (if (isChained) FlareTheme.colors.disconnectedRed else FlareTheme.colors.connectedGreen)
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()

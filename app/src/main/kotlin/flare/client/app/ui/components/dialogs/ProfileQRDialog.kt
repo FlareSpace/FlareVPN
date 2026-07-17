@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import flare.client.app.R
 import flare.client.app.ui.theme.FlareTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 
 
 @Composable
@@ -88,7 +90,9 @@ fun ProfileQRDialog(
                 Image(
                     bitmap = qrBitmap.asImageBitmap(),
                     contentDescription = I18n.strings.profile_qr_image_description,
-                    modifier = Modifier.size(240.dp),
+                    modifier = Modifier
+                        .size(240.dp)
+                        .clip(RoundedCornerShape(16.dp)),
                     contentScale = ContentScale.Fit
                 )
             } else {

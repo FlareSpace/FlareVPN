@@ -15,8 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +35,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.foundation.text.KeyboardActions
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
@@ -62,6 +65,8 @@ fun PingSettingsScreen(
     hazeState: HazeState
 ) {
     val isDark = FlareTheme.colors.isDark
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val pingStyleOptions = listOf(
         I18n.strings.settings_ping_style_time to "time",
@@ -130,13 +135,24 @@ fun PingSettingsScreen(
                     else -> ""
                 }
 
-                Text(
-                    text = typeDesc,
-                    fontFamily = GeologicaRegular,
-                    fontSize = 12.sp,
-                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 24.dp)
-                )
+                AnimatedContent(
+                    targetState = typeDesc,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(220)) togetherWith fadeOut(animationSpec = tween(220))
+                    },
+                    modifier = Modifier.animateContentSize(),
+                    label = "pingTypeDescTransition"
+                ) { targetDesc ->
+                    Text(
+                        text = targetDesc,
+                        fontFamily = GeologicaRegular,
+                        fontSize = 12.sp,
+                        color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 4.dp, top = 8.dp, bottom = 24.dp)
+                    )
+                }
 
                 FlareSectionHeader(text = I18n.strings.settings_label_test_url)
                 
@@ -175,6 +191,15 @@ fun PingSettingsScreen(
                                 .onFocusChanged { isUrlFocused = it.isFocused },
                             singleLine = true,
                             cursorBrush = SolidColor(accentColor),
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                }
+                            ),
                             decorationBox = { innerTextField ->
                                 Box(
                                     contentAlignment = Alignment.Center,
@@ -237,6 +262,7 @@ fun PingSettingsScreen(
                         valueText = String.format(I18n.strings.settings_ping_timeout_sec, pingTimeout),
                         value = pingTimeout.toFloat(),
                         valueRange = 1f..20f,
+                        step = 1f,
                         accentColor = accentColor,
                         onValueChange = { onPingTimeoutChange(it.toInt()) },
                         isTop = true,
@@ -255,7 +281,7 @@ fun PingSettingsScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_ping_title,
             hazeState = hazeState,
             scrollState = scrollState,
@@ -273,15 +299,27 @@ fun PingTypeButton(
     modifier: Modifier = Modifier,
     accentColor: Color
 ) {
-    val backgroundColor = if (isSelected) FlareTheme.colors.bgProfileSelected else FlareTheme.colors.bgItem
-    val textColor = if (isSelected) FlareTheme.colors.textProfileSelectedPrimary else FlareTheme.colors.textPrimary
-    val iconColor = if (isSelected) accentColor else FlareTheme.colors.textSecondary
+    val animatedBgColor by animateColorAsState(
+        targetValue = if (isSelected) FlareTheme.colors.bgProfileSelected else FlareTheme.colors.bgItem,
+        animationSpec = tween(durationMillis = 250),
+        label = "pingTypeBg"
+    )
+    val animatedTextColor by animateColorAsState(
+        targetValue = if (isSelected) FlareTheme.colors.textProfileSelectedPrimary else FlareTheme.colors.textPrimary,
+        animationSpec = tween(durationMillis = 250),
+        label = "pingTypeText"
+    )
+    val animatedIconColor by animateColorAsState(
+        targetValue = if (isSelected) accentColor else FlareTheme.colors.textSecondary,
+        animationSpec = tween(durationMillis = 250),
+        label = "pingTypeIcon"
+    )
 
     Box(
         modifier = modifier
             .height(104.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
+            .background(animatedBgColor)
             .clickable(onClick = onClick)
             .padding(12.dp),
         contentAlignment = Alignment.Center
@@ -293,7 +331,7 @@ fun PingTypeButton(
             Icon(
                 painter = painterResource(iconRes),
                 contentDescription = null,
-                tint = iconColor,
+                tint = animatedIconColor,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
@@ -301,12 +339,17 @@ fun PingTypeButton(
                 text = text,
                 fontFamily = GeologicaRegular,
                 fontSize = 13.sp,
-                color = textColor,
+                color = animatedTextColor,
                 textAlign = TextAlign.Center
             )
         }
 
-        if (isSelected) {
+        AnimatedVisibility(
+            visible = isSelected,
+            enter = fadeIn(animationSpec = tween(200)) + scaleIn(animationSpec = tween(200)),
+            exit = fadeOut(animationSpec = tween(150)) + scaleOut(animationSpec = tween(150)),
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
             Icon(
                 painter = painterResource(R.drawable.ic_check),
                 contentDescription = null,
@@ -314,7 +357,6 @@ fun PingTypeButton(
                 modifier = Modifier
                     .size(20.dp)
                     .padding(4.dp)
-                    .align(Alignment.TopEnd)
             )
         }
     }

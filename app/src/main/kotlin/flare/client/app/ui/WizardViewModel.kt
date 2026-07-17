@@ -21,7 +21,7 @@ enum class ServerType {
 }
 
 enum class TariffType {
-    FREE, PLUS, PREMIUM
+    FREE, PREMIUM
 }
 
 enum class SelectedProtocol {
@@ -53,6 +53,9 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
     var composeSelectedTariff by mutableStateOf<TariffType?>(null)
     var composeSelectedProtocol by mutableStateOf(SelectedProtocol.XRAY)
     var composeFreeSubscriptionSuccess by mutableStateOf(true)
+    var composeFreeSubscriptionError by mutableStateOf<String?>(null)
+    var composeAuthError by mutableStateOf<String?>(null)
+    var composeIsAuthPolling by mutableStateOf(false)
 
     val isSshConfigValid: Boolean
         get() {
@@ -105,13 +108,30 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
             }
             WizardStep.FLARE_TARIFFS -> {
                 if (composeSelectedTariff == TariffType.FREE) {
-                    composeWizardStep = WizardStep.FLARE_PROGRESS
-                    addFreeSubscription {
-                        composeWizardStep = WizardStep.FLARE_SUCCESS
+                    val authManager = flare.client.app.data.auth.AuthManager(getApplication(), flare.client.app.data.SettingsManager(getApplication()))
+                    if (!authManager.isLoggedIn()) {
+                        composeWizardStep = WizardStep.FLARE_FREE_AUTH_PROMPT
+                    } else {
+                        composeWizardStep = WizardStep.FLARE_PROGRESS
+                        composeSetupStatus = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_status
+                        addFreeSubscription(auth = true) {
+                            composeWizardStep = WizardStep.FLARE_SUCCESS
+                        }
+                    }
+                } else if (composeSelectedTariff == TariffType.PREMIUM) {
+                    val authManager = flare.client.app.data.auth.AuthManager(getApplication(), flare.client.app.data.SettingsManager(getApplication()))
+                    if (!authManager.isLoggedIn()) {
+                        composeWizardStep = WizardStep.FLARE_AUTH
+                        
+                    } else {
+                        composeWizardStep = WizardStep.FLARE_BUY
                     }
                 }
             }
             WizardStep.FLARE_PROGRESS -> {
+                
+            }
+            WizardStep.FLARE_AUTH, WizardStep.FLARE_BUY, WizardStep.FLARE_FREE_AUTH_PROMPT -> {
                 
             }
             WizardStep.SUCCESS, WizardStep.FLARE_SUCCESS -> {
@@ -134,6 +154,9 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
             WizardStep.FLARE_TARIFFS -> WizardStep.CARDS
             WizardStep.FLARE_SUCCESS -> WizardStep.FLARE_TARIFFS
             WizardStep.FLARE_PROGRESS -> WizardStep.FLARE_TARIFFS
+            WizardStep.FLARE_AUTH -> WizardStep.FLARE_TARIFFS
+            WizardStep.FLARE_BUY -> WizardStep.FLARE_TARIFFS
+            WizardStep.FLARE_FREE_AUTH_PROMPT -> WizardStep.FLARE_TARIFFS
             else -> composeWizardStep
         }
     }
@@ -160,78 +183,151 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
         composeSetupProgress = 0f
         composeSetupError = null
         composeFreeSubscriptionSuccess = true
+        composeFreeSubscriptionError = null
+        composeAuthError = null
+        composeIsAuthPolling = false
     }
 
-    fun addFreeSubscription(onComplete: () -> Unit) {
+    fun startAuthAndPoll(onAuthSuccess: (() -> Unit)? = null) {
+        val authManager = flare.client.app.data.auth.AuthManager(getApplication(), flare.client.app.data.SettingsManager(getApplication()))
+        composeIsAuthPolling = true
+        composeAuthError = null
+        viewModelScope.launch {
+            val uuid = authManager.startAuthFlow()
+            if (uuid != null) {
+                val success = authManager.pollForToken(uuid) == 0
+                composeIsAuthPolling = false
+                if (success) {
+                    if (onAuthSuccess != null) {
+                        onAuthSuccess()
+                    } else {
+                        composeWizardStep = WizardStep.FLARE_BUY
+                    }
+                } else {
+                    composeAuthError = flare.client.app.ui.i18n.I18n.strings.wizard_setup_auth_error_timeout
+                }
+            } else {
+                composeIsAuthPolling = false
+                composeAuthError = flare.client.app.ui.i18n.I18n.strings.wizard_setup_auth_error_network
+            }
+        }
+    }
+
+    fun selectFreeWithoutAuth() {
+        composeWizardStep = WizardStep.FLARE_PROGRESS
+        composeSetupStatus = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_status
+        addFreeSubscription(auth = false) {
+            composeWizardStep = WizardStep.FLARE_SUCCESS
+        }
+    }
+
+    fun selectFreeWithAuth() {
+        composeWizardStep = WizardStep.FLARE_AUTH
+        
+    }
+
+    fun onFreeAuthSuccess() {
+        composeWizardStep = WizardStep.FLARE_PROGRESS
+        composeSetupStatus = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_status
+        addFreeSubscription(auth = true) {
+            composeWizardStep = WizardStep.FLARE_SUCCESS
+        }
+    }
+
+    fun onPremiumAuthSuccess() {
+        composeWizardStep = WizardStep.FLARE_BUY
+    }
+
+    fun openTelegramBuy() {
+        val tariffName = "premium"
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("tg://resolve?domain=${flare.client.app.data.api.FlareBackendApi.BOT_USERNAME}&start=buy_$tariffName"))
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        getApplication<Application>().startActivity(intent)
+    }
+
+    fun completeBuy() {
+        reset()
+    }
+
+    fun addFreeSubscription(auth: Boolean, onComplete: () -> Unit) {
         viewModelScope.launch {
             val startTime = System.currentTimeMillis()
-            val allSubs = profileRepository.getAllSubscriptions().first()
-            val oldSub = allSubs.find { it.name == "✨ FlareVPN Free" }
-            if (oldSub != null) {
-                profileRepository.deleteSubscription(oldSub)
+            composeFreeSubscriptionError = null
+            
+            val authManager = flare.client.app.data.auth.AuthManager(getApplication(), flare.client.app.data.SettingsManager(getApplication()))
+            val token = authManager.getToken()
+            
+            var subLink: String? = null
+            var errorMsg: String? = null
+
+            val result = if (auth && token != null) {
+                flare.client.app.data.api.FlareBackendApi.createFreeKeyAuthorized(token)
+            } else {
+                val settings = flare.client.app.data.SettingsManager(getApplication())
+                val hwid = settings.getHardwareId()
+                flare.client.app.data.api.FlareBackendApi.createFreeKeyAnonymous(hwid)
+            }
+            
+            result.onSuccess { response ->
+                subLink = response.sub_link
+            }.onFailure { e ->
+                errorMsg = e.message
             }
 
-            val profiles = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            if (subLink != null) {
                 try {
-                    val client = okhttp3.OkHttpClient.Builder()
-                        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-                        .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
-                        .build()
-                        
-                    val requestBuilder = okhttp3.Request.Builder()
-                        .url(flare.client.app.BuildConfig.FREE_SERVERS_URL)
+                    val clipboard = getApplication<Application>().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("proxy_link", subLink)
+                    clipboard.setPrimaryClip(clip)
+                } catch (e: Exception) {
                     
-                    val response = client.newCall(requestBuilder.build()).execute()
-                    if (response.isSuccessful) {
-                        val body = response.body?.string() ?: ""
-                        response.close()
-                        
-                        val cleaned = body.trim()
-                        val lines = if (cleaned.startsWith("vless://") || cleaned.startsWith("vmess://") || cleaned.startsWith("ss://")) {
-                            cleaned.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                        } else {
-                            try {
-                                val flat = cleaned.replace("\r", "").replace("\n", "")
-                                val clean = flat.replace("-", "+").replace("_", "/")
-                                val padded = when (clean.length % 4) { 2 -> "$clean=="; 3 -> "$clean="; else -> clean }
-                                val decoded = String(android.util.Base64.decode(padded, android.util.Base64.DEFAULT)).trim()
-                                decoded.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                            } catch (e: Exception) {
-                                cleaned.lines().map { it.trim() }.filter { it.isNotEmpty() }
-                            }
+                }
+                
+                try {
+                    val app = getApplication<Application>()
+                    val settings = flare.client.app.data.SettingsManager(app)
+                    val hwidString = settings.getHardwareId()
+                    val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+                    val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+                    
+                    val parseResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        flare.client.app.data.parser.ClipboardParser.parse(app, subLink, hwidString, model, osVersion, settings.subUserAgent, settings.subUpdateTimeout)
+                    }
+                    
+                    when (parseResult) {
+                        is flare.client.app.data.parser.ClipboardParser.ParseResult.Subscription -> {
+                            profileRepository.insertSubscriptionWithProfiles(parseResult.subscription, parseResult.profiles)
+                            composeFreeSubscriptionSuccess = true
                         }
-                        
-                        val parsed = lines.mapIndexedNotNull { _, line ->
-                            try {
-                                flare.client.app.data.parser.ClipboardParser.buildProfileFromUri(
-                                    getApplication(), line, subscriptionId = null
-                                )
-                            } catch (_: Exception) {
-                                null
+                        is flare.client.app.data.parser.ClipboardParser.ParseResult.MultipleProfiles -> {
+                            parseResult.profiles.forEach { profile ->
+                                profileRepository.insertProfile(profile)
                             }
+                            composeFreeSubscriptionSuccess = true
                         }
-                        
-                        flare.client.app.util.ProfileRenamer.renameProfiles(parsed)
-                    } else {
-                        response.close()
-                        emptyList()
+                        is flare.client.app.data.parser.ClipboardParser.ParseResult.SingleProfile -> {
+                            profileRepository.insertProfile(parseResult.profile)
+                            composeFreeSubscriptionSuccess = true
+                        }
+                        is flare.client.app.data.parser.ClipboardParser.ParseResult.Error -> {
+                            errorMsg = parseResult.message
+                            composeFreeSubscriptionSuccess = false
+                        }
                     }
                 } catch (e: Exception) {
-                    emptyList()
+                    errorMsg = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_parse_error
+                    composeFreeSubscriptionSuccess = false
                 }
-            }
-
-            if (profiles.isNotEmpty()) {
-                val sub = SubscriptionEntity(
-                    name = "✨ FlareVPN Free",
-                    url = "",
-                    total = Long.MAX_VALUE
-                )
-                profileRepository.insertSubscriptionWithProfiles(sub, profiles)
-                composeFreeSubscriptionSuccess = true
             } else {
                 composeFreeSubscriptionSuccess = false
+                if (errorMsg?.contains("HTTP 400") == true) {
+                    errorMsg = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_limit_exceeded
+                } else if (errorMsg?.contains("HTTP 403") == true) {
+                    errorMsg = flare.client.app.ui.i18n.I18n.strings.wizard_setup_free_telegram_required
+                }
             }
+            
+            composeFreeSubscriptionError = errorMsg
 
             val elapsed = System.currentTimeMillis() - startTime
             if (elapsed < 2000) {

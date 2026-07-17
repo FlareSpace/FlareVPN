@@ -187,7 +187,7 @@ fun FlareGlassMenu(
                         .let {
                             if (hazeState != null) {
                                 it.background(if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) androidx.compose.ui.graphics.Color.Transparent else flare.client.app.ui.theme.FlareTheme.colors.bgItem.copy(alpha = 0.95f)).hazeEffect(state = hazeState) {
-                                    blurRadius = 3.dp
+                                    blurRadius = 5.dp
                                 }
                             } else {
                                 it.background(

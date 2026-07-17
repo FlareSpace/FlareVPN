@@ -97,7 +97,7 @@ fun LanguageSettingsScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = strings.settings_language_title,
             hazeState = hazeState,
             scrollState = scrollState,

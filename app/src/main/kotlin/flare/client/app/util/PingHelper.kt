@@ -81,6 +81,10 @@ object PingHelper {
                 }
                 Libbox.setup(opts)
                 if (flare.client.app.BuildConfig.DEBUG) Log.i(TAG, "Libbox.setup() success")
+                
+                
+                flare.client.app.singbox.LocalResolver.init(context.applicationContext)
+                
                 Unit
             } catch (e: Exception) {
                 Log.w(TAG, "Libbox.setup() failed: ${e.message}")
@@ -124,7 +128,9 @@ object PingHelper {
                         }
                     } else {
                         val startTime = System.nanoTime()
-                        Socket().use {
+                        val socket = Socket()
+                        flare.client.app.singbox.SingBoxManager.currentVpnService?.protect(socket)
+                        socket.use {
                             it.connect(InetSocketAddress(ipAddress, port), timeoutSec * 1000)
                         }
                         ((System.nanoTime() - startTime) / 1_000_000) to null
@@ -171,6 +177,7 @@ object PingHelper {
                     delay(20) 
                 }
                 runProxyPingChunk(
+                    context = context,
                     profiles = chunk,
                     testUrl = testUrl,
                     timeoutSec = timeoutSec,
@@ -182,6 +189,7 @@ object PingHelper {
     }
 
     private suspend fun runProxyPingChunk(
+        context: Context,
         profiles: List<ProfileEntity>,
         testUrl: String,
         timeoutSec: Int,
@@ -201,22 +209,70 @@ object PingHelper {
         }
 
         val platform = object : PlatformInterface {
-            override fun autoDetectInterfaceControl(fd: Int) {}
+            private var networkCallback: android.net.ConnectivityManager.NetworkCallback? = null
+
+            override fun autoDetectInterfaceControl(fd: Int) {
+                flare.client.app.singbox.SingBoxManager.currentVpnService?.protect(fd)
+            }
             override fun clearDNSCache() {}
-            override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+            override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+                    networkCallback?.let {
+                        try {
+                            cm.unregisterNetworkCallback(it)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "unregisterNetworkCallback failed", e)
+                        }
+                    }
+                    networkCallback = null
+                }
+            }
             override fun findConnectionOwner(
                 p0: Int, p1: String?, p2: Int, p3: String?, p4: Int
             ): ConnectionOwner? = null
             override fun getInterfaces(): NetworkInterfaceIterator? = null
             override fun includeAllNetworks(): Boolean = false
-            override fun localDNSTransport(): LocalDNSTransport? = null
+            override fun localDNSTransport(): LocalDNSTransport? = flare.client.app.singbox.LocalResolver
             override fun openTun(o: TunOptions?): Int = -1
             override fun readWIFIState(): WIFIState? = null
             override fun sendNotification(n: Notification?) {}
-            override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
+            override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener?) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+                    networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
+                        private fun notifyNetworkChange(network: android.net.Network) {
+                            try {
+                                val caps = cm.getNetworkCapabilities(network)
+                                val props = cm.getLinkProperties(network)
+                                val isExpensive = caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == false
+                                val interfaceName = props?.interfaceName
+                                var idx = -1
+                                if (interfaceName != null) {
+                                    try {
+                                        val ni = java.net.NetworkInterface.getByName(interfaceName)
+                                        if (ni != null) idx = ni.index
+                                    } catch (e: Exception) {}
+                                }
+                                listener?.updateDefaultInterface(interfaceName ?: "", idx, isExpensive, false)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Error in notifyNetworkChange", e)
+                            }
+                        }
+                        override fun onAvailable(network: android.net.Network) { notifyNetworkChange(network) }
+                        override fun onCapabilitiesChanged(network: android.net.Network, networkCapabilities: android.net.NetworkCapabilities) { notifyNetworkChange(network) }
+                        override fun onLinkPropertiesChanged(network: android.net.Network, linkProperties: android.net.LinkProperties) { notifyNetworkChange(network) }
+                    }
+                    try {
+                        cm.registerDefaultNetworkCallback(networkCallback!!)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "registerDefaultNetworkCallback failed", e)
+                    }
+                }
+            }
             override fun systemCertificates(): StringIterator? = null
             override fun underNetworkExtension(): Boolean = false
-            override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
+            override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
             override fun useProcFS(): Boolean = true
 
             override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
@@ -592,12 +648,12 @@ object PingHelper {
                     put("rules", JSONArray().apply {
                         put(JSONObject().apply {
                             put("outbound", JSONArray().put("direct"))
-                            put("server", "dns-direct")
+                            put("server", "dns-local")
                         })
                         if (proxyServerHosts.isNotEmpty()) {
                             put(JSONObject().apply {
                                 put("domain", JSONArray().also { arr -> proxyServerHosts.forEach { arr.put(it) } })
-                                put("server", "dns-direct")
+                                put("server", "dns-local")
                             })
                         }
                         if (!testHost.isNullOrBlank()) {
@@ -614,7 +670,7 @@ object PingHelper {
                             })
                         }
                     })
-                    put("final", "dns-direct")
+                    put("final", "dns-local")
                 })
                 put("inbounds", JSONArray())
                 put("outbounds", outbounds.apply {

@@ -7,6 +7,8 @@ interface CommonStrings {
     val btn_add: String
     val btn_apply: String
     val btn_cancel: String
+    val label_warning: String
+    val http_warning_message: String
     val btn_clipboard: String
     val btn_download: String
     val btn_connect: String
@@ -63,8 +65,11 @@ interface CommonStrings {
     val menu_manual_input: String
     val menu_qr_code: String
     val menu_update_subscription: String
+    val menu_test: String
     val menu_pin_subscription: String
     val menu_unpin_subscription: String
+    val menu_merge_subscription: String
+    val sub_merged_profiles: String
     val subscription_qr_dialog_title: String
     val split_presets_applied: String
     val option_disable: String
@@ -147,6 +152,8 @@ object RuCommonStrings : CommonStrings {
     override val btn_add : String = "Добавить"
     override val btn_apply : String = "Применить"
     override val btn_cancel : String = "Отмена"
+    override val label_warning : String = "Предупреждение"
+    override val http_warning_message : String = "Это HTTP-ссылка, она может быть небезопасной. Вы уверены, что хотите добавить её?"
     override val btn_clipboard : String = "Буфер обмена"
     override val btn_download : String = "Скачать"
     override val btn_connect : String = "Подключить"
@@ -169,7 +176,7 @@ object RuCommonStrings : CommonStrings {
     override val json_edit_success : String = "JSON %s был успешно изменен."
     override val label_add_profiles : String = "Добавить профили"
     override val label_and : String = " и "
-    override val label_config_editor : String = "Редактор конфига"
+    override val label_config_editor : String = "Редактор"
     override val label_credentials : String = "Данные"
     override val label_error : String = "Ошибка"
     override val label_errors : String = "Ошибки: "
@@ -184,7 +191,7 @@ object RuCommonStrings : CommonStrings {
     override val label_profile_name : String = "Название профиля"
     override val label_seconds_short : String = "с"
     override val label_selected : String = "Выбрано"
-    override val label_servers : String = "Сервера"
+    override val label_servers : String = "Серверы"
     override val label_speed_test : String = "Тест скорости"
     override val label_support : String = "Поддержка"
     override val label_unknown : String = "Неизвестно"
@@ -203,8 +210,10 @@ object RuCommonStrings : CommonStrings {
     override val menu_manual_input : String = "Ручной ввод"
     override val menu_qr_code : String = "QR-Код"
     override val menu_update_subscription : String = "Обновить"
+    override val menu_test : String = "Тестировать"
     override val menu_pin_subscription : String = "Закрепить"
     override val menu_unpin_subscription : String = "Открепить"
+    override val menu_merge_subscription : String = "Объединить"
     override val subscription_qr_dialog_title : String = "QR-код подписки"
     override val split_presets_applied : String = "Настройки раздельного туннелирования применены!"
     override val option_disable : String = "Отключить"
@@ -220,17 +229,18 @@ object RuCommonStrings : CommonStrings {
     override val qr_camera_hint : String = "Наведите камеру на QR-код"
     override val search_apps_hint : String = "Поиск приложений..."
     override val split_mode_blacklist : String = "Черный список"
-    override val split_mode_blacklist_tooltip : String = "В этом режиме все сайты и приложения работают через VPN кроме выбранных"
+    override val split_mode_blacklist_tooltip : String = "В этом режиме все сайты и приложения работают через VPN, кроме выбранных."
     override val split_mode_whitelist : String = "Белый список"
-    override val split_mode_whitelist_tooltip : String = "В этом режиме только выбранные сайты и приложения работают через VPN, остальные напрямую"
-    override val split_tunneling_desc_default : String = "Выберите сайты и приложения которые работают через VPN или напрямую."
+    override val split_mode_whitelist_tooltip : String = "В этом режиме только выбранные сайты и приложения работают через VPN, остальные — напрямую."
+    override val split_tunneling_desc_default : String = "Выберите сайты и приложения, которые работают через VPN или напрямую."
     override val startup_loading_profiles : String = "Загружаем профили и настройки..."
     override val sub_deleted_success : String = "Подписка %s была удалена!"
     override val sub_my_servers : String = "Мои сервера"
     override val sub_single_profiles : String = "Список профилей"
+    override val sub_merged_profiles : String = "Объединенные профили"
     override val sub_update_error : String = "Не удалось обновить все подписки!"
     override val sub_update_error_single : String = "Не удалось обновить подписку!"
-    override val sub_update_success : String = "%d Подписок было успешно обновлено."
+    override val sub_update_success : String = "%d подписок успешно обновлено."
     override val sub_update_success_single : String = "Подписка %s была успешно обновлена."
     override val success_link_copied : String = "Ссылка скопирована"
     override val success_profile_added : String = "Профиль %s успешно добавлен!"
@@ -241,7 +251,7 @@ object RuCommonStrings : CommonStrings {
     override val theme_auto : String = "Авто"
     override val theme_day : String = "День"
     override val theme_night : String = "Ночь"
-    override val trigger_hint : String = "Данный параметр делает так, что VPN подключается только при использовании определенных приложений"
+    override val trigger_hint : String = "VPN автоматически подключается только при использовании определённых приложений."
     override val trigger_label : String = "Триггер"
     override val trigger_vpn_permission_channel : String = "Разрешение VPN для триггера"
     override val trigger_vpn_permission_text : String = "Откройте приложение и подтвердите разрешение, чтобы триггер мог запустить туннель."
@@ -256,7 +266,7 @@ object RuCommonStrings : CommonStrings {
     override val vpn_stopping : String = "Остановка служб"
     override val vpn_starting : String = "Запуск служб"
     override val vpn_error_permission_denied : String = "Разрешение VPN отклонено"
-    override val vpn_error_permission_required : String = "Требуется разрешение на VPN. Пожалуйста, откройте приложение и подтвердите его."
+    override val vpn_error_permission_required : String = "Требуется разрешение для VPN. Пожалуйста, откройте приложение и подтвердите его."
     override val vpn_error_tunnel_creation : String = "Не удалось создать туннель"
     override val label_shadowsocks_dpi_bypass : String = "Плагины обхода DPI"
     override val label_shadowsocks_dpi_bypass_hint : String = "Маскировать Shadowsocks под HTTPS-трафик (WebSocket + TLS)"
@@ -301,6 +311,8 @@ object EnCommonStrings : CommonStrings {
     override val btn_add : String = "Add"
     override val btn_apply : String = "Apply"
     override val btn_cancel : String = "Cancel"
+    override val label_warning : String = "Warning"
+    override val http_warning_message : String = "This is an HTTP link, it may be insecure. Are you sure you want to add it?"
     override val btn_clipboard : String = "Clipboard"
     override val btn_download : String = "Download"
     override val btn_connect : String = "Connect"
@@ -323,7 +335,7 @@ object EnCommonStrings : CommonStrings {
     override val json_edit_success : String = "JSON %s was successfully modified."
     override val label_add_profiles : String = "Add profiles"
     override val label_and : String = " and "
-    override val label_config_editor : String = "Config Editor"
+    override val label_config_editor : String = "Editor"
     override val label_credentials : String = "Credentials"
     override val label_error : String = "Error"
     override val label_errors : String = "Errors: "
@@ -357,8 +369,10 @@ object EnCommonStrings : CommonStrings {
     override val menu_manual_input : String = "Manual input"
     override val menu_qr_code : String = "QR-Code"
     override val menu_update_subscription : String = "Update"
+    override val menu_test : String = "Test"
     override val menu_pin_subscription : String = "Pin"
     override val menu_unpin_subscription : String = "Unpin"
+    override val menu_merge_subscription : String = "Merge"
     override val subscription_qr_dialog_title : String = "Subscription QR code"
     override val split_presets_applied : String = "Split tunneling presets applied!"
     override val option_disable : String = "Disable"
@@ -367,7 +381,7 @@ object EnCommonStrings : CommonStrings {
     override val option_yes : String = "Yes"
     override val option_auto : String = "Auto"
     override val option_custom : String = "Custom URL"
-    override val permission_usage_stats_needed : String = "To use the «Trigger» feature, permission to access usage statistics is required."
+    override val permission_usage_stats_needed : String = "To use the 'Trigger' feature, permission to access usage statistics is required."
     override val profile_deleted_success : String = "Profile %s deleted!"
     override val profile_qr_dialog_title : String = "Profile QR code"
     override val profile_qr_image_description : String = "Profile link QR code"
@@ -382,9 +396,10 @@ object EnCommonStrings : CommonStrings {
     override val sub_deleted_success : String = "Subscription %s deleted!"
     override val sub_my_servers : String = "My servers"
     override val sub_single_profiles : String = "List of profiles"
+    override val sub_merged_profiles : String = "Merged Profiles"
     override val sub_update_error : String = "Failed to update all subscriptions!"
     override val sub_update_error_single : String = "Failed to update subscription!"
-    override val sub_update_success : String = "%d Subscriptions updated successfully."
+    override val sub_update_success : String = "%d subscriptions updated successfully."
     override val sub_update_success_single : String = "Subscription %s updated successfully."
     override val success_link_copied : String = "Link copied"
     override val success_profile_added : String = "Profile %s added successfully!"

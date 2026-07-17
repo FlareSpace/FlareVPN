@@ -6,23 +6,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Paint
-import androidx.compose.ui.graphics.PaintingStyle
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
 @Composable
 fun QrSuccessOverlay(
     isVisible: Boolean,
+    qrResult: QrDetectResult?,
+    accentColor: Color,
     onAnimationEnd: () -> Unit
 ) {
     if (!isVisible) return
@@ -43,25 +42,59 @@ fun QrSuccessOverlay(
     val progress = animatable.value
     val frameAlpha = if (progress < 0.25f) progress / 0.25f else 1f - ((progress - 0.25f) / 0.75f) * 0.08f
     val frameScale = 0.92f + 0.08f * progress
-    val successColor = Color(0xFF30D158)
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (frameAlpha <= 0f) return@Canvas
 
-        val frameSize = min(size.width, size.height) * 0.62f
-        val left = (size.width - frameSize) / 2f
-        val top = (size.height - frameSize) / 2f
+        val left: Float
+        val top: Float
+        val right: Float
+        val bottom: Float
+
+        val boundingBox = qrResult?.boundingBox
+        if (boundingBox != null) {
+            val rotation = qrResult.rotationDegrees
+            val imgW = qrResult.imageWidth
+            val imgH = qrResult.imageHeight
+
+            val rotatedW = if (rotation == 90 || rotation == 270) imgH.toFloat() else imgW.toFloat()
+            val rotatedH = if (rotation == 90 || rotation == 270) imgW.toFloat() else imgH.toFloat()
+
+            val viewW = size.width
+            val viewH = size.height
+
+            val scaleX = viewW / rotatedW
+            val scaleY = viewH / rotatedH
+            val scale = maxOf(scaleX, scaleY)
+
+            val offsetX = (viewW - rotatedW * scale) / 2f
+            val offsetY = (viewH - rotatedH * scale) / 2f
+
+            left = boundingBox.left * scale + offsetX
+            top = boundingBox.top * scale + offsetY
+            right = boundingBox.right * scale + offsetX
+            bottom = boundingBox.bottom * scale + offsetY
+        } else {
+            val frameSize = min(size.width, size.height) * 0.62f
+            left = (size.width - frameSize) / 2f
+            top = (size.height - frameSize) / 2f
+            right = left + frameSize
+            bottom = top + frameSize
+        }
+
+        val centerX = (left + right) / 2f
+        val centerY = (top + bottom) / 2f
 
         withTransform({
-            scale(frameScale, frameScale, Offset(size.width / 2f, size.height / 2f))
+            scale(frameScale, frameScale, Offset(centerX, centerY))
         }) {
             drawQrFrame(
                 left = left,
                 top = top,
-                right = left + frameSize,
-                bottom = top + frameSize,
+                right = right,
+                bottom = bottom,
                 alpha = frameAlpha,
-                color = successColor,
+                color = accentColor,
                 density = density.density
             )
         }
@@ -77,86 +110,95 @@ private fun DrawScope.drawQrFrame(
     color: Color,
     density: Float
 ) {
-    val strokeWidth = 8f * density
-    val glowWidth = 18f * density
-    
-    val spanH = right - left
-    val spanV = bottom - top
-    if (spanH <= 0 || spanV <= 0) return
+    val padding = 12f * density
+    val l = left - padding
+    val t = top - padding
+    val r = right + padding
+    val b = bottom + padding
 
-    val corner = (min(spanH, spanV) * 0.16f).coerceIn(32f * density, 72f * density)
-    val minGap = 22f * density
-    val maxGap = 52f * density
+    val sizeMin = min(r - l, b - t)
+    if (sizeMin <= 0) return
+
+    val cornerRadius = (sizeMin * 0.12f).coerceIn(16f * density, 32f * density)
+    val lineLength = (sizeMin * 0.15f).coerceIn(16f * density, 48f * density)
+
+    val strokeWidth = 6f * density
+    val glowWidth = 16f * density
 
     
-    drawFrameParts(left, top, right, bottom, corner, minGap, maxGap, color.copy(alpha = 0.35f * alpha), glowWidth)
+    drawCornerBrackets(l, t, r, b, cornerRadius, lineLength, color.copy(alpha = 0.3f * alpha), glowWidth)
+
     
-    drawFrameParts(left, top, right, bottom, corner, minGap, maxGap, color.copy(alpha = alpha), strokeWidth)
+    drawCornerBrackets(l, t, r, b, cornerRadius, lineLength, color.copy(alpha = alpha), strokeWidth)
 }
 
-private fun DrawScope.drawFrameParts(
+private fun DrawScope.drawCornerBrackets(
     left: Float,
     top: Float,
     right: Float,
     bottom: Float,
-    corner: Float,
-    minGap: Float,
-    maxGap: Float,
+    r: Float,
+    lineLength: Float,
     color: Color,
     strokeWidth: Float
 ) {
-    val sw = strokeWidth / 2f
-    val l = left + sw
-    val t = top + sw
-    val r = right - sw
-    val b = bottom - sw
+    val stroke = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
 
     
-    
-    drawLine(color, Offset(l, t), Offset(l + corner, t), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(l, t), Offset(l, t + corner), strokeWidth, cap = StrokeCap.Round)
-    
-    drawLine(color, Offset(r - corner, t), Offset(r, t), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(r, t), Offset(r, t + corner), strokeWidth, cap = StrokeCap.Round)
-    
-    drawLine(color, Offset(l, b - corner), Offset(l, b), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(l, b), Offset(l + corner, b), strokeWidth, cap = StrokeCap.Round)
-    
-    drawLine(color, Offset(r, b - corner), Offset(r, b), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(r - corner, b), Offset(r, b), strokeWidth, cap = StrokeCap.Round)
+    val pathTl = Path().apply {
+        moveTo(left + r + lineLength, top)
+        lineTo(left + r, top)
+        arcTo(
+            rect = Rect(left, top, left + 2 * r, top + 2 * r),
+            startAngleDegrees = 270f,
+            sweepAngleDegrees = -90f,
+            forceMoveTo = false
+        )
+        lineTo(left, top + r + lineLength)
+    }
+    drawPath(pathTl, color, style = stroke)
 
     
-    drawHorizontalOpen(l + corner, r - corner, t, minGap, maxGap, color, strokeWidth)
-    drawHorizontalOpen(l + corner, r - corner, b, minGap, maxGap, color, strokeWidth)
+    val pathTr = Path().apply {
+        moveTo(right - r - lineLength, top)
+        lineTo(right - r, top)
+        arcTo(
+            rect = Rect(right - 2 * r, top, right, top + 2 * r),
+            startAngleDegrees = 270f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        lineTo(right, top + r + lineLength)
+    }
+    drawPath(pathTr, color, style = stroke)
+
     
-    drawVerticalOpen(l, t + corner, b - corner, minGap, maxGap, color, strokeWidth)
-    drawVerticalOpen(r, t + corner, b - corner, minGap, maxGap, color, strokeWidth)
-}
+    val pathBl = Path().apply {
+        moveTo(left + r + lineLength, bottom)
+        lineTo(left + r, bottom)
+        arcTo(
+            rect = Rect(left, bottom - 2 * r, left + 2 * r, bottom),
+            startAngleDegrees = 90f,
+            sweepAngleDegrees = 90f,
+            forceMoveTo = false
+        )
+        lineTo(left, bottom - r - lineLength)
+    }
+    drawPath(pathBl, color, style = stroke)
 
-private fun DrawScope.drawHorizontalOpen(
-    xStart: Float, xEnd: Float, y: Float,
-    minGap: Float, maxGap: Float,
-    color: Color, strokeWidth: Float
-) {
-    val len = xEnd - xStart
-    if (len <= 2f) return
-    val gap = (len * 0.26f).coerceIn(minGap, maxGap).coerceAtMost(len * 0.42f)
-    val mid = (xStart + xEnd) / 2f
-    drawLine(color, Offset(xStart, y), Offset(mid - gap / 2f, y), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(mid + gap / 2f, y), Offset(xEnd, y), strokeWidth, cap = StrokeCap.Round)
-}
-
-private fun DrawScope.drawVerticalOpen(
-    x: Float, yStart: Float, yEnd: Float,
-    minGap: Float, maxGap: Float,
-    color: Color, strokeWidth: Float
-) {
-    val len = yEnd - yStart
-    if (len <= 2f) return
-    val gap = (len * 0.26f).coerceIn(minGap, maxGap).coerceAtMost(len * 0.42f)
-    val mid = (yStart + yEnd) / 2f
-    drawLine(color, Offset(x, yStart), Offset(x, mid - gap / 2f), strokeWidth, cap = StrokeCap.Round)
-    drawLine(color, Offset(x, mid + gap / 2f), Offset(x, yEnd), strokeWidth, cap = StrokeCap.Round)
+    
+    val pathBr = Path().apply {
+        moveTo(right - r - lineLength, bottom)
+        lineTo(right - r, bottom)
+        arcTo(
+            rect = Rect(right - 2 * r, bottom - 2 * r, right, bottom),
+            startAngleDegrees = 90f,
+            sweepAngleDegrees = -90f,
+            forceMoveTo = false
+        )
+        lineTo(right, bottom - r - lineLength)
+    }
+    drawPath(pathBr, color, style = stroke)
 }
 
 private class DecelerateInterpolator : androidx.compose.animation.core.Easing {
@@ -164,3 +206,4 @@ private class DecelerateInterpolator : androidx.compose.animation.core.Easing {
         return 1.0f - (1.0f - fraction) * (1.0f - fraction)
     }
 }
+

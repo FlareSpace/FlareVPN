@@ -22,6 +22,11 @@ interface SettingsStrings {
     val settings_bg_effect_shapes: String
     val settings_bg_effect_photo: String
     val settings_bg_effect_update_photo: String
+    val settings_header_interface: String
+    val settings_ui_type_label: String
+    val settings_ui_type_standard: String
+    val settings_ui_type_new: String
+    val settings_ui_type_minimal: String
     val settings_effects_header: String
     val settings_effect_blur: String
     val settings_effect_liquid_glass: String
@@ -150,6 +155,12 @@ interface SettingsStrings {
     val settings_subscriptions_title: String
     val settings_theme_header: String
     val settings_theme_title: String
+    val settings_header_app_icon: String
+    val settings_app_icon_main: String
+    val settings_app_icon_8bit: String
+    val settings_app_icon_monochrome: String
+    val settings_app_icon_softplush: String
+    val settings_app_icon_blueprint: String
     val settings_title: String
     val systemstack_desc: String
     val tcp_desc: String
@@ -158,23 +169,138 @@ interface SettingsStrings {
     val settings_label_data_mgmt: String
     val settings_desc_data_mgmt: String
     val settings_btn_data_mgmt: String
+    val sub_auth_title: String
+    val sub_auth_desc: String
+    val sub_auth_waiting: String
+    val sub_auth_login_btn: String
+    val sub_auth_timeout: String
+    val sub_auth_error: String
+    val sub_my_subscription: String
+    val sub_plan: String
+    val sub_plan_premium: String
+    val sub_plan_none: String
+    val sub_status: String
+    val sub_status_active: String
+    val sub_status_inactive: String
+    val sub_expires_at: String
+    val sub_connected_devices: String
+    val sub_no_devices: String
+    val sub_add_key_btn: String
+    val sub_renew_btn: String
+    val sub_logout_btn: String
+    val sub_bind_telegram_btn: String
+    val sub_bind_err_already_linked: String
+    val sub_devices_limit: String
+    val sub_manage_title: String
+    val sub_device_added: String
+    val sub_err_fetch: String
+    val sub_err_unknown: String
+    val sub_err_unauth: String
+    val sub_err_link: String
+    val sub_err_add_device: String
+    val sub_err_remove_device: String
+    val sub_err_remove_device_unknown: String
+    val sub_no_active_keys: String
+    val sub_keys_section: String
+    val sub_link_copied: String
+    val sub_mgmt_section: String
+    val sub_key_title: String
+    val sub_key_status_active: String
+    val sub_key_status_inactive: String
+    val sub_key_expires: String
+    val sub_key_copy: String
+    val sub_key_reissue: String
+    val sub_device_card_info: String
+    val sub_device_delete_desc: String
+    val sub_refresh_btn: String
+    val sub_loading_data: String
+    val sub_devices_section: String
+    val sub_no_devices_text: String
+    val sub_device_hwid: String
+    val sub_device_ua: String
+    val sub_device_system: String
+    val sub_device_key: String
+    val sub_device_delete_btn: String
+    val sub_sparks_balance: String
+    val sub_keys_count: String
+    val sub_add_key_dialog_title: String
+    val sub_add_key_dialog_desc: String
+    val sub_err_insufficient_sparks: String
+    val sub_err_create_key: String
+    val sub_err_create_key_fail: String
+    val sub_err_revoke_key: String
+    val sub_key_rename: String
+    val sub_key_delete: String
+    val sub_rename_dialog_title: String
+    val sub_btn_save: String
+    val settings_notif_disabled_warning: String
+    val sub_welcome: String
+    val sub_keys_header: String
+    val sub_active_count: String
+    val sub_expired_count: String
+    val sub_days_left: String
+    val sub_traffic_label: String
+    val sub_total_keys_label: String
+    val sub_connect_btn_text: String
+    val sub_topup_telegram: String
+    val sub_topup_app: String
+    val sub_sparks_label: String
+    val sub_topup_title: String
+    val sub_topup_desc: String
+    val sub_topup_select_coin: String
+    val sub_coin_usdt_desc: String
+    val sub_coin_ltc_desc: String
+    val sub_coin_btc_desc: String
+    val sub_btn_next: String
+    val sub_topup_select_sparks: String
+    val sub_sparks_lite_title: String
+    val sub_sparks_lite_desc: String
+    val sub_sparks_medium_title: String
+    val sub_sparks_medium_desc: String
+    val sub_sparks_max_title: String
+    val sub_sparks_max_desc: String
+    val sub_btn_back: String
+    val sub_btn_pay: String
+    val sub_payment_title: String
+    val sub_payment_desc: String
+    val sub_payment_amount: String
+    val sub_payment_address_copied: String
+    val sub_payment_waiting: String
+    val sub_payment_completed: String
+    val sub_payment_error: String
+    val sub_btn_retry: String
+
+    val auth_login_title: String
+    val auth_choice_desc: String
+    val auth_create_anon_btn: String
+    val auth_login_key_btn: String
+    val auth_create_anon_err: String
+    val auth_anon_key_title: String
+    val auth_anon_key_desc: String
+    val auth_copied_to_clipboard: String
+    val auth_continue_btn: String
+    val auth_generate_key_err: String
+    val auth_back_btn: String
+    val auth_key_placeholder: String
+    val auth_invalid_key_err: String
+    val auth_login_btn: String
 }
 
 object RuSettingsStrings : SettingsStrings {
-    override val fakeip_desc : String = "Мгновенно выдает системе «поддельный» адрес для домена, не дожидаясь ответа от DNS-сервера. Предотвращает утечку DNS"
+    override val fakeip_desc : String = "Мгновенно выдаёт системе «поддельный» адрес для домена, не дожидаясь ответа от DNS-сервера. Предотвращает утечку DNS."
     override val fragment_desc : String = "Разделение больших пакетов данных на более мелкие части. Помогает в обходе блокировок (DPI)"
     override val gvisorstack_desc : String = "Высокая совместимость, поддерживает все настройки туннеля, среднее энергопотребление."
     override val icmp_desc : String = "Проверяет доступен ли сервер, используется для базовой проверки связи с сервером."
     override val settings_label_use_sub_interval : String = "Интервал подписок"
-    override val settings_desc_use_sub_interval : String = "Обновляет подписки по их заданному интервалу например: Обновление 1 ч."
+    override val settings_desc_use_sub_interval : String = "Обновляет подписки по их заданному интервалу, например: Обновление 1 ч."
     override val mixedstack_desc : String = "Средняя совместимость, поддерживает большую часть настроек туннеля, высокое энергопотребление."
     override val mtu_desc : String = "Максимальный размер одного пакета данных (в байтах), который может быть передан за один раз."
     override val mux_desc : String = "Объединяет несколько запросов в одно соединение. Снижает задержку на создание новых подключений и ускоряет загрузку."
     override val dns_preset_cloudflare : String = "Cloudflare DoH"
     override val dns_preset_adguard : String = "AdGuard DNS (Антиреклама)"
     override val dns_preset_google : String = "Google DoT"
-    override val settings_advanced_title : String = "Расширенные настройки"
-    override val settings_basic_title : String = "Базовые настройки"
+    override val settings_advanced_title : String = "Расширенные"
+    override val settings_basic_title : String = "Базовые"
     override val settings_bg_effects_header : String = "Фоновые эффекты"
     override val settings_bg_effect_label : String = "Эффект"
     override val settings_bg_effect_none : String = "Выключен"
@@ -182,6 +308,11 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_bg_effect_shapes : String = "Фигуры"
     override val settings_bg_effect_photo : String = "Фото"
     override val settings_bg_effect_update_photo : String = "Обновить фото"
+    override val settings_header_interface : String = "Интерфейс"
+    override val settings_ui_type_label : String = "Тип оформления"
+    override val settings_ui_type_standard : String = "Классический"
+    override val settings_ui_type_new : String = "Динамичный"
+    override val settings_ui_type_minimal : String = "Минимализм"
     override val settings_effects_header : String = "Эффекты"
     override val settings_effect_blur : String = "Размытие"
     override val settings_effect_liquid_glass : String = "«Жидкое стекло»"
@@ -191,11 +322,11 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_btn_change_font : String = "Изменить шрифт"
     override val settings_btn_journal : String = "Журнал"
     override val settings_color_material_you : String = "Material You"
-    override val settings_desc_adaptive_tunnel : String = "Автоматически восстанавливает соединение при обрыве или выбирает рабочий сервер"
-    override val settings_desc_best_profile : String = "Данная функция выбирает лучший сервер в подписке с самым маленьким пингом"
+    override val settings_desc_adaptive_tunnel : String = "Автоматически восстанавливает соединение при обрыве или выбирает рабочий сервер."
+    override val settings_desc_best_profile : String = "Данная функция выбирает лучший сервер в подписке с самым маленьким пингом."
     override val settings_desc_hwid : String = "HWID - идентификатор для привязки подписки к вашему устройству. Позволяет повторно импортировать подписку без расхода лимита устройств. Данные не передаются."
     override val settings_desc_logging : String = "Включение логов полезно для отладки, но может раскрыть ваши серверные адреса и ключи."
-    override val settings_desc_test_url : String = "Данный параметр отвечает за то какая ссылка будет использована для проверки задержки"
+    override val settings_desc_test_url : String = "Данный параметр отвечает за то, какая ссылка будет использована для проверки задержки."
     override val settings_desc_update_check : String = "Проверка обновлений помогает вам использовать актуальную версию Flare."
     override val settings_font_geologica : String = "Geologica"
     override val settings_font_system : String = "Системный"
@@ -223,7 +354,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_item_theme : String = "Персонализация"
     override val settings_label_adaptive_tunnel : String = "Адаптивный туннель"
     override val settings_label_auto_update : String = "Автообновление"
-    override val settings_desc_auto_update : String = "Принудительно обновляет все подписки с заданным интервалом например раз в 3600 секунд"
+    override val settings_desc_auto_update : String = "Принудительно обновляет все подписки с заданным интервалом, например, раз в 3600 секунд."
     override val settings_label_autostart : String = "Создавать туннель при запуске приложения"
     override val settings_label_best_profile : String = "Автовыбор профиля"
     override val settings_label_best_profile_interval : String = "Обновлять выбор каждые"
@@ -232,7 +363,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_core_log : String = "Журнал SingBox"
     override val settings_label_core_log_level : String = "Уровень логирования"
     override val settings_label_custom_color : String = "Свой цвет"
-    override val settings_label_change_launch_button_color : String = "Изменить цвет кнопки запуска"
+    override val settings_label_change_launch_button_color : String = "Свой цвет кнопки запуска"
     override val settings_launch_button_color_yes : String = "Да"
     override val settings_launch_button_color_no : String = "Нет"
     override val settings_label_dns_url : String = "URL"
@@ -279,7 +410,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_stack : String = "%s"
     override val settings_label_stack_title : String = "Использовать"
     override val settings_label_status : String = "Статус"
-    override val settings_label_status_notification : String = "Уведомление с статусом"
+    override val settings_label_status_notification : String = "Уведомление со статусом"
     override val settings_label_notification_speed : String = "Показывать скорость"
     override val settings_label_test_url : String = "Test-URL"
     override val settings_label_theme : String = "Стиль"
@@ -297,7 +428,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_ping_style_time : String = "Время"
     override val settings_ping_title : String = "Настройки пинга"
     override val settings_label_ping_timeout : String = "Тайм-аут"
-    override val settings_desc_ping_timeout : String = "Устанавливает максимальное время ожидания ответа при проверке задержки серверов. Чем больше таймаут, тем дольше будет идти проверка."
+    override val settings_desc_ping_timeout : String = "Устанавливает максимальное время ожидания ответа при проверке задержки серверов. Чем больше тайм-аут, тем дольше будет идти проверка."
     override val settings_ping_timeout_sec : String = "%d сек."
     override val settings_label_sub_update_timeout : String = "Тайм-аут автообновления"
     override val settings_desc_sub_update_timeout : String = "Устанавливает максимальное время ожидания ответа при обновлении подписки."
@@ -310,6 +441,12 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_subscriptions_title : String = "Подписки"
     override val settings_theme_header : String = "Тема"
     override val settings_theme_title : String = "Персонализация"
+    override val settings_header_app_icon : String = "Иконка приложения"
+    override val settings_app_icon_main : String = "Основная"
+    override val settings_app_icon_8bit : String = "8-бит"
+    override val settings_app_icon_monochrome : String = "Монохром"
+    override val settings_app_icon_softplush : String = "Плюшевая"
+    override val settings_app_icon_blueprint : String = "Чертёж"
     override val settings_title : String = "Настройки"
     override val systemstack_desc : String = "Низкая совместимость, не поддерживает фрагментацию и еще некоторые настройки туннеля, низкое энергопотребление."
     override val tcp_desc : String = "Проверяет скорость открытия порта на сервере и готов ли он принимать соединения."
@@ -318,6 +455,121 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_data_mgmt : String = "Сохранение и восстановление"
     override val settings_desc_data_mgmt : String = "Вы можете сохранить все настройки, профили, подписки приложения"
     override val settings_btn_data_mgmt : String = "Перенести"
+    override val sub_auth_title : String = "Авторизация"
+    override val sub_auth_desc : String = "Для управления ключами FlareVPN необходимо войти через Telegram."
+    override val sub_auth_waiting : String = "Ожидание входа в Telegram..."
+    override val sub_auth_login_btn : String = "Войти через Telegram"
+    override val sub_auth_timeout : String = "Время ожидания истекло"
+    override val sub_auth_error : String = "Ошибка соединения с сервером"
+    override val sub_my_subscription : String = "Моя подписка"
+    override val sub_plan : String = "Тариф: %s"
+    override val sub_plan_premium : String = "Premium"
+    override val sub_plan_none : String = "Нет подписки"
+    override val sub_status : String = "Статус: %s"
+    override val sub_status_active : String = "Активна"
+    override val sub_status_inactive : String = "Неактивна"
+    override val sub_expires_at : String = "Действует до: %s"
+    override val sub_connected_devices : String = "Подключенные устройства"
+    override val sub_no_devices : String = "Пока не добавлено ни одного."
+    override val sub_add_key_btn : String = "Добавить ключ"
+    override val sub_renew_btn : String = "Перейти в бота"
+    override val sub_logout_btn : String = "Выйти"
+    override val sub_bind_telegram_btn : String = "Привязать Telegram"
+    override val sub_bind_err_already_linked : String = "Этот Telegram уже привязан к другому аккаунту"
+    override val sub_devices_limit : String = "Устройства: %d / %d"
+    override val sub_manage_title : String = "Управление"
+    override val sub_device_added : String = "Добавлено: %s"
+    override val sub_err_fetch : String = "Не удалось получить данные."
+    override val sub_err_unknown : String = "Неизвестная ошибка"
+    override val sub_err_unauth : String = "Пользователь не авторизован"
+    override val sub_err_link : String = "Ошибка получения ссылки для устройства."
+    override val sub_err_add_device : String = "Ошибка при добавлении устройства"
+    override val sub_err_remove_device : String = "Не удалось удалить устройство."
+    override val sub_err_remove_device_unknown : String = "Ошибка при удалении устройства"
+    override val sub_no_active_keys : String = "У вас нет активных ключей"
+    override val sub_keys_section : String = "Ключи"
+    override val sub_link_copied : String = "Ссылка скопирована"
+    override val sub_mgmt_section : String = "Управление"
+    override val sub_key_title : String = "Ключ #%d"
+    override val sub_key_status_active : String = "Активен"
+    override val sub_key_status_inactive : String = "Неактивен"
+    override val sub_key_expires : String = "Истекает: %s"
+    override val sub_key_copy : String = "Копировать"
+    override val sub_key_reissue : String = "Перевыпуск"
+    override val sub_device_card_info : String = "Ключ #%d • Добавлено: %s"
+    override val sub_device_delete_desc : String = "Удалить устройство"
+    override val sub_refresh_btn : String = "Обновить"
+    override val sub_loading_data : String = "Загрузка данных..."
+    override val sub_devices_section: String = "Устройства"
+    override val sub_no_devices_text: String = "Нет устройств."
+    override val sub_device_hwid: String = "HWID: %s"
+    override val sub_device_ua: String = "User-Agent: %s"
+    override val sub_device_system: String = "Система: %s"
+    override val sub_device_key: String = "Ключ: %d"
+    override val sub_device_delete_btn: String = "Удалить"
+    override val sub_sparks_balance: String = "Sparks: %d"
+    override val sub_keys_count: String = "Ключей: %d"
+    override val sub_add_key_dialog_title: String = "Добавить ключ"
+    override val sub_add_key_dialog_desc: String = "Для добавления нового ключа на балансе должно быть минимум 100 Sparks. Текущий баланс: %d Sparks."
+    override val sub_err_insufficient_sparks: String = "Недостаточно Sparks для добавления ключа (нужно 100, есть %d)"
+    override val sub_err_create_key: String = "Не удалось создать ключ"
+    override val sub_err_create_key_fail: String = "Ошибка создания ключа"
+    override val sub_err_revoke_key: String = "Не удалось отозвать ключ"
+    override val sub_key_rename: String = "Изменить"
+    override val sub_key_delete: String = "Удалить"
+    override val sub_rename_dialog_title: String = "Название ключа"
+    override val sub_btn_save: String = "Сохранить"
+    override val settings_notif_disabled_warning: String = "Уведомления отключены. Туннель может работать нестабильно."
+    override val sub_welcome: String = "Добро пожаловать!"
+    override val sub_keys_header: String = "КЛЮЧИ"
+    override val sub_active_count: String = "Активных: %d"
+    override val sub_expired_count: String = "Истекших: %d"
+    override val sub_days_left: String = "%d д. осталось"
+    override val sub_traffic_label: String = "Трафик"
+    override val sub_total_keys_label: String = "Всего ключей"
+    override val sub_connect_btn_text: String = "ПОПОЛНИТЬ"
+    override val sub_topup_telegram: String = "В телеграме"
+    override val sub_topup_app: String = "В приложении"
+    override val sub_sparks_label: String = "Sparks"
+    override val sub_topup_title: String = "Пополнение"
+    override val sub_topup_desc: String = "Выберите удобный способ оплаты для пополнения баланса Sparks"
+    override val sub_topup_select_coin: String = "Выберите монету"
+    override val sub_coin_usdt_desc: String = "Цифровой доллар, высокая комиссия"
+    override val sub_coin_ltc_desc: String = "Низкая комиссия сети, высокая скорость транзакций"
+    override val sub_coin_btc_desc: String = "Максимальная надежность, \"Золотой стандарт\""
+    override val sub_btn_next: String = "Далее"
+    override val sub_topup_select_sparks: String = "Выберите количество Sparks"
+    override val sub_sparks_lite_title: String = "Lite"
+    override val sub_sparks_lite_desc: String = "Для быстрого старта и тестирования"
+    override val sub_sparks_medium_title: String = "Medium"
+    override val sub_sparks_medium_desc: String = "Оптимальный баланс цены и количества sparks, популярный выбор"
+    override val sub_sparks_max_title: String = "Max"
+    override val sub_sparks_max_desc: String = "Для длительного использования или для команды"
+    override val sub_btn_back: String = "Назад"
+    override val sub_btn_pay: String = "Оплатить"
+    override val sub_payment_title: String = "Оплата заказа"
+    override val sub_payment_desc: String = "Переведите указанную сумму по адресу ниже"
+    override val sub_payment_amount: String = "Сумма: %s %s"
+    override val sub_payment_address_copied: String = "Адрес скопирован"
+    override val sub_payment_waiting: String = "Ожидание оплаты..."
+    override val sub_payment_completed: String = "Оплата успешно завершена!"
+    override val sub_payment_error: String = "Ошибка: %s"
+    override val sub_btn_retry: String = "Повторить"
+
+    override val auth_login_title: String = "Вход в аккаунт"
+    override val auth_choice_desc: String = "Войдите через Telegram или создайте анонимный аккаунт."
+    override val auth_create_anon_btn: String = "Создать анонимный ключ"
+    override val auth_login_key_btn: String = "Вход по ключу"
+    override val auth_create_anon_err: String = "Ошибка при создании аккаунта"
+    override val auth_anon_key_title: String = "Анонимный ключ"
+    override val auth_anon_key_desc: String = "Это ключ от вашего аккаунта. Сохраните его в надежное место, восстановить его будет невозможно."
+    override val auth_copied_to_clipboard: String = "Скопировано в буфер обмена"
+    override val auth_continue_btn: String = "Продолжить"
+    override val auth_generate_key_err: String = "Не удалось сгенерировать ключ."
+    override val auth_back_btn: String = "Назад"
+    override val auth_key_placeholder: String = "XXXX-XXXX-XXXX-XXXX"
+    override val auth_invalid_key_err: String = "Неверный ключ"
+    override val auth_login_btn: String = "Войти"
 }
 
 object EnSettingsStrings : SettingsStrings {
@@ -333,8 +585,8 @@ object EnSettingsStrings : SettingsStrings {
     override val dns_preset_cloudflare : String = "Cloudflare DoH"
     override val dns_preset_adguard : String = "AdGuard DNS (Ad Block)"
     override val dns_preset_google : String = "Google DoT"
-    override val settings_advanced_title : String = "Advanced Settings"
-    override val settings_basic_title : String = "Basic Settings"
+    override val settings_advanced_title : String = "Advanced"
+    override val settings_basic_title : String = "Basic"
     override val settings_bg_effects_header : String = "Background Effects"
     override val settings_bg_effect_label : String = "Effect"
     override val settings_bg_effect_none : String = "None"
@@ -342,6 +594,11 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_bg_effect_shapes : String = "Shapes"
     override val settings_bg_effect_photo : String = "Photo"
     override val settings_bg_effect_update_photo : String = "Update photo"
+    override val settings_header_interface : String = "Interface"
+    override val settings_ui_type_label : String = "UI Type"
+    override val settings_ui_type_standard : String = "Classic"
+    override val settings_ui_type_new : String = "Dynamic"
+    override val settings_ui_type_minimal : String = "Minimalism"
     override val settings_effects_header : String = "Effects"
     override val settings_effect_blur : String = "Blur"
     override val settings_effect_liquid_glass : String = "«Liquid glass»"
@@ -352,7 +609,7 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_btn_journal : String = "Journal"
     override val settings_color_material_you : String = "Material You"
     override val settings_desc_adaptive_tunnel : String = "Automatically recovers connection on drop or selects working server"
-    override val settings_desc_best_profile : String = "This function selects the server with lowest ping in the subscription"
+    override val settings_desc_best_profile : String = "This function selects the server with the lowest ping in the subscription."
     override val settings_desc_hwid : String = "HWID is an identifier to link your subscription to your device. Thanks to it, re-importing is not counted as a new connection. All data is stored locally and is not transmitted anywhere else."
     override val settings_desc_logging : String = "Enabling logs is useful for debugging but may expose your server addresses and keys."
     override val settings_desc_test_url : String = "This parameter determines which link will be used for delay testing"
@@ -392,7 +649,7 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_label_core_log : String = "SingBox Log"
     override val settings_label_core_log_level : String = "Log Level"
     override val settings_label_custom_color : String = "Custom color"
-    override val settings_label_change_launch_button_color : String = "Change launch button color"
+    override val settings_label_change_launch_button_color : String = "Custom launch button color"
     override val settings_launch_button_color_yes : String = "Yes"
     override val settings_launch_button_color_no : String = "No"
     override val settings_label_dns_url : String = "URL"
@@ -470,12 +727,133 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_subscriptions_title : String = "Subscriptions"
     override val settings_theme_header : String = "Theme"
     override val settings_theme_title : String = "Personalization"
+    override val settings_header_app_icon : String = "App Icon"
+    override val settings_app_icon_main : String = "Main"
+    override val settings_app_icon_8bit : String = "8-bit"
+    override val settings_app_icon_monochrome : String = "Monochrome"
+    override val settings_app_icon_softplush : String = "Plush"
+    override val settings_app_icon_blueprint : String = "Blueprint"
     override val settings_title : String = "Settings"
     override val systemstack_desc : String = "Low compatibility, doesn\\'t support fragmentation and some other settings, low power usage."
     override val tcp_desc : String = "Checks port opening speed and readiness to accept connections."
     override val viaproxy_desc : String = "Checks HTTP request time through proxy, tests real latency, most accurate method."
     override val settings_header_data_mgmt : String = "Data Management"
     override val settings_label_data_mgmt : String = "Backup & Restore"
-    override val settings_desc_data_mgmt : String = "You can save all settings, profiles, and subscriptions of the app"
+    override val settings_desc_data_mgmt : String = "You can save all settings, profiles, and subscriptions of the app."
     override val settings_btn_data_mgmt : String = "Transfer"
+    override val sub_auth_title : String = "Authorization"
+    override val sub_auth_desc : String = "To manage your FlareVPN keys, you need to log in via Telegram."
+    override val sub_auth_waiting : String = "Waiting for Telegram login..."
+    override val sub_auth_login_btn : String = "Log in via Telegram"
+    override val sub_auth_timeout : String = "Timeout"
+    override val sub_auth_error : String = "Connection error"
+    override val sub_my_subscription : String = "My Subscription"
+    override val sub_plan : String = "Plan: %s"
+    override val sub_plan_premium : String = "Premium"
+    override val sub_plan_none : String = "No subscription"
+    override val sub_status : String = "Status: %s"
+    override val sub_status_active : String = "Active"
+    override val sub_status_inactive : String = "Inactive"
+    override val sub_expires_at : String = "Expires at: %s"
+    override val sub_connected_devices : String = "Connected devices"
+    override val sub_no_devices : String = "No devices added yet"
+    override val sub_add_key_btn : String = "Add key"
+    override val sub_renew_btn : String = "Go to bot"
+    override val sub_logout_btn : String = "Log out"
+    override val sub_bind_telegram_btn : String = "Bind Telegram"
+    override val sub_bind_err_already_linked : String = "This Telegram is already linked to another account"
+    override val sub_devices_limit : String = "Devices: %d / %d"
+    override val sub_manage_title : String = "Dashboard"
+    override val sub_device_added : String = "Added: %s"
+    override val sub_err_fetch : String = "Failed to get data."
+    override val sub_err_unknown : String = "Unknown error"
+    override val sub_err_unauth : String = "User not authorized"
+    override val sub_err_link : String = "Error getting device link."
+    override val sub_err_add_device : String = "Error adding device"
+    override val sub_err_remove_device : String = "Failed to remove device."
+    override val sub_err_remove_device_unknown : String = "Error removing device"
+    override val sub_no_active_keys : String = "You have no active keys"
+    override val sub_keys_section : String = "Keys"
+    override val sub_link_copied : String = "Link copied"
+    override val sub_mgmt_section : String = "Dashboard"
+    override val sub_key_title : String = "Key #%d"
+    override val sub_key_status_active : String = "Active"
+    override val sub_key_status_inactive : String = "Inactive"
+    override val sub_key_expires : String = "Expires: %s"
+    override val sub_key_copy : String = "Copy"
+    override val sub_key_reissue : String = "Reissue"
+    override val sub_device_card_info : String = "Key #%d • Added: %s"
+    override val sub_device_delete_desc : String = "Delete device"
+    override val sub_refresh_btn : String = "Refresh"
+    override val sub_loading_data : String = "Loading data..."
+    override val sub_devices_section: String = "Devices"
+    override val sub_no_devices_text: String = "No devices."
+    override val sub_device_hwid: String = "HWID: %s"
+    override val sub_device_ua: String = "User-Agent: %s"
+    override val sub_device_system: String = "System: %s"
+    override val sub_device_key : String = "Key: %d"
+    override val sub_device_delete_btn : String = "Delete"
+    override val sub_sparks_balance: String = "Sparks: %d"
+    override val sub_keys_count: String = "Keys: %d"
+    override val sub_add_key_dialog_title: String = "Add key"
+    override val sub_add_key_dialog_desc: String = "To add a new key, your balance must have at least 100 Sparks. Current balance: %d Sparks."
+    override val sub_err_insufficient_sparks: String = "Insufficient Sparks to add key (100 required, you have %d)"
+    override val sub_err_create_key: String = "Failed to create key"
+    override val sub_err_create_key_fail: String = "Error creating key"
+    override val sub_err_revoke_key : String = "Failed to revoke key"
+    override val sub_key_rename: String = "Edit"
+    override val sub_key_delete: String = "Delete"
+    override val sub_rename_dialog_title: String = "Key Name"
+    override val sub_btn_save: String = "Save"
+    override val settings_notif_disabled_warning: String = "Notifications are disabled. The tunnel may work unstably."
+    override val sub_welcome: String = "Welcome!"
+    override val sub_keys_header: String = "KEYS"
+    override val sub_active_count: String = "Active: %d"
+    override val sub_expired_count: String = "Expired: %d"
+    override val sub_days_left: String = "%d d. left"
+    override val sub_traffic_label: String = "Traffic"
+    override val sub_total_keys_label: String = "Total keys"
+    override val sub_connect_btn_text: String = "TOP UP"
+    override val sub_topup_telegram: String = "In Telegram"
+    override val sub_topup_app: String = "In App"
+    override val sub_sparks_label: String = "Sparks"
+    override val sub_topup_title: String = "Top Up"
+    override val sub_topup_desc: String = "Select a convenient payment method to top up your Sparks balance"
+    override val sub_topup_select_coin: String = "Select coin"
+    override val sub_coin_usdt_desc: String = "Digital dollar, high commission"
+    override val sub_coin_ltc_desc: String = "Low network fee, high transaction speed"
+    override val sub_coin_btc_desc: String = "Maximum reliability, \"Gold standard\""
+    override val sub_btn_next: String = "Next"
+    override val sub_topup_select_sparks: String = "Select Sparks amount"
+    override val sub_sparks_lite_title: String = "Lite"
+    override val sub_sparks_lite_desc: String = "For quick start and testing"
+    override val sub_sparks_medium_title: String = "Medium"
+    override val sub_sparks_medium_desc: String = "Optimal balance of price and sparks quantity, popular choice"
+    override val sub_sparks_max_title: String = "Max"
+    override val sub_sparks_max_desc: String = "For long-term use or for a team"
+    override val sub_btn_back: String = "Back"
+    override val sub_btn_pay: String = "Pay"
+    override val sub_payment_title: String = "Order Payment"
+    override val sub_payment_desc: String = "Transfer the specified amount to the address below"
+    override val sub_payment_amount: String = "Amount: %s %s"
+    override val sub_payment_address_copied: String = "Address copied"
+    override val sub_payment_waiting: String = "Waiting for payment..."
+    override val sub_payment_completed: String = "Payment successfully completed!"
+    override val sub_payment_error: String = "Error: %s"
+    override val sub_btn_retry: String = "Retry"
+
+    override val auth_login_title: String = "Log in to account"
+    override val auth_choice_desc: String = "Log in via Telegram or create an anonymous account."
+    override val auth_create_anon_btn: String = "Create anonymous key"
+    override val auth_login_key_btn: String = "Log in with key"
+    override val auth_create_anon_err: String = "Error creating account"
+    override val auth_anon_key_title: String = "Anonymous Key"
+    override val auth_anon_key_desc: String = "This is your account key. Save it in a safe place, it cannot be restored."
+    override val auth_copied_to_clipboard: String = "Copied to clipboard"
+    override val auth_continue_btn: String = "Continue"
+    override val auth_generate_key_err: String = "Failed to generate key."
+    override val auth_back_btn: String = "Back"
+    override val auth_key_placeholder: String = "XXXX-XXXX-XXXX-XXXX"
+    override val auth_invalid_key_err: String = "Invalid key"
+    override val auth_login_btn: String = "Log In"
 }

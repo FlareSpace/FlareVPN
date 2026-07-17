@@ -9,8 +9,16 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 
+data class QrDetectResult(
+    val value: String,
+    val boundingBox: android.graphics.Rect?,
+    val imageWidth: Int,
+    val imageHeight: Int,
+    val rotationDegrees: Int
+)
+
 class BarcodeAnalyzer(
-    private val onBarcodeDetected: (String) -> Unit
+    private val onBarcodeDetected: (QrDetectResult) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     private val options = BarcodeScannerOptions.Builder()
@@ -23,13 +31,22 @@ class BarcodeAnalyzer(
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+            val image = InputImage.fromMediaImage(mediaImage, rotationDegrees)
             
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
                     for (barcode in barcodes) {
                         barcode.rawValue?.let { value ->
-                            onBarcodeDetected(value)
+                            onBarcodeDetected(
+                                QrDetectResult(
+                                    value = value,
+                                    boundingBox = barcode.boundingBox,
+                                    imageWidth = imageProxy.width,
+                                    imageHeight = imageProxy.height,
+                                    rotationDegrees = rotationDegrees
+                                )
+                            )
                         }
                     }
                 }
@@ -44,3 +61,4 @@ class BarcodeAnalyzer(
         }
     }
 }
+

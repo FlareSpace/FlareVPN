@@ -596,7 +596,7 @@ fun AdvancedSettingsScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_advanced_title,
             hazeState = hazeState,
             scrollState = scrollState,

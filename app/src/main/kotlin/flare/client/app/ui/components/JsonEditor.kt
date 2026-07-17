@@ -2,6 +2,7 @@ package flare.client.app.ui.components
 
 import flare.client.app.ui.i18n.I18n
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,10 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.res.painterResource
@@ -32,6 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import flare.client.app.R
 import flare.client.app.ui.theme.FlareTheme
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 
 import dev.chrisbanes.haze.HazeState
@@ -72,12 +76,13 @@ fun ProfileJsonEditor(
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                 .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
+            val topPadding = if (initialScheme.isNotBlank()) 87.dp else 80.dp
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .statusBarsPadding()
-                    .padding(top = 80.dp, bottom = 80.dp)
+                    .padding(top = topPadding, bottom = 80.dp)
                     .padding(horizontal = 16.dp)
             ) {
                 Text(
@@ -110,12 +115,13 @@ fun ProfileJsonEditor(
                     onValueChange = { content = it },
                     singleLine = false,
                     minLines = 10,
+                    scrollState = scrollState,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.label_config_editor,
             hazeState = hazeState,
             scrollState = scrollState,
@@ -173,10 +179,12 @@ fun JsonEditorTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     singleLine: Boolean = false,
-    minLines: Int = 1
+    minLines: Int = 1,
+    scrollState: ScrollState? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val accentColor = FlareTheme.colors.accent
+
     val bgColor by animateColorAsState(
         targetValue = if (isFocused) {
             accentColor.copy(alpha = 0.08f).compositeOver(FlareTheme.colors.bgItem)
@@ -186,6 +194,24 @@ fun JsonEditorTextField(
         animationSpec = tween(220),
         label = "jsonFieldBg"
     )
+
+    
+    
+    
+    
+    LaunchedEffect(isFocused) {
+        if (isFocused && scrollState != null && !singleLine) {
+            val savedScroll = scrollState.value
+            withTimeoutOrNull(600L) {
+                
+                snapshotFlow { scrollState.isScrollInProgress }
+                    .filter { it }
+                    .first()
+                
+                scrollState.scrollTo(savedScroll)
+            }
+        }
+    }
 
     BasicTextField(
         value = value,

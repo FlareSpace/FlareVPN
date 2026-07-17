@@ -10,6 +10,8 @@ sealed class DisplayItem {
         val profiles: List<ProfileSummary>,
         val isExpanded: Boolean,
         val isRefreshing: Boolean = false,
+        val isPinging: Boolean = false,
+        val pingProgressText: String = "",
         val cornerType: CornerType = CornerType.ALL
     ) : DisplayItem()
 

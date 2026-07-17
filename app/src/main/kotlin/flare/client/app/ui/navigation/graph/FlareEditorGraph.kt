@@ -3,6 +3,7 @@ package flare.client.app.ui.navigation.graph
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,9 +48,14 @@ internal fun NavGraphBuilder.flareEditorGraph(
             }
         }
 
+        DisposableEffect(id) {
+            onDispose {
+                profilesViewModel.setEditingProfile(null)
+            }
+        }
+
         SwipeToDismissScreen(
             onDismissRight = {
-                profilesViewModel.setEditingProfile(null)
                 navController.popBackStack()
             },
             onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
@@ -81,7 +87,6 @@ internal fun NavGraphBuilder.flareEditorGraph(
                         initialScheme = profileScheme,
                         onSave = { name: String, json: String ->
                             profilesViewModel.updateProfile(p.id, name, json)
-                            profilesViewModel.setEditingProfile(null)
                             AppNotificationManager.showNotification(
                                 NotificationType.SUCCESS,
                                 I18n.strings.notif_profile_changed,
@@ -90,7 +95,6 @@ internal fun NavGraphBuilder.flareEditorGraph(
                             navController.popBackStack()
                         },
                         onBack = {
-                            profilesViewModel.setEditingProfile(null)
                             navController.popBackStack()
                         },
                         hazeState = appHazeState
@@ -110,9 +114,14 @@ internal fun NavGraphBuilder.flareEditorGraph(
             }
         }
 
+        DisposableEffect(id) {
+            onDispose {
+                profilesViewModel.setEditingProfile(null)
+            }
+        }
+
         SwipeToDismissScreen(
             onDismissRight = {
-                profilesViewModel.setEditingProfile(null)
                 navController.popBackStack()
             },
             onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
@@ -133,7 +142,6 @@ internal fun NavGraphBuilder.flareEditorGraph(
                         profile = p,
                         onSave = { updatedProfile ->
                             profilesViewModel.updateProfileFull(updatedProfile)
-                            profilesViewModel.setEditingProfile(null)
                             AppNotificationManager.showNotification(
                                 NotificationType.SUCCESS,
                                 I18n.strings.notif_profile_changed,
@@ -142,7 +150,6 @@ internal fun NavGraphBuilder.flareEditorGraph(
                             navController.popBackStack()
                         },
                         onBack = {
-                            profilesViewModel.setEditingProfile(null)
                             navController.popBackStack()
                         },
                         accentColor = Color(accentColor()),

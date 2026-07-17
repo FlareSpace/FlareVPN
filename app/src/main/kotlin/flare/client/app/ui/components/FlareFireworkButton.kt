@@ -50,6 +50,27 @@ private data class RayProperty(
     val offAlpha: Float
 )
 
+private object FireworkTimeKeeper {
+    var accumulatedTime = 0f
+    var lastFrameTime = 0L
+
+    fun getUpdatedTime(frameTimeNanos: Long, timeSpeed: Float): Float {
+        if (lastFrameTime == 0L || frameTimeNanos < lastFrameTime) {
+            lastFrameTime = frameTimeNanos
+            return accumulatedTime
+        }
+        var deltaNanos = frameTimeNanos - lastFrameTime
+        if (deltaNanos > 0) {
+            if (deltaNanos > 100_000_000L) { 
+                deltaNanos = 16_666_666L
+            }
+            accumulatedTime += (deltaNanos / 1_000_000_000f) * timeSpeed
+            lastFrameTime = frameTimeNanos
+        }
+        return accumulatedTime
+    }
+}
+
 @Composable
 fun FlareFireworkButton(
     connectionState: flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState,
@@ -86,9 +107,38 @@ fun FlareFireworkButton(
         label = "scale"
     )
 
-    var time by remember { mutableFloatStateOf(0f) }
+    val isConnected = connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTED
+    var isPlayingPhase by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isConnected) {
+        if (isConnected) {
+            while (true) {
+                val cycle = (android.os.SystemClock.uptimeMillis() % 7000L)
+                val delayTime = if (cycle < 4000L) {
+                    isPlayingPhase = true
+                    4000L - cycle
+                } else {
+                    isPlayingPhase = false
+                    7000L - cycle
+                }
+                kotlinx.coroutines.delay(delayTime)
+            }
+        } else {
+            isPlayingPhase = true
+        }
+    }
+
+    val timeSpeed by animateFloatAsState(
+        targetValue = if (isPlayingPhase) 1f else 0.05f,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+        label = "timeSpeed"
+    )
     
-    
+    val breathAlpha by animateFloatAsState(
+        targetValue = if (isPlayingPhase) 1f else 0.7f,
+        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+        label = "breathAlpha"
+    )
     
     val isAnimatingState = remember {
         derivedStateOf {
@@ -96,16 +146,17 @@ fun FlareFireworkButton(
         }
     }
 
+    var time by remember { mutableFloatStateOf(FireworkTimeKeeper.accumulatedTime) }
+
     LaunchedEffect(isAnimatingState.value) {
         if (isAnimatingState.value) {
-            var lastTime = withFrameNanos { it }
-            val frameTimeNanos = 1_000_000_000L / 60L 
+            var lastDrawTime = 0L
+            val targetFrameNanos = 1_000_000_000L / 60L
             while (true) {
                 withFrameNanos { frameTime ->
-                    val deltaNanos = frameTime - lastTime
-                    if (deltaNanos >= frameTimeNanos) {
-                        time += deltaNanos / 1_000_000_000f
-                        lastTime = frameTime
+                    if (lastDrawTime == 0L || frameTime - lastDrawTime >= targetFrameNanos) {
+                        time = FireworkTimeKeeper.getUpdatedTime(frameTime, timeSpeed)
+                        lastDrawTime = frameTime
                     }
                 }
             }
@@ -452,7 +503,7 @@ fun FlareFireworkButton(
                 val endY = center.y + sin(currentAngle) * currentLength
 
                 val onAlpha = 0.85f + 0.15f * sin(time * 4f + i * 2f)
-                val currentAlpha = lerp(prop.offAlpha, onAlpha, totalActiveProgress)
+                val currentAlpha = lerp(prop.offAlpha, onAlpha, totalActiveProgress) * breathAlpha
                 
                 val thickness = lerp(1.5f * dpToPx, prop.targetThicknessDp * dpToPx, connectedProgress)
 

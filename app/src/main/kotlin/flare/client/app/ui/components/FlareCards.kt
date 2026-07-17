@@ -2,7 +2,16 @@ package flare.client.app.ui.components
 
 import flare.client.app.ui.i18n.I18n
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -47,6 +56,51 @@ import dev.chrisbanes.haze.hazeEffect
 
 
 @Composable
+fun PingSkeleton(
+    pingStyle: String,
+    accentColor: Color
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pingSkeleton")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pingSkeletonAlpha"
+    )
+    
+    val brushColor = accentColor.copy(alpha = alpha * 0.35f)
+    
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        val showIcon = pingStyle == "icon" || pingStyle == "both"
+        val showText = pingStyle == "time" || pingStyle == "both"
+        
+        if (showIcon) {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(brushColor)
+            )
+        }
+        if (showText) {
+            Box(
+                modifier = Modifier
+                    .width(42.dp)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(brushColor)
+            )
+        }
+    }
+}
+
+@Composable
 fun ProfileCard(
     name: String,
     description: String? = null,
@@ -60,6 +114,7 @@ fun ProfileCard(
     onQrCodeClick: () -> Unit = {},
     onEditJsonClick: () -> Unit,
     onEditSimpleClick: () -> Unit = {},
+    onTestClick: () -> Unit = {},
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
@@ -67,6 +122,42 @@ fun ProfileCard(
     val context = LocalContext.current
     var menuExpanded by remember { mutableStateOf(false) }
     var touchOffset by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
+
+    val selectionProgress by animateFloatAsState(
+        targetValue = if (isSelected) 1f else 0f,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileSelectionProgress"
+    )
+    val nameColor by animateColorAsState(
+        targetValue = if (isSelected) FlareTheme.colors.textProfileSelectedPrimary else FlareTheme.colors.textPrimary,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileNameColor"
+    )
+    val descriptionColor by animateColorAsState(
+        targetValue = if (isSelected) FlareTheme.colors.textProfileSelectedSecondary else FlareTheme.colors.textSecondary,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileDescColor"
+    )
+    val columnAlpha by animateFloatAsState(
+        targetValue = if (isSelected) 1.0f else 0.7f,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileColumnAlpha"
+    )
+    val dividerColor by animateColorAsState(
+        targetValue = if (isSelected) {
+            FlareTheme.colors.dividerProfileSelected
+        } else {
+            if (FlareTheme.colors.isDark) FlareTheme.colors.bgSurface.copy(alpha = 0.3f)
+            else Color.Black.copy(alpha = 0.1f)
+        },
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileDividerColor"
+    )
+    val arrowTint by animateColorAsState(
+        targetValue = if (isSelected) accentColor else FlareTheme.colors.textSecondary,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "profileArrowTint"
+    )
 
     Box(
         modifier = Modifier
@@ -87,10 +178,11 @@ fun ProfileCard(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 
-                if (isSelected) {
+                if (selectionProgress > 0f) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
+                            .graphicsLayer { alpha = selectionProgress }
                             .background(selectionBgColor)
                     )
                     
@@ -98,6 +190,10 @@ fun ProfileCard(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(3.dp)
+                            .graphicsLayer {
+                                scaleY = selectionProgress
+                                alpha = selectionProgress
+                            }
                             .background(accentColor)
                             .align(Alignment.CenterStart)
                     )
@@ -135,14 +231,14 @@ fun ProfileCard(
                         modifier = Modifier
                             .weight(1f)
                             .padding(start = startPadding, end = 12.dp)
-                            .alpha(if (isSelected) 1.0f else 0.7f),
+                            .graphicsLayer { alpha = columnAlpha },
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = name,
                             fontFamily = GeologicaRegular,
                             fontSize = 14.sp,
-                            color = if (isSelected) FlareTheme.colors.textProfileSelectedPrimary else FlareTheme.colors.textPrimary,
+                            color = nameColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -151,7 +247,7 @@ fun ProfileCard(
                                 text = description,
                                 fontFamily = GeologicaRegular,
                                 fontSize = 11.sp,
-                                color = if (isSelected) FlareTheme.colors.textProfileSelectedSecondary else FlareTheme.colors.textSecondary,
+                                color = descriptionColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = 1.dp)
@@ -163,74 +259,88 @@ fun ProfileCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        if (pingState is PingState.Loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = accentColor
-                            )
-                        } else if (pingState is PingState.Result) {
-                            val latency = pingState.latency
-                            val isError = pingState.isError
-                            
-                            val showIcon = pingStyle == "icon" || pingStyle == "both"
-                            val showText = pingStyle == "time" || pingStyle == "both"
-
-                            val (iconRes, textColor) = when {
-                                isError || latency > 5000 -> R.drawable.ic_error to Color.Red
-                                latency <= 300 -> R.drawable.ic_success to Color(0xFF4CAF50)
-                                latency <= 800 -> R.drawable.ic_warning to Color(0xFFFFC107)
-                                else -> R.drawable.ic_error to Color.Red
-                            }
-                            
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (showIcon) {
-                                    Icon(
-                                        painter = painterResource(iconRes),
-                                        contentDescription = null,
-                                        tint = Color.Unspecified,
-                                        modifier = Modifier.size(16.dp).padding(end = 4.dp)
-                                    )
+                        AnimatedContent(
+                            targetState = pingState,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                            },
+                            label = "pingStateTransition"
+                        ) { state ->
+                            when (state) {
+                                is PingState.Loading -> {
+                                    PingSkeleton(pingStyle = pingStyle, accentColor = accentColor)
                                 }
-                                if (showText) {
-                                    val errText = if (isError) {
-                                        val rawMsg = pingState.errorMessage ?: ""
-                                        val isRussian = I18n.strings.label_error == "Ошибка"
-                                        if (isRussian) {
-                                            when (rawMsg) {
-                                                "Timeout" -> "Таймаут"
-                                                "DNS Fail" -> "DNS сбой"
-                                                "Config Err" -> "Ошибка конф."
-                                                "Core err" -> "Core ERR"
-                                                "TLS Failed" -> "TLS Fail"
-                                                "Unreachable" -> "Недоступен"
-                                                "Refused" -> "Отказ"
-                                                "Failed" -> "Ошибка"
-                                                "" -> "Ошибка"
-                                                else -> rawMsg
-                                            }
-                                        } else {
-                                            when (rawMsg) {
-                                                "Core err" -> "Core ERR"
-                                                "TLS Failed" -> "TLS Fail"
-                                                "" -> "Error"
-                                                else -> rawMsg
-                                            }
-                                        }
-                                    } else {
-                                        "$latency ms"
+                                is PingState.Result -> {
+                                    val latency = state.latency
+                                    val isError = state.isError
+                                    
+                                    val showIcon = pingStyle == "icon" || pingStyle == "both"
+                                    val showText = pingStyle == "time" || pingStyle == "both"
+
+                                    val (iconRes, textColor) = when {
+                                        isError || latency > 5000 -> R.drawable.ic_ping_error to Color.Red
+                                        latency <= 300 -> R.drawable.ic_ping_success to Color(0xFF4CAF50)
+                                        latency <= 800 -> R.drawable.ic_ping_warning to Color(0xFFFFC107)
+                                        else -> R.drawable.ic_ping_error to Color.Red
                                     }
-                                    Text(
-                                        text = errText,
-                                        fontFamily = GeologicaRegular,
-                                        fontSize = 12.sp,
-                                        color = textColor
-                                    )
+                                    
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (showIcon) {
+                                            Icon(
+                                                painter = painterResource(iconRes),
+                                                contentDescription = null,
+                                                tint = Color.Unspecified,
+                                                modifier = Modifier.size(16.dp).padding(end = 4.dp)
+                                            )
+                                        }
+                                        if (showText) {
+                                            val errText = if (isError) {
+                                                val rawMsg = state.errorMessage ?: ""
+                                                val isRussian = I18n.strings.label_error == "Ошибка"
+                                                if (isRussian) {
+                                                    when (rawMsg) {
+                                                        "Timeout" -> "Таймаут"
+                                                        "DNS Fail" -> "DNS сбой"
+                                                        "Config Err" -> "Ошибка конф."
+                                                        "Core err" -> "Core ERR"
+                                                        "TLS Failed" -> "TLS Fail"
+                                                        "Unreachable" -> "Недоступен"
+                                                        "Refused" -> "Отказ"
+                                                        "Failed" -> "Ошибка"
+                                                        "" -> "Ошибка"
+                                                        else -> rawMsg
+                                                    }
+                                                } else {
+                                                    when (rawMsg) {
+                                                        "Core err" -> "Core ERR"
+                                                        "TLS Failed" -> "TLS Fail"
+                                                        "" -> "Error"
+                                                        else -> rawMsg
+                                                    }
+                                                }
+                                            } else {
+                                                "$latency ms"
+                                            }
+                                            Text(
+                                                text = errText,
+                                                fontFamily = GeologicaRegular,
+                                                fontSize = 12.sp,
+                                                color = textColor
+                                            )
+                                        }
+                                    }
+                                }
+                                else -> {
+                                    Spacer(modifier = Modifier.size(0.dp))
                                 }
                             }
                         }
 
-                        if (isSelected) {
+                        AnimatedVisibility(
+                            visible = isSelected,
+                            enter = expandHorizontally() + fadeIn(),
+                            exit = shrinkHorizontally() + fadeOut()
+                        ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_check),
                                 contentDescription = null,
@@ -247,11 +357,7 @@ fun ProfileCard(
                         modifier = Modifier
                             .width(1.dp)
                             .height(24.dp)
-                            .background(
-                                if (isSelected) FlareTheme.colors.dividerProfileSelected
-                                else if (FlareTheme.colors.isDark) FlareTheme.colors.bgSurface.copy(alpha = 0.3f)
-                                else Color.Black.copy(alpha = 0.1f)
-                            )
+                            .background(dividerColor)
                     )
                     
                     Spacer(modifier = Modifier.width(4.dp))
@@ -263,7 +369,7 @@ fun ProfileCard(
                         Icon(
                             painter = painterResource(R.drawable.ic_arrow_right),
                             contentDescription = "Edit JSON",
-                            tint = if (isSelected) accentColor else FlareTheme.colors.textSecondary,
+                            tint = arrowTint,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -282,6 +388,10 @@ fun ProfileCard(
                 flare.client.app.util.GlassUtils.MenuItem(2, I18n.strings.menu_link) {
                     menuExpanded = false
                     onShareClick()
+                },
+                flare.client.app.util.GlassUtils.MenuItem(3, I18n.strings.menu_test) {
+                    menuExpanded = false
+                    onTestClick()
                 }
             ),
             hazeState = hazeState,
@@ -311,6 +421,8 @@ fun SubscriptionCard(
     updateInterval: Long = 0L,
     isExpanded: Boolean = false,
     isRefreshing: Boolean = false,
+    isPinging: Boolean = false,
+    pingProgress: String = "",
     cornerType: DisplayItem.CornerType = DisplayItem.CornerType.ALL,
     onUpdateClick: () -> Unit,
     onSpeedTestClick: () -> Unit,
@@ -322,12 +434,13 @@ fun SubscriptionCard(
     onPinClick: () -> Unit = {},
     onQrClick: () -> Unit = {},
     onShareLinkClick: () -> Unit = {},
+    onMergeClick: (() -> Unit)? = null,
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     var contextMenuExpanded by remember { mutableStateOf(false) }
     var touchOffset by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
-    val isVirtual = name == I18n.strings.sub_single_profiles
+    val isVirtual = name == I18n.strings.sub_single_profiles || name == I18n.strings.sub_merged_profiles
     val arrowRotation by animateFloatAsState(targetValue = if (isExpanded) 90f else 0f)
     
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -499,15 +612,39 @@ fun SubscriptionCard(
                                 Spacer(modifier = Modifier.width(5.dp))
 
                                 FlareGlassButton(
-                                    onClick = onSpeedTestClick
-                                ) {
-                                    Icon(
-                                        painter = painterResource(R.drawable.ic_speedometer),
-                                        contentDescription = I18n.strings.label_speed_test,
-                                        tint = buttonTint,
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                }
+                                     onClick = onSpeedTestClick,
+                                     enabled = !isPinging
+                                 ) {
+                                     if (isPinging) {
+                                         Column(
+                                             horizontalAlignment = Alignment.CenterHorizontally,
+                                             verticalArrangement = Arrangement.Center,
+                                             modifier = Modifier.fillMaxSize()
+                                         ) {
+                                             CircularProgressIndicator(
+                                                 modifier = Modifier.size(11.dp),
+                                                 strokeWidth = 1.2.dp,
+                                                 color = accentColor
+                                             )
+                                             Spacer(modifier = Modifier.height(1.dp))
+                                             Text(
+                                                 text = pingProgress,
+                                                 fontFamily = GeologicaMedium,
+                                                 fontSize = 7.sp,
+                                                 color = FlareTheme.colors.textPrimary,
+                                                 maxLines = 1,
+                                                 overflow = TextOverflow.Ellipsis
+                                             )
+                                         }
+                                     } else {
+                                         Icon(
+                                             painter = painterResource(R.drawable.ic_speedometer),
+                                             contentDescription = I18n.strings.label_speed_test,
+                                             tint = buttonTint,
+                                             modifier = Modifier.size(15.dp)
+                                         )
+                                     }
+                                 }
 
                                 Spacer(modifier = Modifier.width(5.dp))
 
@@ -615,7 +752,7 @@ fun SubscriptionCard(
             )
         }
 
-        val menuItems = remember(isPinned, showQrAndLink) {
+        val menuItems = remember(isPinned, showQrAndLink, onMergeClick) {
             val list = mutableListOf<flare.client.app.util.GlassUtils.MenuItem>()
             if (showQrAndLink) {
                 list.add(flare.client.app.util.GlassUtils.MenuItem(1, I18n.strings.menu_qr_code) {
@@ -632,6 +769,12 @@ fun SubscriptionCard(
                 contextMenuExpanded = false
                 onPinClick()
             })
+            if (onMergeClick != null) {
+                list.add(flare.client.app.util.GlassUtils.MenuItem(4, I18n.strings.menu_merge_subscription) {
+                    contextMenuExpanded = false
+                    onMergeClick()
+                })
+            }
             list
         }
 

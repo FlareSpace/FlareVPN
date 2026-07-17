@@ -387,7 +387,7 @@ fun BasicSettingsScreen(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_basic_title,
             hazeState = hazeState,
             scrollState = scrollState,

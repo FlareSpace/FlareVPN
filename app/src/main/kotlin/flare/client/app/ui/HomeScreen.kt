@@ -70,6 +70,7 @@ fun HomeScreen(
     onQrProfile: (ProfileSummary) -> Unit,
     onEditProfileJson: (ProfileSummary) -> Unit,
     onEditProfileSimple: (ProfileSummary) -> Unit,
+    onProfileTest: (ProfileSummary) -> Unit,
     onSubscriptionToggle: (SubscriptionEntity) -> Unit,
     onSubscriptionDelete: (Long) -> Unit,
     onSubscriptionSpeedTest: (Long) -> Unit,
@@ -78,6 +79,7 @@ fun HomeScreen(
     onSubscriptionPinToggle: (SubscriptionEntity) -> Unit,
     onSubscriptionShare: (SubscriptionEntity) -> Unit,
     onSubscriptionQr: (SubscriptionEntity) -> Unit,
+    onSubscriptionMerge: (Long) -> Unit,
     onClipboardClick: () -> Unit,
     onManualInputClick: () -> Unit,
     onQrScanClick: () -> Unit,
@@ -86,9 +88,7 @@ fun HomeScreen(
     onScroll: (Int) -> Unit,
     hazeState: HazeState
 ) {
-    BackHandler(enabled = isAnySubscriptionExpanded) {
-        onBack()
-    }
+
     val isConnected = connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTED
     val isConnecting = connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.CONNECTING || connectionState == flare.client.app.ui.viewmodel.VpnViewModel.ConnectionState.DISCONNECTING
 
@@ -130,6 +130,7 @@ fun HomeScreen(
     val buttonOffsetY = if (isLandscape) 10.dp else 40.dp
     val addProfilesBottomPadding = if (isLandscape) 24.dp else 96.dp
 
+    PredictiveBackWrapper(onBack = onBack, enabled = isAnySubscriptionExpanded) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -230,6 +231,7 @@ fun HomeScreen(
                                         onQrProfile = onQrProfile,
                                         onEditProfileJson = onEditProfileJson,
                                         onEditProfileSimple = onEditProfileSimple,
+                                        onProfileTest = onProfileTest,
                                         onSubscriptionToggle = onSubscriptionToggle,
                                         onSubscriptionDelete = onSubscriptionDelete,
                                         onSubscriptionSpeedTest = onSubscriptionSpeedTest,
@@ -238,6 +240,7 @@ fun HomeScreen(
                                         onSubscriptionPinToggle = onSubscriptionPinToggle,
                                         onSubscriptionQr = onSubscriptionQr,
                                         onSubscriptionShare = onSubscriptionShare,
+                                        onSubscriptionMerge = onSubscriptionMerge,
                                         hazeState = hazeState
                                     )
                                 }
@@ -384,7 +387,11 @@ fun HomeScreen(
                     }
                 }
             } else {
-                val guidelineHeight = if (isLandscape) screenHeight * 0.35f else screenHeight * 0.38f
+                val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+                val widthFactor = ((configuration.screenWidthDp - 360) / (500 - 360).toFloat()).coerceIn(0f, 1f)
+                val baseGuidelineHeight = screenHeight * 0.38f
+                val guidelineHeight = baseGuidelineHeight + (380.dp - baseGuidelineHeight) * widthFactor
+                val adaptiveOffsetY = buttonOffsetY + (-20.dp - buttonOffsetY) * widthFactor
 
                 
                 Box(
@@ -414,7 +421,7 @@ fun HomeScreen(
                         backgroundType = backgroundType,
                         isCustomColorEnabled = isCustomColorEnabled,
                         isChangeLaunchButtonColorEnabled = isChangeLaunchButtonColorEnabled,
-                        modifier = Modifier.offset(y = buttonOffsetY)
+                        modifier = Modifier.offset(y = adaptiveOffsetY)
                     )
                 }
 
@@ -502,6 +509,7 @@ fun HomeScreen(
                                 onQrProfile = onQrProfile,
                                 onEditProfileJson = onEditProfileJson,
                                 onEditProfileSimple = onEditProfileSimple,
+                                onProfileTest = onProfileTest,
                                 onSubscriptionToggle = onSubscriptionToggle,
                                 onSubscriptionDelete = onSubscriptionDelete,
                                 onSubscriptionSpeedTest = onSubscriptionSpeedTest,
@@ -510,6 +518,7 @@ fun HomeScreen(
                                 onSubscriptionPinToggle = onSubscriptionPinToggle,
                                 onSubscriptionQr = onSubscriptionQr,
                                 onSubscriptionShare = onSubscriptionShare,
+                                onSubscriptionMerge = onSubscriptionMerge,
                                 hazeState = hazeState
                             )
                         }
@@ -621,6 +630,7 @@ fun HomeScreen(
                 }
             }
         }
+    }
     }
 }
 

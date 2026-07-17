@@ -5,36 +5,14 @@
     android:viewportHeight="24">
 
     
-    <group>
-        <clip-path
-            android:fillType="evenOdd"
-            android:pathData="M-10,-10 h44 v44 h-44 Z M18.00,1.12 C18.58,4.02 21.48,6.92 24.38,7.50 C21.48,8.08 18.58,10.98 18.00,13.88 C17.42,10.98 14.52,8.08 11.62,7.50 C14.52,6.92 17.42,4.02 18.00,1.12 Z" />
-
-        
-        <group
-            android:pivotX="12"
-            android:pivotY="12"
-            android:scaleX="0.75"
-            android:scaleY="0.75"
-            android:translateX="-2.5"
-            android:translateY="2.5">
-            <path
-                android:fillColor="#FFFFFFFF"
-                android:pathData="M19.35,10.04C18.67,6.59 15.64,4 12,4 9.11,4 6.6,5.64 5.35,8.04 2.34,8.36 0,10.91 0,14 0,17.31 2.69,20 6,20h13c2.76,0 5,-2.24 5,-5 0,-2.64 -2.05,-4.78 -4.65,-4.96z" />
-        </group>
-    </group>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,1 C12.5,3 13.5,4 15.5,4.5 C13.5,5 12.5,6 12,8 C11.5,6 10.5,5 8.5,4.5 C10.5,4 11.5,3 12,1 Z" />
 
     
-    <group
-        android:pivotX="12"
-        android:pivotY="12"
-        android:scaleX="0.45"
-        android:scaleY="0.45"
-        android:translateX="6.0"
-        android:translateY="-4.5">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M12,1 C13,6 18,11 23,12 C18,13 13,18 12,23 C11,18 6,13 1,12 C6,11 11,6 12,1 Z" />
-    </group>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M4.35,5.04 L4.99,10.77 L5.65,7.58 L10.67,12.64 L6.50,9.97 L5.94,12.11 L0.99,17.93 L3.96,17.22 L7.78,18.69 L5.56,18.55 L8.48,20.19 L11.09,23.71 L11.08,22.27 L13.07,22.39 L12.50,23.90 L18.27,18.57 L16.29,18.69 L17.78,17.64 L22.99,17.81 L17.49,10.14 L13.30,12.65 L18.34,8.06 L19.04,10.97 L20.17,8.18 L19.74,5.04 L13.90,10.35 L12.50,9.26 L11.54,9.22 L10.24,10.32 Z M17.50,14.47 L17.42,14.64 L16.83,15.00 L16.50,16.02 L15.91,16.72 L15.45,17.02 L13.94,17.64 L13.16,18.50 L13.54,16.45 L13.80,15.92 L14.32,15.28 L14.78,14.91 L15.60,14.55 L16.50,14.41 Z M6.62,14.54 L6.88,14.41 L8.12,14.47 L8.96,14.75 L9.63,15.19 L10.18,15.84 L10.45,16.38 L10.86,18.38 L10.76,18.43 L10.28,17.85 L9.89,17.53 L8.68,17.08 L8.12,16.72 L7.63,16.09 L7.21,15.01 Z" />
 
 </vector>

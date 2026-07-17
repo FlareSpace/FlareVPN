@@ -17,6 +17,7 @@ object ProfileParsingHelper {
             if (!transportType.isNullOrBlank()) {
                 transport = when (transportType.lowercase()) {
                     "tcp" -> "TCP"
+                    "raw" -> "RAW"
                     "ws" -> "WS"
                     "grpc" -> "gRPC"
                     "httpupgrade" -> "HTTPUpgrade"

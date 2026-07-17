@@ -85,6 +85,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.snapshotFlow
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import flare.client.app.util.QrUtils
 
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.lazy.LazyColumn
@@ -119,10 +120,55 @@ import flare.client.app.ui.navigation.Destination
 import flare.client.app.ui.FlareApp
 import flare.client.app.util.ProfileExportHelper
 import flare.client.app.ui.theme.FlareTheme
-
-
 enum class WizardStep {
-    CARDS, SSH_CONFIG, PROTOCOL, XRAY_CONFIG, PROGRESS, SUCCESS, FLARE_TARIFFS, FLARE_PROGRESS, FLARE_SUCCESS
+    CARDS, SSH_CONFIG, PROTOCOL, XRAY_CONFIG, PROGRESS, SUCCESS, FLARE_TARIFFS, FLARE_FREE_AUTH_PROMPT, FLARE_AUTH, FLARE_BUY, FLARE_PROGRESS, FLARE_SUCCESS
+}
+
+private val appIconCache = java.util.concurrent.ConcurrentHashMap<String, androidx.compose.ui.graphics.ImageBitmap>()
+
+@androidx.compose.runtime.Composable
+private fun AppIcon(packageName: String, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var iconBitmap by androidx.compose.runtime.remember(packageName) { 
+        androidx.compose.runtime.mutableStateOf(appIconCache[packageName]) 
+    }
+
+    if (iconBitmap == null) {
+        androidx.compose.runtime.LaunchedEffect(packageName) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val pm = context.packageManager
+                    val appInfo = pm.getApplicationInfo(packageName, 0)
+                    val drawable = appInfo.loadIcon(pm)
+                    val bitmap = drawable.toBitmap().asImageBitmap()
+                    appIconCache[packageName] = bitmap
+                    iconBitmap = bitmap
+                } catch (e: Exception) {
+                    try {
+                        val defaultDrawable = context.packageManager.defaultActivityIcon
+                        val bitmap = defaultDrawable.toBitmap().asImageBitmap()
+                        iconBitmap = bitmap
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    if (iconBitmap != null) {
+        androidx.compose.foundation.Image(
+            bitmap = iconBitmap!!,
+            contentDescription = null,
+            modifier = modifier
+        )
+    } else {
+        androidx.compose.foundation.layout.Spacer(
+            modifier = modifier
+                .background(
+                    color = androidx.compose.ui.graphics.Color.Gray.copy(alpha = 0.2f),
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
+    }
 }
 
 class MainActivity : AppCompatActivity() {
@@ -178,6 +224,9 @@ class MainActivity : AppCompatActivity() {
     private var profileQrBitmap by mutableStateOf<Bitmap?>(null)
     private var lastQrIsSubscription by mutableStateOf(false)
 
+    private var showHttpWarningDialogState by mutableStateOf(false)
+    private var onHttpWarningConfirmAction by mutableStateOf<(() -> Unit)?>(null)
+
     private var showOnboardingDialogState by mutableStateOf(false)
     private var isNotificationPermissionGranted by mutableStateOf(false)
     private var isBatteryOptimizationIgnored by mutableStateOf(false)
@@ -209,6 +258,10 @@ class MainActivity : AppCompatActivity() {
             onNotificationResult = { isGranted ->
                 if (isGranted) {
                     showTestNotification()
+                    settings.isStatusNotificationEnabled = true
+                    settingsViewModel.composeIsStatusNotificationEnabled = true
+                    settings.isNotificationSpeedEnabled = true
+                    settingsViewModel.composeIsNotificationSpeedEnabled = true
                 } else {
                     showToast(I18n.strings.onboarding_notifications_error)
                     settingsViewModel.composeIsStatusNotificationEnabled = false
@@ -219,6 +272,10 @@ class MainActivity : AppCompatActivity() {
                 isNotificationPermissionGranted = isGranted
                 if (isGranted) {
                     showToast(I18n.strings.onboarding_toast_notification_granted)
+                    settings.isStatusNotificationEnabled = true
+                    settingsViewModel.composeIsStatusNotificationEnabled = true
+                    settings.isNotificationSpeedEnabled = true
+                    settingsViewModel.composeIsNotificationSpeedEnabled = true
                 } else {
                     showToast(I18n.strings.onboarding_toast_notification_denied)
                 }
@@ -243,7 +300,7 @@ class MainActivity : AppCompatActivity() {
                     if (content.isNullOrBlank()) {
                         showToast(I18n.strings.error_import_file_read)
                     } else {
-                        profilesViewModel.importFromClipboard(content)
+                        tryImportSubscription(content)
                     }
                 }
             },
@@ -251,10 +308,22 @@ class MainActivity : AppCompatActivity() {
                 if (qrContent.isNullOrBlank()) {
                     showToast(I18n.strings.error_qr_scan_empty)
                 } else {
-                    profilesViewModel.importFromClipboard(qrContent)
+                    tryImportSubscription(qrContent)
                 }
             }
         )
+    }
+
+    private fun tryImportSubscription(content: String) {
+        val trimmed = content.trim()
+        if (trimmed.startsWith("http://", ignoreCase = true)) {
+            onHttpWarningConfirmAction = {
+                profilesViewModel.importFromClipboard(trimmed)
+            }
+            showHttpWarningDialogState = true
+        } else {
+            profilesViewModel.importFromClipboard(trimmed)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -395,7 +464,7 @@ class MainActivity : AppCompatActivity() {
                                 val link = flare.client.app.util.ProfileExportHelper.exportLink(profile)
                                 if (link != null) {
                                     lastQrIsSubscription = false
-                                    profileQrBitmap = generateQrCodeBitmap(link)
+                                    profileQrBitmap = QrUtils.generateQrCodeBitmap(link)
                                     showProfileQrDialogState = true
                                 } else {
                                     showToast(I18n.strings.error_link_generation)
@@ -425,7 +494,7 @@ class MainActivity : AppCompatActivity() {
                     onQrSubscription = { subscription ->
                         val link = subscription.url
                         if (link.isNotBlank()) {
-                            profileQrBitmap = generateQrCodeBitmap(link)
+                            profileQrBitmap = QrUtils.generateQrCodeBitmap(link)
                             if (profileQrBitmap != null) {
                                 lastQrIsSubscription = true
                                 showProfileQrDialogState = true
@@ -446,11 +515,34 @@ class MainActivity : AppCompatActivity() {
                             settingsViewModel.composeSplitTunnelingDesc = getSplitTunnelingDesc()
                         }
                     },
+                    onRequestNotificationPermission = {
+                        if (checkNotificationPermission()) {
+                            settings.isStatusNotificationEnabled = true
+                            settingsViewModel.composeIsStatusNotificationEnabled = true
+                            settings.isNotificationSpeedEnabled = true
+                            settingsViewModel.composeIsNotificationSpeedEnabled = true
+                            AppNotificationManager.showNotification(
+                                NotificationType.SUCCESS,
+                                I18n.strings.notif_notifications_enabled,
+                                3
+                            )
+                        } else {
+                            permissionHandler.launchNotificationPermission()
+                        }
+                    },
                     onFontSelect = { fontKey ->
                         if (settings.fontFamily != fontKey) {
                             settings.fontFamily = fontKey
                             DynamicAndroidFont.activeFontKey = fontKey
                             settingsViewModel.composeFontFamily = fontKey
+                        }
+                    },
+                    onAppIconSelect = { newIcon ->
+                        if (settings.appIcon != newIcon) {
+                            val oldIcon = settings.appIcon
+                            settings.appIcon = newIcon
+                            settingsViewModel.composeAppIcon = newIcon
+                            flare.client.app.util.AppIconSwitcher.switchIcon(this@MainActivity, oldIcon, newIcon)
                         }
                     },
                     onLogLevelClick = { level ->
@@ -464,7 +556,6 @@ class MainActivity : AppCompatActivity() {
                     onBestProfileOnlyConnectedClick = { enabled ->
                         settings.isBestProfileOnlyIfConnected = enabled
                         settingsViewModel.composeIsBestProfileOnlyConnected = enabled
-                        vpnViewModel.startBestProfileJob()
                     },
                     onUserAgentClick = { agent ->
                         settings.subUserAgent = agent
@@ -511,7 +602,7 @@ class MainActivity : AppCompatActivity() {
                         if (text.isNullOrBlank()) {
                             showToast(I18n.strings.error_clipboard_empty)
                         } else {
-                            profilesViewModel.importFromClipboard(text)
+                            tryImportSubscription(text)
                         }
                     },
                     showBottomNav = true,
@@ -537,7 +628,7 @@ class MainActivity : AppCompatActivity() {
                         onCancel = { showManualInputDialogState = false },
                         onAdd = { 
                             if (it.trim().isNotEmpty()) {
-                                profilesViewModel.importFromClipboard(it.trim())
+                                tryImportSubscription(it.trim())
                                 showManualInputDialogState = false
                             }
                         },
@@ -586,10 +677,31 @@ class MainActivity : AppCompatActivity() {
                         },
                         onCancel = { showEditSubscriptionDialogState = false },
                         onSave = {
-                            profilesViewModel.updateSubscription(sub.id, nameValue.trim(), urlValue.trim())
+                            val trimmedUrl = urlValue.trim()
+                            val trimmedName = nameValue.trim()
+                            if (trimmedUrl.startsWith("http://", ignoreCase = true)) {
+                                onHttpWarningConfirmAction = {
+                                    profilesViewModel.updateSubscription(sub.id, trimmedName, trimmedUrl)
+                                }
+                                showHttpWarningDialogState = true
+                            } else {
+                                profilesViewModel.updateSubscription(sub.id, trimmedName, trimmedUrl)
+                            }
                             showEditSubscriptionDialogState = false
                         },
                         accentColor = runtimeAccentColor,
+                        hazeState = dialogHazeState
+                    )
+                }
+
+                if (showHttpWarningDialogState) {
+                    HttpWarningDialog(
+                        onDismissRequest = { showHttpWarningDialogState = false },
+                        onCancel = { showHttpWarningDialogState = false },
+                        onConfirm = {
+                            showHttpWarningDialogState = false
+                            onHttpWarningConfirmAction?.invoke()
+                        },
                         hazeState = dialogHazeState
                     )
                 }
@@ -686,9 +798,8 @@ class MainActivity : AppCompatActivity() {
                                             .padding(vertical = 12.dp, horizontal = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Image(
-                                            bitmap = item.icon,
-                                            contentDescription = null,
+                                        AppIcon(
+                                            packageName = item.packageName,
                                             modifier = Modifier.size(42.dp)
                                         )
                                         Text(
@@ -917,7 +1028,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     if (!targetUrl.isNullOrBlank()) {
-                        profilesViewModel.importFromClipboard(targetUrl)
+                        tryImportSubscription(targetUrl)
                     }
                 }
             }
@@ -974,7 +1085,7 @@ class MainActivity : AppCompatActivity() {
     private fun applyOnboardingSplitPresets(mode: String, ru: Boolean, social: Boolean, ai: Boolean) {
         lifecycleScope.launch(Dispatchers.IO) {
             val pm = packageManager
-            val installedPackages = pm.getInstalledApplications(android.content.pm.PackageManager.GET_META_DATA)
+            val installedPackages = pm.getInstalledApplications(0)
                 .map { it.packageName }
                 .toSet()
 
@@ -1059,7 +1170,6 @@ class MainActivity : AppCompatActivity() {
     data class AppListItem(
             val packageName: String,
             val name: String,
-            val icon: androidx.compose.ui.graphics.ImageBitmap,
             var isSelected: Boolean
     )
 
@@ -1261,16 +1371,14 @@ class MainActivity : AppCompatActivity() {
         settingsViewModel.composeIsChangeAppsLoading = true
         lifecycleScope.launch(Dispatchers.IO) {
             val pm = packageManager
-            val packages = pm.getInstalledApplications(android.content.pm.PackageManager.GET_META_DATA)
+            val packages = pm.getInstalledApplications(0)
             val apps = packages.mapNotNull { appInfo ->
                 if (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM == 0 ||
                     appInfo.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP != 0
                 ) {
                     val name = appInfo.loadLabel(pm).toString()
                     val packageName = appInfo.packageName
-                    val iconDrawable = appInfo.loadIcon(pm)
-                    val iconBitmap = iconDrawable.toBitmap().asImageBitmap()
-                    AppListItem(packageName, name, iconBitmap, settings.splitTunnelingApps.contains(packageName))
+                    AppListItem(packageName, name, settings.splitTunnelingApps.contains(packageName))
                 } else null
             }.sortedBy { it.name }
 
@@ -1283,20 +1391,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun generateQrCodeBitmap(content: String, sizePx: Int = 900): Bitmap? {
-        return try {
-            val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, sizePx, sizePx)
-            val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-            for (x in 0 until sizePx) {
-                for (y in 0 until sizePx) {
-                    bitmap.setPixel(x, y, if (matrix.get(x, y)) Color.BLACK else Color.WHITE)
-                }
-            }
-            bitmap
-        } catch (_: Exception) {
-            null
-        }
-    }
+
 
     private fun formatSupportUrl(url: String): String {
         if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("tg://")) return url

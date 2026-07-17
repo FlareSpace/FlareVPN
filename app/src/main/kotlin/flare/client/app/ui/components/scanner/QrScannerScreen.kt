@@ -56,7 +56,7 @@ fun QrScannerScreen(
     }
 
     var isSuccessVisible by remember { mutableStateOf(false) }
-    var detectedValue by remember { mutableStateOf<String?>(null) }
+    var detectedResult by remember { mutableStateOf<QrDetectResult?>(null) }
 
     Box(
         modifier = Modifier
@@ -81,9 +81,9 @@ fun QrScannerScreen(
                         .also {
                             it.setAnalyzer(
                                 cameraExecutor,
-                                BarcodeAnalyzer { value ->
+                                BarcodeAnalyzer { result ->
                                     if (!isSuccessVisible) {
-                                        detectedValue = value
+                                        detectedResult = result
                                         isSuccessVisible = true
                                     }
                                 }
@@ -150,8 +150,10 @@ fun QrScannerScreen(
         
         QrSuccessOverlay(
             isVisible = isSuccessVisible,
+            qrResult = detectedResult,
+            accentColor = accentColor,
             onAnimationEnd = {
-                detectedValue?.let { onBarcodeDetected(it) }
+                detectedResult?.value?.let { onBarcodeDetected(it) }
             }
         )
     }

@@ -187,7 +187,12 @@ class AppMonitorService : Service() {
             putExtra(FlareVpnService.EXTRA_PROFILE_NAME, profile.name)
         }
         
-        startService(intent)
+        try {
+            startService(intent)
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "startService failed (background restriction): ${e.message}")
+            return false
+        }
 
         delay(1000)
         return true

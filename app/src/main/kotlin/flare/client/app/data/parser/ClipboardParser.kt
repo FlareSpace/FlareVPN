@@ -64,8 +64,7 @@ object ClipboardParser {
         return when {
             trimmed.startsWith("{") && trimmed.endsWith("}") -> parseFullJson(context, trimmed)
             singleSchemes.any { trimmed.startsWith("$it://", ignoreCase = true) } -> parseSingleProxy(context, trimmed)
-            trimmed.startsWith("http://") -> ParseResult.Error(I18n.strings.error_subscription_https_required)
-            trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion, userAgent, timeoutSeconds)
+            trimmed.startsWith("http://") || trimmed.startsWith("https://") -> parseSubscriptionUrl(context, trimmed, hwid, deviceName, androidVersion, userAgent, timeoutSeconds)
             else -> ParseResult.Error(I18n.strings.error_invalid_format)
         }
     }
@@ -681,7 +680,7 @@ object ClipboardParser {
                 put("port", if (parsed.port > 0) parsed.port else 443)
                 put("users", JSONArray().put(JSONObject().apply {
                     put("id", parsed.userInfo)
-                    put("flow", params["flow"] ?: "")
+                    put("flow", params["flow"]?.takeIf { it != "null" } ?: "")
                     put("encryption", "none")
                 }))
             }))
@@ -1044,7 +1043,7 @@ object ClipboardParser {
             })
         }
         when (networkType) {
-            "tcp" -> {
+            "tcp", "raw" -> {
                 val tcpHostVal = params["host"] ?: ""
                 val tcpPathVal = params["path"] ?: ""
                 if (tcpHostVal.isNotEmpty() || tcpPathVal.isNotEmpty()) {

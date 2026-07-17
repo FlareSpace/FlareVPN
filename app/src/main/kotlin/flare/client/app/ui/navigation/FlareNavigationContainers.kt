@@ -142,6 +142,7 @@ fun SettingsDetailContainer(
 @Composable
 fun SettingsBackgroundContent(
     settingsViewModel: SettingsViewModel,
+    sharedSettingsScrollState: androidx.compose.foundation.ScrollState,
     appHazeState: dev.chrisbanes.haze.HazeState
 ) {
     flare.client.app.ui.SettingsScreen(
@@ -150,12 +151,14 @@ fun SettingsBackgroundContent(
         onRoutingSettingsClick = {},
         onPingSettingsClick = {},
         onSubscriptionsSettingsClick = {},
+        onVpnSubscriptionClick = {},
         onThemeSettingsClick = {},
         onLanguageSettingsClick = {},
         isGradientEnabled = settingsViewModel.composeIsGradientEnabled,
         isAnimationEnabled = false,
         gradientSpeed = settingsViewModel.composeGradientSpeed,
-        hazeState = appHazeState
+        hazeState = appHazeState,
+        scrollState = sharedSettingsScrollState
     )
 }
 
@@ -238,6 +241,7 @@ fun HomeBackgroundContent(
         isAnimationEnabled = false,
         animationSpeed = settingsViewModel.composeGradientSpeed,
         isCustomColorEnabled = settingsViewModel.composeIsCustomColorEnabled,
+        isChangeLaunchButtonColorEnabled = settingsViewModel.composeIsChangeLaunchButtonColorEnabled,
         listState = backgroundListState,
         onConnectClick = { vpnViewModel.connectOrDisconnect() },
         onProfileClick = { profile -> vpnViewModel.selectProfile(profile.id) },
@@ -246,6 +250,7 @@ fun HomeBackgroundContent(
         onQrProfile = {},
         onEditProfileJson = {},
         onEditProfileSimple = {},
+        onProfileTest = {},
         onSubscriptionToggle = { sub -> profilesViewModel.toggleSubscriptionExpanded(sub.id) },
         onSubscriptionDelete = { id -> profilesViewModel.deleteSubscription(id) },
         onSubscriptionSpeedTest = { id -> profilesViewModel.speedTestSubscription(id) },
@@ -254,6 +259,7 @@ fun HomeBackgroundContent(
         onSubscriptionPinToggle = { sub -> profilesViewModel.toggleSubscriptionPinned(sub.id) },
         onSubscriptionShare = {},
         onSubscriptionQr = {},
+        onSubscriptionMerge = { id -> profilesViewModel.addSubscriptionToMerged(id) },
         onClipboardClick = {},
         onManualInputClick = {},
         onQrScanClick = {},

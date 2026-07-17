@@ -86,12 +86,13 @@ fun ProfileSimpleEditor(
                 .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
                 .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
         ) {
+            val topPadding = if (scheme.isNotBlank()) 88.dp else 84.dp
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .statusBarsPadding()
-                    .padding(top = 84.dp, bottom = 32.dp)
+                    .padding(top = topPadding, bottom = 32.dp)
                     .padding(horizontal = 20.dp)
             ) {
                 val uuidLabel = when (scheme) {
@@ -455,14 +456,14 @@ fun ProfileSimpleEditor(
                                 value = transport,
                                 expanded = isTransportMenuExpanded,
                                 onExpandedChange = { isTransportMenuExpanded = it },
-                                options = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
-                                optionTitles = listOf("tcp", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
+                                options = listOf("tcp", "raw", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
+                                optionTitles = listOf("tcp", "raw", "ws", "httpupgrade", "h2", "http", "quic", "grpc", "xhttp"),
                                 onOptionSelected = { transport = it },
                                 accentColor = accentColor,
                                 hazeState = hazeState
                             )
                             AnimatedVisibility(
-                                visible = transport == "tcp",
+                                visible = transport == "tcp" || transport == "raw",
                                 enter = fadeIn(tween(200)) + expandVertically(tween(200)),
                                 exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
                             ) {
@@ -856,7 +857,7 @@ fun ProfileSimpleEditor(
         }
 
         
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.simple_editor_title,
             hazeState = hazeState,
             scrollState = scrollState,

@@ -103,6 +103,7 @@ fun FlareButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = FlareTheme.colors.accent,
+    textColor: Color = FlareTheme.colors.textPrimary,
     icon: Int? = null,
     enabled: Boolean = true
 ) {
@@ -133,7 +134,7 @@ fun FlareButton(
                 text = text,
                 fontFamily = GeologicaMedium,
                 fontSize = 15.sp,
-                color = FlareTheme.colors.textPrimary
+                color = textColor
             )
         }
     }

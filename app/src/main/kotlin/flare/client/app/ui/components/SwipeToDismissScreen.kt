@@ -24,8 +24,17 @@ import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.unit.dp
 import flare.client.app.ui.theme.FlareTheme
 import kotlinx.coroutines.launch
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.CancellationException
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import kotlin.math.abs
-
 
 @Composable
 fun SwipeToDismissScreen(
@@ -55,7 +64,36 @@ fun SwipeToDismissScreen(
         val isDraggingRight by remember { derivedStateOf { dragOffsetX.value > 0.5f } }
         val isDraggingLeft by remember { derivedStateOf { dragOffsetX.value < -0.5f } }
 
-        if (backgroundContentRight != null && isDraggingRight) {
+        var predictiveBackProgress by remember { mutableFloatStateOf(0f) }
+        var predictiveBackTouchY by remember { mutableFloatStateOf(0f) }
+        var isPredictiveBackActive by remember { mutableStateOf(false) }
+        
+        PredictiveBackHandler(enabled = onDismissRight != null) { progress ->
+            try {
+                isPredictiveBackActive = true
+                progress.collect { backEvent ->
+                    predictiveBackProgress = backEvent.progress
+                    predictiveBackTouchY = backEvent.touchY
+                }
+                onDismissRight?.invoke()
+            } catch (e: CancellationException) {
+                isPredictiveBackActive = false
+                predictiveBackProgress = 0f
+            }
+        }
+        
+        val animatedPredictiveProgress by animateFloatAsState(
+            targetValue = if (isPredictiveBackActive) predictiveBackProgress else 0f,
+            label = "predictive_progress"
+        )
+        val animatedPredictiveTouchY by animateFloatAsState(
+            targetValue = predictiveBackTouchY,
+            label = "predictive_touch_y"
+        )
+
+        val showRightBackground = isDraggingRight || animatedPredictiveProgress > 0f
+
+        if (backgroundContentRight != null && showRightBackground) {
             Box(modifier = Modifier.fillMaxSize()) { backgroundContentRight() }
         }
         
@@ -149,26 +187,53 @@ fun SwipeToDismissScreen(
                     )
                 }
                 .graphicsLayer {
-                    val progress = (abs(dragOffsetX.value) / screenWidthPx).coerceIn(0f, 1f)
-                    translationX = dragOffsetX.value
-                    if (dragOffsetX.value > 0f) {
-                        val scale = 1f - progress * 0.15f
+                    if (animatedPredictiveProgress > 0f) {
+                        val scale = 1f - (0.1f * animatedPredictiveProgress)
                         scaleX = scale
                         scaleY = scale
-                        if (progress > 0.005f) {
+                        translationX = animatedPredictiveProgress * (screenWidthPx * 0.1f)
+                        val pivotY = if (constraints.maxHeight > 0) animatedPredictiveTouchY / constraints.maxHeight.toFloat() else 0.5f
+                        transformOrigin = TransformOrigin(1f, pivotY)
+                        if (animatedPredictiveProgress > 0.005f) {
                             clip = true
-                            shape = RoundedCornerShape(size = (progress * 28f).dp)
+                            shape = RoundedCornerShape((32f * animatedPredictiveProgress).dp)
                         } else {
                             clip = false
                         }
                     } else {
-                        scaleX = 1f
-                        scaleY = 1f
-                        clip = false
+                        val progress = (abs(dragOffsetX.value) / screenWidthPx).coerceIn(0f, 1f)
+                        translationX = dragOffsetX.value
+                        if (dragOffsetX.value > 0f) {
+                            val scale = 1f - progress * 0.15f
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = TransformOrigin.Center
+                            if (progress > 0.005f) {
+                                clip = true
+                                shape = RoundedCornerShape(size = (progress * 28f).dp)
+                            } else {
+                                clip = false
+                            }
+                        } else {
+                            scaleX = 1f
+                            scaleY = 1f
+                            clip = false
+                            transformOrigin = TransformOrigin.Center
+                        }
                     }
                 }
         ) {
             content()
+            if (animatedPredictiveProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            (if (FlareTheme.colors.isDark) Color.White else Color.Black)
+                                .copy(alpha = 0.15f * animatedPredictiveProgress)
+                        )
+                )
+            }
         }
     }
 }

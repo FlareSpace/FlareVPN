@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -107,7 +108,14 @@ fun FlareWizardInputField(
     isValid: Boolean = false,
     keyboardType: KeyboardType = KeyboardType.Text,
     accentColor: Color = FlareTheme.colors.accent,
-    icon: Int? = null
+    icon: Int? = null,
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    keyboardOptions: KeyboardOptions = KeyboardOptions(
+        keyboardType = keyboardType,
+        imeAction = ImeAction.Next
+    ),
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    onFocusChanged: (Boolean) -> Unit = {}
 ) {
     var isFocused by remember { mutableStateOf(false) }
     
@@ -165,13 +173,15 @@ fun FlareWizardInputField(
                     ),
                     cursorBrush = SolidColor(accentColor),
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = keyboardType,
-                        imeAction = ImeAction.Next
-                    ),
+                    keyboardOptions = keyboardOptions,
+                    keyboardActions = keyboardActions,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .onFocusChanged { isFocused = it.isFocused }
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { 
+                            isFocused = it.isFocused 
+                            onFocusChanged(it.isFocused)
+                        }
                 )
             }
         }
@@ -186,7 +196,16 @@ fun FlareWizardIpPortField(
     onPortChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     accentColor: Color = FlareTheme.colors.accent,
-    icon: Int? = null
+    icon: Int? = null,
+    ipFocusRequester: FocusRequester = remember { FocusRequester() },
+    ipKeyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    ipKeyboardActions: KeyboardActions = KeyboardActions.Default,
+    portFocusRequester: FocusRequester = remember { FocusRequester() },
+    portKeyboardOptions: KeyboardOptions = KeyboardOptions(
+        keyboardType = KeyboardType.Number,
+        imeAction = ImeAction.Next
+    ),
+    portKeyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     var isFocused by remember { mutableStateOf(false) }
     val isValid = ipValue.isNotBlank() && portValue.isNotBlank()
@@ -231,12 +250,15 @@ fun FlareWizardIpPortField(
                 ),
                 cursorBrush = SolidColor(accentColor),
                 singleLine = true,
+                keyboardOptions = ipKeyboardOptions,
+                keyboardActions = ipKeyboardActions,
                 modifier = Modifier
                     .weight(1f)
                     .padding(
                         start = if (icon != null) 12.dp else 16.dp,
                         end = 16.dp
                     )
+                    .focusRequester(ipFocusRequester)
                     .onFocusChanged { if (it.isFocused) isFocused = true else if (!it.hasFocus) isFocused = false }
             )
 
@@ -258,13 +280,12 @@ fun FlareWizardIpPortField(
                 ),
                 cursorBrush = SolidColor(accentColor),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Number,
-                    imeAction = ImeAction.Next
-                ),
+                keyboardOptions = portKeyboardOptions,
+                keyboardActions = portKeyboardActions,
                 modifier = Modifier
                     .width(80.dp)
                     .padding(horizontal = 8.dp)
+                    .focusRequester(portFocusRequester)
                     .onFocusChanged { if (it.isFocused) isFocused = true else if (!it.hasFocus) isFocused = false }
             )
         }

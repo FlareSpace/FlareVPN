@@ -65,6 +65,7 @@ import flare.client.app.ui.theme.FlareTheme
 @Composable
 fun ThemeSettingsScreen(
     themeMode: Int,
+    appearanceType: Int,
     backgroundType: Int,
     isAnimationEnabled: Boolean,
     gradientSpeed: Float,
@@ -74,6 +75,7 @@ fun ThemeSettingsScreen(
     isChangeLaunchButtonColorEnabled: Boolean,
     onBack: () -> Unit,
     onThemeClick: (Int) -> Unit,
+    onAppearanceTypeClick: (Int) -> Unit,
     onBackgroundTypeClick: (Int) -> Unit,
     onAnimationToggle: (Boolean) -> Unit,
     onSpeedChange: (Float) -> Unit,
@@ -88,6 +90,8 @@ fun ThemeSettingsScreen(
     onLiquidGlassToggle: (Boolean) -> Unit,
     fontFamily: String,
     onFontSelect: (String) -> Unit,
+    appIcon: String,
+    onAppIconSelect: (String) -> Unit,
     hazeState: HazeState
 ) {
     val colors = FlareTheme.colors
@@ -150,21 +154,12 @@ fun ThemeSettingsScreen(
                     AnimatedVisibility(visible = isCustomColorEnabled) {
                         Column {
                             DividerItem()
-                            SettingsItem(
+                            SettingsToggleItem(
                                 label = I18n.strings.settings_label_change_launch_button_color,
-                                value = if (isChangeLaunchButtonColorEnabled) I18n.strings.settings_launch_button_color_yes else I18n.strings.settings_launch_button_color_no,
+                                checked = isChangeLaunchButtonColorEnabled,
                                 accentColor = colors.accent,
-                                menuItems = listOf(
-                                    flare.client.app.util.GlassUtils.MenuItem(0, I18n.strings.settings_launch_button_color_no) {
-                                        onChangeLaunchButtonColorToggle(false)
-                                    },
-                                    flare.client.app.util.GlassUtils.MenuItem(1, I18n.strings.settings_launch_button_color_yes) {
-                                        onChangeLaunchButtonColorToggle(true)
-                                    }
-                                ),
-                                hazeState = hazeState,
-                                isTop = false,
-                                isBottom = false
+                                onCheckedChange = onChangeLaunchButtonColorToggle,
+                                isMiddle = true
                             )
                             DividerItem()
                             ColorPickerItem(
@@ -225,6 +220,7 @@ fun ThemeSettingsScreen(
                                         valueText = String.format(java.util.Locale.US, "%.2fx", gradientSpeed),
                                         value = gradientSpeed,
                                         valueRange = 0.1f..4.0f,
+                                        step = 0.1f,
                                         accentColor = colors.accent,
                                         onValueChange = onSpeedChange,
                                         isBottom = true
@@ -309,6 +305,40 @@ fun ThemeSettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                SettingsSectionHeader(I18n.strings.settings_header_interface)
+
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                ) {
+                    SettingsItem(
+                        label = I18n.strings.settings_ui_type_label,
+                        value = when (appearanceType) {
+                            1 -> I18n.strings.settings_ui_type_new
+                            2 -> I18n.strings.settings_ui_type_minimal
+                            else -> I18n.strings.settings_ui_type_standard
+                        },
+                        accentColor = colors.accent,
+                        menuItems = listOf(
+                            flare.client.app.util.GlassUtils.MenuItem(0, I18n.strings.settings_ui_type_standard) {
+                                onAppearanceTypeClick(0)
+                            },
+                            flare.client.app.util.GlassUtils.MenuItem(1, I18n.strings.settings_ui_type_new) {
+                                onAppearanceTypeClick(1)
+                            },
+                            flare.client.app.util.GlassUtils.MenuItem(2, I18n.strings.settings_ui_type_minimal) {
+                                onAppearanceTypeClick(2)
+                            }
+                        ),
+                        hazeState = hazeState,
+                        enabled = true,
+                        isTop = true,
+                        isBottom = true
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
 
                 SettingsSectionHeader(I18n.strings.settings_label_font)
 
@@ -342,10 +372,77 @@ fun ThemeSettingsScreen(
                         isBottom = true
                     )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                SettingsSectionHeader(I18n.strings.settings_header_app_icon)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(colors.bgItem.copy(alpha = 0.85f))
+                        .padding(vertical = 16.dp)
+                ) {
+                    val iconsList = listOf(
+                        Triple("main", I18n.strings.settings_app_icon_main, R.drawable.ic_launcher_foreground_new),
+                        Triple("8bit", I18n.strings.settings_app_icon_8bit, R.drawable.ic_launcher_8bit),
+                        Triple("monochrome", I18n.strings.settings_app_icon_monochrome, R.drawable.ic_launcher_monochrome),
+                        Triple("softplush", I18n.strings.settings_app_icon_softplush, R.drawable.ic_launcher_softplush),
+                        Triple("blueprint", I18n.strings.settings_app_icon_blueprint, R.drawable.ic_launcher_blueprint)
+                    )
+
+                    androidx.compose.foundation.lazy.LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(iconsList.size) { index ->
+                            val (key, label, resId) = iconsList[index]
+                            val isSelected = key == appIcon
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .width(76.dp)
+                                    .clickable { onAppIconSelect(key) }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .then(
+                                            if (isSelected) Modifier.border(
+                                                2.5.dp, colors.accent, RoundedCornerShape(16.dp)
+                                            ) else Modifier
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    androidx.compose.foundation.Image(
+                                        painter = painterResource(resId),
+                                        contentDescription = label,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Text(
+                                    text = label,
+                                    fontFamily = GeologicaRegular,
+                                    fontSize = 12.sp,
+                                    color = if (isSelected) colors.accent else colors.textPrimary,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        FlareTopBar(
+        FlareSubScreenTopBar(
             title = I18n.strings.settings_theme_title,
             hazeState = hazeState,
             scrollState = scrollState,
