@@ -441,7 +441,7 @@ object PingHelper {
                             for (si in 0 until pServers.length()) {
                                 val srv = pServers.optJSONObject(si) ?: continue
                                 if (srv.optString("tag") == "dns-direct" && srv.optString("detour", "").isBlank()) {
-                                    val addr = srv.optString("server", "")
+                                    val addr = srv.optString("server", "").ifBlank { srv.optString("address", "") }
                                     if (addr.isNotBlank()) {
                                         profileDnsDirectServer = addr
                                         break
@@ -557,24 +557,18 @@ object PingHelper {
                 }
             }
 
-            // Pre-resolve proxy server hostnames to IPs on underlying (non-VPN) network
-            val resolvedHosts = preResolveHosts(context, proxyServerHosts)
-            for (i in 0 until outbounds.length()) {
-                val ob = outbounds.optJSONObject(i) ?: continue
-                val server = ob.optString("server", "")
-                val resolvedIp = resolvedHosts[server]
-                if (resolvedIp != null) {
-                    ob.put("server", resolvedIp)
-                    // Preserve original hostname for TLS SNI
-                    ob.optJSONObject("tls")?.let { tls ->
-                        if (tls.optString("server_name", "").isBlank()) {
-                            tls.put("server_name", server)
-                        }
-                    }
-                }
-            }
+            val defaultDns = "https://1.1.1.1/dns-query"
+            var rawDns = profileDnsDirectServer.ifBlank { defaultDns }
+            if (rawDns == "8.8.8.8" || rawDns == "8.8.4.4") rawDns = "https://8.8.8.8/dns-query"
+            if (rawDns == "1.1.1.1" || rawDns == "1.0.0.1") rawDns = "https://1.1.1.1/dns-query"
 
-            val dnsDirectServer = profileDnsDirectServer.ifBlank { "8.8.8.8" }
+            val dnsDirectObj = flare.client.app.data.parser.DnsConverter.migrateDnsServer(rawDns) ?: JSONObject().apply {
+                put("type", "udp")
+                put("server", rawDns)
+            }
+            dnsDirectObj.put("tag", "dns-direct")
+            
+            
 
             val testHost = extractUrlHost(testUrl)
             val config = JSONObject().apply {
@@ -588,20 +582,7 @@ object PingHelper {
                 put("dns", JSONObject().apply {
                     put("independent_cache", true)
                     put("servers", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("tag", "dns-direct")
-                            put("type", "udp")
-                            put("server", dnsDirectServer)
-                        })
-                        put(JSONObject().apply {
-                            put("tag", "dns-cf")
-                            put("type", "udp")
-                            put("server", "1.1.1.1")
-                        })
-                        put(JSONObject().apply {
-                            put("tag", "dns-local")
-                            put("type", "local")
-                        })
+                        put(dnsDirectObj)
                         put(JSONObject().apply {
                             put("tag", "dns-fakeip")
                             put("type", "fakeip")
@@ -721,50 +702,6 @@ object PingHelper {
         }
     }
 
-    private fun getUnderlyingNetwork(context: Context): Network? {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return null
-        val active = cm.activeNetwork
-        val caps = if (active != null) cm.getNetworkCapabilities(active) else null
-        if (caps != null && !caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) {
-            return active
-        }
-        for (network in cm.allNetworks) {
-            val netCaps = cm.getNetworkCapabilities(network) ?: continue
-            if (netCaps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
-                (netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) ||
-                 netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                 netCaps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET))) {
-                return network
-            }
-        }
-        return active
-    }
-
-    private fun preResolveHosts(context: Context, hosts: Set<String>): Map<String, String> {
-        if (hosts.isEmpty()) return emptyMap()
-        val resolved = HashMap<String, String>()
-        val network = getUnderlyingNetwork(context)
-        for (host in hosts) {
-            try {
-                val addresses = if (network != null) {
-                    network.getAllByName(host)
-                } else {
-                    InetAddress.getAllByName(host)
-                }
-                val ipv4 = addresses.firstOrNull { it is java.net.Inet4Address }
-                val ip = (ipv4 ?: addresses.firstOrNull())?.hostAddress
-                if (!ip.isNullOrBlank()) {
-                    resolved[host] = ip
-                    if (flare.client.app.BuildConfig.DEBUG) {
-                        Log.d(TAG, "Pre-resolved $host -> $ip")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to pre-resolve $host: ${e.message}")
-            }
-        }
-        return resolved
-    }
 
     private fun extractUrlHost(urlStr: String): String? {
         return try {
