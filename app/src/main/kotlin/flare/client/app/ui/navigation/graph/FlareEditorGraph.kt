@@ -7,8 +7,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import dev.chrisbanes.haze.hazeSource
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -61,8 +64,11 @@ internal fun NavGraphBuilder.flareEditorGraph(
             onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
             backgroundContentRight = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) }
         ) {
+            val localHazeState = remember { dev.chrisbanes.haze.HazeState() }
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = appHazeState) else it }
             ) {
                 FlareHomeBackground(
                     backgroundType = settingsViewModel.composeBackgroundType,
@@ -70,6 +76,8 @@ internal fun NavGraphBuilder.flareEditorGraph(
                     animationSpeed = settingsViewModel.composeGradientSpeed,
                     photoSeed = settingsViewModel.composePhotoSeed,
                     modifier = Modifier.fillMaxSize()
+                        .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
+                        .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = localHazeState) else it }
                 )
                 profile?.let { p ->
                     val profileScheme = p.protocol?.takeIf { it.isNotBlank() }
@@ -97,7 +105,7 @@ internal fun NavGraphBuilder.flareEditorGraph(
                         onBack = {
                             navController.popBackStack()
                         },
-                        hazeState = appHazeState
+                        hazeState = localHazeState
                     )
                 }
             }
@@ -127,8 +135,11 @@ internal fun NavGraphBuilder.flareEditorGraph(
             onSwipeDismissStart = { settingsViewModel.startSwipeDismiss() },
             backgroundContentRight = { HomeBackgroundContent(vpnViewModel, profilesViewModel, settingsViewModel, homeListState, isClipboardLoading, isAnySubscriptionExpanded, accentColor, appHazeState) }
         ) {
+            val localHazeState = remember { dev.chrisbanes.haze.HazeState() }
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = appHazeState) else it }
             ) {
                 FlareHomeBackground(
                     backgroundType = settingsViewModel.composeBackgroundType,
@@ -136,6 +147,8 @@ internal fun NavGraphBuilder.flareEditorGraph(
                     animationSpeed = settingsViewModel.composeGradientSpeed,
                     photoSeed = settingsViewModel.composePhotoSeed,
                     modifier = Modifier.fillMaxSize()
+                        .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
+                        .let { if (FlareTheme.effects.isBlurEnabled) it.hazeSource(state = localHazeState) else it }
                 )
                 profile?.let { p ->
                     ProfileSimpleEditor(
@@ -153,7 +166,7 @@ internal fun NavGraphBuilder.flareEditorGraph(
                             navController.popBackStack()
                         },
                         accentColor = Color(accentColor()),
-                        hazeState = appHazeState
+                        hazeState = localHazeState
                     )
                 }
             }

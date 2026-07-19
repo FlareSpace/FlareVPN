@@ -5,13 +5,13 @@ import org.json.JSONObject
 
 object V2RayConfigConverter {
 
-    fun convertIfNeeded(json: String): String {
+    fun convertIfNeeded(json: String, isDoHEnabled: Boolean = true): String {
         val trimmed = json.trim()
         return try {
             val obj = JSONObject(trimmed)
             when {
                 isSingBoxFormat(obj) -> SingBoxFixer.fixSingBox(obj)
-                isV2RayFormat(obj) -> convertV2RayToSingBox(obj)
+                isV2RayFormat(obj) -> convertV2RayToSingBox(obj, isDoHEnabled)
                 else -> trimmed
             }
         } catch (_: Exception) {
@@ -37,7 +37,7 @@ object V2RayConfigConverter {
         return obj.has("routing") || obj.has("outbounds")
     }
 
-    fun convertV2RayToSingBox(xray: JSONObject): String {
+    fun convertV2RayToSingBox(xray: JSONObject, isDoHEnabled: Boolean = true): String {
         val sb = JSONObject()
 
         sb.put(
@@ -268,7 +268,7 @@ object V2RayConfigConverter {
             }
         }
 
-        var primaryDns = "https://1.1.1.1/dns-query"
+        var primaryDns = if (isDoHEnabled) "https://1.1.1.1/dns-query" else "1.1.1.1"
         var directDns = "8.8.8.8"
         var strategy = "prefer_ipv4"
         val xrayDns = xray.optJSONObject("dns")
@@ -287,7 +287,12 @@ object V2RayConfigConverter {
                     else         -> ""
                 }
                 val first = extractAddr(servers.opt(0))
-                if (first.isNotEmpty()) primaryDns = first.replace("+local://", "://")
+                if (first.isNotEmpty()) {
+                    primaryDns = first.replace("+local://", "://")
+                    if (isDoHEnabled && !primaryDns.startsWith("https://") && !primaryDns.startsWith("tls://") && !primaryDns.startsWith("quic://") && !primaryDns.startsWith("h3://") && !primaryDns.startsWith("tcp://")) {
+                        primaryDns = "https://$primaryDns/dns-query"
+                    }
+                }
                 for (i in 1 until servers.length()) {
                     val addr = extractAddr(servers.opt(i))
                     if (addr.isNotEmpty() && !addr.startsWith("localhost") && !addr.replace("+local://", "://").startsWith("https://")) {

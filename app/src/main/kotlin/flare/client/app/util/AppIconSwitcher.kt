@@ -10,7 +10,6 @@ object AppIconSwitcher {
 
     private val componentMap = mapOf(
         "main" to "flare.client.app.MainActivityAliasDefault",
-        "8bit" to "flare.client.app.MainActivityAlias8Bit",
         "monochrome" to "flare.client.app.MainActivityAliasMonochrome",
         "softplush" to "flare.client.app.MainActivityAliasSoftPlush",
         "blueprint" to "flare.client.app.MainActivityAliasBlueprint"

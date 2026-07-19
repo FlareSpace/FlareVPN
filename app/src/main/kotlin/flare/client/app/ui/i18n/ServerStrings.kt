@@ -171,6 +171,7 @@ interface ServerStrings {
     val simple_editor_grpc_authority: String
     val simple_editor_grpc_service_name: String
     val simple_editor_mode: String
+    val servers_xray_transport_label: String
 }
 
 object RuServerStrings : ServerStrings {
@@ -344,6 +345,7 @@ object RuServerStrings : ServerStrings {
     override val simple_editor_grpc_authority : String = "gRPC Authority"
     override val simple_editor_grpc_service_name : String = "gRPC serviceName"
     override val simple_editor_mode : String = "Режим"
+    override val servers_xray_transport_label : String = "Транспорт"
 }
 
 object EnServerStrings : ServerStrings {
@@ -517,4 +519,5 @@ object EnServerStrings : ServerStrings {
     override val simple_editor_grpc_authority : String = "gRPC Authority"
     override val simple_editor_grpc_service_name : String = "gRPC serviceName"
     override val simple_editor_mode : String = "Mode"
+    override val servers_xray_transport_label : String = "Transport"
 }

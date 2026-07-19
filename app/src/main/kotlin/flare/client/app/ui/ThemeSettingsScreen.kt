@@ -386,7 +386,6 @@ fun ThemeSettingsScreen(
                 ) {
                     val iconsList = listOf(
                         Triple("main", I18n.strings.settings_app_icon_main, R.drawable.ic_launcher_foreground_new),
-                        Triple("8bit", I18n.strings.settings_app_icon_8bit, R.drawable.ic_launcher_8bit),
                         Triple("monochrome", I18n.strings.settings_app_icon_monochrome, R.drawable.ic_launcher_monochrome),
                         Triple("softplush", I18n.strings.settings_app_icon_softplush, R.drawable.ic_launcher_softplush),
                         Triple("blueprint", I18n.strings.settings_app_icon_blueprint, R.drawable.ic_launcher_blueprint)
@@ -399,12 +398,17 @@ fun ThemeSettingsScreen(
                         items(iconsList.size) { index ->
                             val (key, label, resId) = iconsList[index]
                             val isSelected = key == appIcon
+                            val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 modifier = Modifier
                                     .width(76.dp)
-                                    .clickable { onAppIconSelect(key) }
+                                    .clickable(
+                                        interactionSource = interactionSource,
+                                        indication = null,
+                                        onClick = { onAppIconSelect(key) }
+                                    )
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -473,6 +477,7 @@ fun SettingsItem(
     val colors = FlareTheme.colors
     val backgroundColor = colors.bgItem.copy(alpha = 0.85f)
     var menuExpanded by remember { mutableStateOf(false) }
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
 
     Box {
         Row(
@@ -489,7 +494,11 @@ fun SettingsItem(
                         else -> androidx.compose.ui.graphics.RectangleShape
                     }
                 )
-                .clickable(enabled = enabled) {
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled
+                ) {
                     if (menuItems != null) {
                         menuExpanded = true
                     } else {
@@ -621,6 +630,7 @@ fun ColorPickerItem(
             items(colorKeys.size) { index ->
                 val key = colorKeys[index]
                 val isSelected = key == selectedKey
+                val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
  
  
                 val color = when (key) {
@@ -654,7 +664,11 @@ fun ColorPickerItem(
                                 2.5.dp, Color.White, RoundedCornerShape(14.dp)
                             ) else Modifier
                         )
-                        .clickable { onKeySelect(key) },
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { onKeySelect(key) }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (key == "material_you") {

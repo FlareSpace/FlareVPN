@@ -13,10 +13,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.navigation.NavBackStackEntry
 
-internal const val ROOT_TAB_EXIT_DURATION = 300
-internal const val ROOT_TAB_ENTER_DURATION = 300
-internal const val SETTINGS_EXIT_DURATION = 300
-internal const val SETTINGS_ENTER_DURATION = 300
+internal const val ROOT_TAB_EXIT_DURATION = 400
+internal const val ROOT_TAB_ENTER_DURATION = 400
+internal const val SETTINGS_EXIT_DURATION = 400
+internal const val SETTINGS_ENTER_DURATION = 400
 internal const val ROOT_TAB_BLUR = 0f
 internal const val SETTINGS_BLUR = 25f
 internal const val MORPH_DURATION = 450
@@ -112,25 +112,39 @@ internal fun settingsForwardEnterTransition(): EnterTransition =
         initialOffsetX = { fullWidth -> fullWidth },
         animationSpec = tween(
             durationMillis = SETTINGS_ENTER_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
         )
-    ) + fadeIn(animationSpec = tween(durationMillis = SETTINGS_ENTER_DURATION))
+    )
 
-internal fun settingsForwardExitTransition(): ExitTransition = ExitTransition.None
+internal fun settingsForwardExitTransition(): ExitTransition =
+    slideOutHorizontally(
+        targetOffsetX = { fullWidth -> -fullWidth / 5 },
+        animationSpec = tween(
+            durationMillis = SETTINGS_ENTER_DURATION,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        )
+    )
 
-internal fun settingsBackEnterTransition(): EnterTransition = EnterTransition.None
+internal fun settingsBackEnterTransition(): EnterTransition =
+    slideInHorizontally(
+        initialOffsetX = { fullWidth -> -fullWidth / 5 },
+        animationSpec = tween(
+            durationMillis = SETTINGS_EXIT_DURATION,
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
+        )
+    )
 
 internal fun settingsBackExitTransition(): ExitTransition =
     slideOutHorizontally(
         targetOffsetX = { fullWidth -> fullWidth },
         animationSpec = tween(
             durationMillis = SETTINGS_EXIT_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
         )
     ) + scaleOut(
         targetScale = 0.85f,
         animationSpec = tween(
             durationMillis = SETTINGS_EXIT_DURATION,
-            easing = { DecelerateInterpolator(2.0f).getInterpolation(it) }
+            easing = androidx.compose.animation.core.FastOutSlowInEasing
         )
     ) + fadeOut(animationSpec = tween(durationMillis = SETTINGS_EXIT_DURATION))

@@ -1,6 +1,7 @@
 package flare.client.app.ui.navigation.graph
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -217,6 +218,20 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             onPortHoppingEnabledChange = { wizardViewModel.composeXrayPortHoppingEnabled = it },
                             portHoppingValue = wizardViewModel.composeXrayPortHoppingValue,
                             onPortHoppingValueChange = { wizardViewModel.composeXrayPortHoppingValue = it },
+                            xrayTransport = wizardViewModel.composeXrayTransport,
+                            onXrayTransportChange = { wizardViewModel.composeXrayTransport = it },
+                            isXrayTransportExpanded = wizardViewModel.composeIsXrayTransportExpanded,
+                            onXrayTransportExpandedChange = { wizardViewModel.composeIsXrayTransportExpanded = it },
+                            xrayHost = wizardViewModel.composeXrayHost,
+                            onXrayHostChange = { wizardViewModel.composeXrayHost = it },
+                            xrayPath = wizardViewModel.composeXrayPath,
+                            onXrayPathChange = { wizardViewModel.composeXrayPath = it },
+                            xrayServiceName = wizardViewModel.composeXrayServiceName,
+                            onXrayServiceNameChange = { wizardViewModel.composeXrayServiceName = it },
+                            xrayXhttpMode = wizardViewModel.composeXrayXhttpMode,
+                            onXrayXhttpModeChange = { wizardViewModel.composeXrayXhttpMode = it },
+                            isXrayXhttpModeExpanded = wizardViewModel.composeIsXrayXhttpModeExpanded,
+                            onXrayXhttpModeExpandedChange = { wizardViewModel.composeIsXrayXhttpModeExpanded = it },
                             setupStatus = wizardViewModel.composeSetupStatus,
                             setupProgress = wizardViewModel.composeSetupProgress,
                             setupError = wizardViewModel.composeSetupError,
@@ -227,7 +242,12 @@ internal fun NavGraphBuilder.flareHomeGraph(
                             onCompleteBuyClick = { wizardViewModel.completeBuy() },
                             onGoHomeClick = { 
                                 wizardViewModel.reset()
-                                coroutineScope.launch { rootPagerState.animateScrollToPage(1) }
+                                coroutineScope.launch { 
+                                    rootPagerState.animateScrollToPage(
+                                        page = 1,
+                                        animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION)
+                                    )
+                                }
                             },
                             onBack = {
                                 if (wizardViewModel.composeWizardStep == WizardStep.SUCCESS || wizardViewModel.composeWizardStep == WizardStep.FLARE_SUCCESS) {

@@ -39,7 +39,8 @@ fun FlareWizardSelectField(
     onOptionSelected: (String) -> Unit,
     accentColor: Color,
     modifier: Modifier = Modifier,
-    icon: Int? = null
+    icon: Int? = null,
+    hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -98,6 +99,7 @@ fun FlareWizardSelectField(
                         onOptionSelected(option)
                     }
                 },
+                hazeState = hazeState,
                 alignment = Alignment.CenterEnd
             )
         }

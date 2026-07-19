@@ -89,7 +89,8 @@ object ClipboardParser {
         return try {
             val json = JSONObject(text)
             val name = extractNameFromJson(context, json)
-            val configJson = V2RayConfigConverter.convertIfNeeded(text)
+            val isDoHEnabled = flare.client.app.data.SettingsManager(context).isRemoteDnsDohEnabled
+            val configJson = V2RayConfigConverter.convertIfNeeded(text, isDoHEnabled)
             val protocol = try {
                 val outbounds = JSONObject(configJson).optJSONArray("outbounds")
                 outbounds?.optJSONObject(0)?.optString("type")
@@ -403,7 +404,8 @@ object ClipboardParser {
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
             val json = JSONObject(trimmed)
             val name = extractNameFromJson(context, json)
-            val configJson = V2RayConfigConverter.convertIfNeeded(trimmed)
+            val isDoHEnabled = flare.client.app.data.SettingsManager(context).isRemoteDnsDohEnabled
+            val configJson = V2RayConfigConverter.convertIfNeeded(trimmed, isDoHEnabled)
             val protocol = try {
                 val outbounds = JSONObject(configJson).optJSONArray("outbounds")
                 outbounds?.optJSONObject(0)?.optString("type")

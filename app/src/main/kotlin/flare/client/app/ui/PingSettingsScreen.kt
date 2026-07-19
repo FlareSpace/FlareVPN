@@ -315,12 +315,18 @@ fun PingTypeButton(
         label = "pingTypeIcon"
     )
 
+    val interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+
     Box(
         modifier = modifier
             .height(104.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(animatedBgColor)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {

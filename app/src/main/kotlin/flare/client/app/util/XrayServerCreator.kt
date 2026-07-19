@@ -133,6 +133,34 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
             _progress.value = 55
 
             _status.value = I18n.strings.ssh_status_configuring
+            val transportSettings = when (config.transport) {
+                "grpc" -> """
+        "grpcSettings": {
+          "serviceName": "${config.serviceName}"
+        }
+                """.trimIndent()
+                "xhttp" -> """
+        "xhttpSettings": {
+          "mode": "${config.xhttpMode}",
+          "path": "${config.transportPath}",
+          "host": "${config.transportHost}"
+        }
+                """.trimIndent()
+                else -> if (config.transportHost.isNotEmpty() || config.transportPath.isNotEmpty()) """
+        "tcpSettings": {
+          "header": {
+            "type": "http",
+            "request": {
+              "version": "1.1",
+              "method": "GET",
+              "path": ["${if (config.transportPath.isNotEmpty()) config.transportPath else "/"}"]
+              ${if (config.transportHost.isNotEmpty()) """, "headers": { "Host": ["${config.transportHost}"] }""" else ""}
+            }
+          }
+        }
+                """.trimIndent() else ""
+            }
+
             val xrayConfig = """
 {
   "log": { "loglevel": "warning" },
@@ -151,7 +179,7 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
         "decryption": "none"
       },
       "streamSettings": {
-        "network": "tcp",
+        "network": "${config.transport}",
         "security": "reality",
         "realitySettings": {
           "show": false,
@@ -160,7 +188,7 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
           "serverNames": ["${config.sni}"],
           "privateKey": "$privateKey",
           "shortIds": ["", "$shortId"]
-        }
+        }${if (transportSettings.isNotEmpty()) ",\n$transportSettings" else ""}
       },
       "sniffing": {
         "enabled": true,
@@ -238,16 +266,41 @@ class XrayServerCreator(private val context: Context) : VpnServerCreator {
 
             _progress.value = 90
             _status.value = I18n.strings.ssh_status_generating_client
-            val vlessUri = "vless://$uuid@${config.host}:${config.vpnPort}" +
-                "?security=reality" +
-                "&flow=xtls-rprx-vision" +
-                "&sni=${config.sni}" +
-                "&pbk=${java.net.URLEncoder.encode(publicKey, "UTF-8")}" +
-                "&sid=$shortId" +
-                "&fp=firefox" +
-                "&packetEncoding=xudp" +
-                "&type=tcp" +
-                "#Flare-${config.host}"
+            val vlessUriBuilder = java.lang.StringBuilder("vless://$uuid@${config.host}:${config.vpnPort}")
+            vlessUriBuilder.append("?security=reality")
+            vlessUriBuilder.append("&flow=xtls-rprx-vision")
+            vlessUriBuilder.append("&sni=${config.sni}")
+            vlessUriBuilder.append("&pbk=${java.net.URLEncoder.encode(publicKey, "UTF-8")}")
+            vlessUriBuilder.append("&sid=$shortId")
+            vlessUriBuilder.append("&fp=firefox")
+            vlessUriBuilder.append("&packetEncoding=xudp")
+            vlessUriBuilder.append("&type=${config.transport}")
+            when (config.transport) {
+                "grpc" -> {
+                    if (config.serviceName.isNotEmpty()) {
+                        vlessUriBuilder.append("&serviceName=${java.net.URLEncoder.encode(config.serviceName, "UTF-8")}")
+                    }
+                }
+                "xhttp" -> {
+                    if (config.transportHost.isNotEmpty()) {
+                        vlessUriBuilder.append("&host=${java.net.URLEncoder.encode(config.transportHost, "UTF-8")}")
+                    }
+                    if (config.transportPath.isNotEmpty()) {
+                        vlessUriBuilder.append("&path=${java.net.URLEncoder.encode(config.transportPath, "UTF-8")}")
+                    }
+                    vlessUriBuilder.append("&mode=${java.net.URLEncoder.encode(config.xhttpMode, "UTF-8")}")
+                }
+                else -> {
+                    if (config.transportHost.isNotEmpty()) {
+                        vlessUriBuilder.append("&host=${java.net.URLEncoder.encode(config.transportHost, "UTF-8")}")
+                    }
+                    if (config.transportPath.isNotEmpty()) {
+                        vlessUriBuilder.append("&path=${java.net.URLEncoder.encode(config.transportPath, "UTF-8")}")
+                    }
+                }
+            }
+            vlessUriBuilder.append("#Flare-${config.host}")
+            val vlessUri = vlessUriBuilder.toString()
 
             _progress.value = 100
             vlessUri

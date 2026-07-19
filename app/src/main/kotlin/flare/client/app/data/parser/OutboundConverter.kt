@@ -86,7 +86,23 @@ object OutboundConverter {
         for (extra in extraOutbounds) {
             sbOutbounds.put(extra)
         }
+
+        for (i in 0 until sbOutbounds.length()) {
+            val ob = sbOutbounds.optJSONObject(i) ?: continue
+            val server = ob.optString("server", "")
+            if (server.isNotEmpty() && !isIpAddress(server)) {
+                ob.put("domain_resolver", "dns-direct")
+            }
+        }
+
         return sbOutbounds
+    }
+
+    private fun isIpAddress(host: String): Boolean {
+        if (host.isEmpty()) return false
+        if (host.contains(":")) return true
+        val parts = host.split(".")
+        return parts.size == 4 && parts.all { it.toIntOrNull() != null }
     }
 
     fun hasOutbound(obs: JSONArray, type: String): Boolean {

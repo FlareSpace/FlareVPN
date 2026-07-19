@@ -306,6 +306,8 @@ fun ProfileCard(
                                                         "TLS Failed" -> "TLS Fail"
                                                         "Unreachable" -> "Недоступен"
                                                         "Refused" -> "Отказ"
+                                                        "Reset" -> "Сброс"
+                                                        "Auth Fail" -> "Ошибка авт."
                                                         "Failed" -> "Ошибка"
                                                         "" -> "Ошибка"
                                                         else -> rawMsg
@@ -663,11 +665,16 @@ fun SubscriptionCard(
                                     }
                                     
                                     val editLabel = I18n.strings.menu_edit_subscription
+                                    val pinLabel = if (isPinned) I18n.strings.menu_unpin_subscription else I18n.strings.menu_pin_subscription
                                     val deleteLabel = I18n.strings.menu_delete_subscription
                                     
                                     val items = if (isVirtual) {
                                         listOf(
-                                            flare.client.app.util.GlassUtils.MenuItem(1, deleteLabel) { 
+                                            flare.client.app.util.GlassUtils.MenuItem(1, pinLabel) { 
+                                                menuExpanded = false
+                                                onPinClick() 
+                                            },
+                                            flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
                                                 menuExpanded = false
                                                 onDeleteClick() 
                                             }
@@ -678,7 +685,11 @@ fun SubscriptionCard(
                                                 menuExpanded = false
                                                 onEditJsonClick() 
                                             },
-                                            flare.client.app.util.GlassUtils.MenuItem(2, deleteLabel) { 
+                                            flare.client.app.util.GlassUtils.MenuItem(2, pinLabel) { 
+                                                menuExpanded = false
+                                                onPinClick() 
+                                            },
+                                            flare.client.app.util.GlassUtils.MenuItem(3, deleteLabel) { 
                                                 menuExpanded = false
                                                 onDeleteClick() 
                                             }
@@ -752,7 +763,7 @@ fun SubscriptionCard(
             )
         }
 
-        val menuItems = remember(isPinned, showQrAndLink, onMergeClick) {
+        val menuItems = remember(showQrAndLink, onMergeClick) {
             val list = mutableListOf<flare.client.app.util.GlassUtils.MenuItem>()
             if (showQrAndLink) {
                 list.add(flare.client.app.util.GlassUtils.MenuItem(1, I18n.strings.menu_qr_code) {
@@ -764,13 +775,8 @@ fun SubscriptionCard(
                     onShareLinkClick()
                 })
             }
-            val pinLabel = if (isPinned) I18n.strings.menu_unpin_subscription else I18n.strings.menu_pin_subscription
-            list.add(flare.client.app.util.GlassUtils.MenuItem(3, pinLabel) {
-                contextMenuExpanded = false
-                onPinClick()
-            })
             if (onMergeClick != null) {
-                list.add(flare.client.app.util.GlassUtils.MenuItem(4, I18n.strings.menu_merge_subscription) {
+                list.add(flare.client.app.util.GlassUtils.MenuItem(3, I18n.strings.menu_merge_subscription) {
                     contextMenuExpanded = false
                     onMergeClick()
                 })

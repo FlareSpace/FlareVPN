@@ -41,7 +41,22 @@ fun XrayConfigStep(
     onPortHoppingEnabledChange: (Boolean) -> Unit,
     portHoppingValue: String,
     onPortHoppingValueChange: (String) -> Unit,
-    accentColor: Color
+    transport: String = "tcp",
+    onTransportChange: (String) -> Unit = {},
+    isTransportExpanded: Boolean = false,
+    onTransportExpandedChange: (Boolean) -> Unit = {},
+    transportHost: String = "",
+    onTransportHostChange: (String) -> Unit = {},
+    transportPath: String = "",
+    onTransportPathChange: (String) -> Unit = {},
+    serviceName: String = "",
+    onServiceNameChange: (String) -> Unit = {},
+    xhttpMode: String = "auto",
+    onXrayXhttpModeChange: (String) -> Unit = {},
+    isXhttpModeExpanded: Boolean = false,
+    onXhttpModeExpandedChange: (Boolean) -> Unit = {},
+    accentColor: Color,
+    hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val isHy2 = selectedProtocol == SelectedProtocol.HYSTERIA2
     val portLabel = if (isHy2) I18n.strings.servers_hysteria2_port_label else I18n.strings.servers_xray_port_label
@@ -89,6 +104,99 @@ fun XrayConfigStep(
                 hint = sniHint,
                 icon = R.drawable.ic_language
             )
+
+            if (!isHy2) {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                FlareWizardSelectField(
+                    title = I18n.strings.servers_xray_transport_label,
+                    value = transport,
+                    expanded = isTransportExpanded,
+                    onExpandedChange = onTransportExpandedChange,
+                    options = listOf("tcp", "grpc", "xhttp"),
+                    optionTitles = listOf("tcp", "grpc", "xhttp"),
+                    onOptionSelected = {
+                        onTransportChange(it)
+                        onTransportExpandedChange(false)
+                    },
+                    accentColor = accentColor,
+                    hazeState = hazeState,
+                    icon = R.drawable.ic_routing_filled
+                )
+
+                AnimatedVisibility(
+                    visible = transport == "tcp" || transport == "xhttp",
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        FlareWizardInputField(
+                            title = I18n.strings.simple_editor_host,
+                            value = transportHost,
+                            onValueChange = onTransportHostChange,
+                            accentColor = accentColor,
+                            isValid = transportHost.isNotBlank(),
+                            hint = "domain.com",
+                            icon = R.drawable.ic_language
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        FlareWizardInputField(
+                            title = I18n.strings.simple_editor_path,
+                            value = transportPath,
+                            onValueChange = onTransportPathChange,
+                            accentColor = accentColor,
+                            isValid = transportPath.isNotBlank(),
+                            hint = "/",
+                            icon = R.drawable.ic_port
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = transport == "grpc",
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        FlareWizardInputField(
+                            title = I18n.strings.simple_editor_grpc_service_name,
+                            value = serviceName,
+                            onValueChange = onServiceNameChange,
+                            accentColor = accentColor,
+                            isValid = serviceName.isNotBlank(),
+                            hint = "TunService",
+                            icon = R.drawable.ic_vpn_key
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = transport == "xhttp",
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        FlareWizardSelectField(
+                            title = I18n.strings.simple_editor_mode,
+                            value = xhttpMode,
+                            expanded = isXhttpModeExpanded,
+                            onExpandedChange = onXhttpModeExpandedChange,
+                            options = listOf("auto", "packet-up", "packet-down"),
+                            optionTitles = listOf("auto", "packet-up", "packet-down"),
+                            onOptionSelected = {
+                                onXrayXhttpModeChange(it)
+                                onXhttpModeExpandedChange(false)
+                            },
+                            accentColor = accentColor,
+                            hazeState = hazeState,
+                            icon = R.drawable.ic_suitcase
+                        )
+                    }
+                }
+            }
 
             if (isHy2) {
                 Spacer(modifier = Modifier.height(20.dp))

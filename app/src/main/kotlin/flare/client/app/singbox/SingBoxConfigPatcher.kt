@@ -318,7 +318,7 @@ object SingBoxConfigPatcher {
 
             val dnsUrl = when (settings.remoteDnsMode) {
                 "cloudflare_doh" -> "https://1.1.1.1/dns-query"
-                "adguard_doh" -> "https://dns.adguard-dns.com/dns-query"
+                "adguard_doh" -> "https://94.140.14.14/dns-query"
                 "google_dot" -> "tls://dns.google"
                 "custom" -> settings.remoteDnsUrl
                 else -> ""
@@ -349,6 +349,42 @@ object SingBoxConfigPatcher {
                         }
                     }
                 }
+            } else {
+                val isDohEnabled = settings.isRemoteDnsDohEnabled
+                val dns = obj.optJSONObject("dns")
+                if (dns != null) {
+                    val servers = dns.optJSONArray("servers")
+                    if (servers != null) {
+                        for (i in 0 until servers.length()) {
+                            val server = servers.optJSONObject(i) ?: continue
+                            if (server.optString("tag") == "dns-remote") {
+                                val currentType = server.optString("type", "")
+                                val currentServer = server.optString("server", "")
+                                
+                                if (isDohEnabled) {
+                                    if (currentType == "udp" || currentType == "tcp") {
+                                        server.remove("type")
+                                        server.remove("server")
+                                        server.remove("server_port")
+                                        server.remove("path")
+                                        server.remove("responses")
+                                        server.remove("domain_resolver")
+                                        server.put("address", "https://$currentServer/dns-query")
+                                        V2RayConfigConverter.migrateDnsServerObject(server)
+                                        Log.i(TAG, "injectAdvancedSettings: converted dns-remote to DoH")
+                                    }
+                                } else {
+                                    if (currentType != "udp") {
+                                        server.put("type", "udp")
+                                        server.remove("path")
+                                        Log.i(TAG, "injectAdvancedSettings: converted dns-remote to udp")
+                                    }
+                                }
+                                break
+                            }
+                        }
+                    }
+                }
             }
 
             val mtuValue = settings.mtu.toIntOrNull() ?: 1500
@@ -373,6 +409,7 @@ object SingBoxConfigPatcher {
             if (fakeIpEnabled) {
                 val dns = obj.optJSONObject("dns")
                 if (dns != null) {
+                    dns.put("reverse_mapping", true)
                     val servers =
                             dns.optJSONArray("servers")
                                     ?: JSONArray().also { dns.put("servers", it) }

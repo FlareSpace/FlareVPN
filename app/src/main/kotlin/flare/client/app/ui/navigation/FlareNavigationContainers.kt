@@ -103,9 +103,11 @@ fun SettingsDetailContainer(
     backgroundContentRight: (@Composable () -> Unit)? = null,
     onDismissLeft: (() -> Unit)? = null,
     backgroundContentLeft: (@Composable () -> Unit)? = null,
-    hazeState: dev.chrisbanes.haze.HazeState? = null,
-    content: @Composable BoxScope.() -> Unit
+    appHazeState: dev.chrisbanes.haze.HazeState? = null,
+    content: @Composable BoxScope.(dev.chrisbanes.haze.HazeState) -> Unit
 ) {
+    val localHazeState = remember { dev.chrisbanes.haze.HazeState() }
+
     LaunchedEffect(morphRequest) {
         if (morphRequest != null) {
             onMorphFinished()
@@ -119,7 +121,9 @@ fun SettingsDetailContainer(
         backgroundContentLeft = backgroundContentLeft
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .let { if (appHazeState != null && flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = appHazeState) else it }
         ) {
             flare.client.app.ui.components.FlareHomeBackground(
                 backgroundType = settingsViewModel.composeBackgroundType,
@@ -129,12 +133,13 @@ fun SettingsDetailContainer(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer(compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen)
-                    .let { if (hazeState != null) it.let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it } else it }
+                    .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = localHazeState) else it }
             )
             Box(
-                modifier = Modifier.fillMaxSize(),
-                content = content
-            )
+                modifier = Modifier.fillMaxSize()
+            ) {
+                content(localHazeState)
+            }
         }
     }
 }

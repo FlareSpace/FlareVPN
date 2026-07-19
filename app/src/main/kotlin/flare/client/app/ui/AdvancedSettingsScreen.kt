@@ -73,6 +73,9 @@ fun AdvancedSettingsScreen(
     remoteDnsUrl: String,
     onRemoteDnsUrlChange: (String) -> Unit,
 
+    isRemoteDnsDohEnabled: Boolean,
+    onRemoteDnsDohChange: (Boolean) -> Unit,
+
     
     isFakeIpEnabled: Boolean,
     onFakeIpChange: (Boolean) -> Unit,
@@ -362,7 +365,7 @@ fun AdvancedSettingsScreen(
                         },
                         hazeState = hazeState,
                         accentColor = accentColor,
-                        cornerType = if (remoteDnsMode == "custom") DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
+                        cornerType = DisplayItem.CornerType.TOP
                     )
                     
                     AnimatedVisibility(visible = remoteDnsMode == "custom") {
@@ -373,9 +376,18 @@ fun AdvancedSettingsScreen(
                             hazeState = hazeState,
                             hint = I18n.strings.settings_hint_dns_url,
                             accentColor = accentColor,
-                            cornerType = DisplayItem.CornerType.BOTTOM
+                            cornerType = DisplayItem.CornerType.NONE
                         )
                     }
+                    
+                    FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_use_doh,
+                        checked = isRemoteDnsDohEnabled,
+                        onCheckedChange = onRemoteDnsDohChange,
+                        hazeState = hazeState,
+                        accentColor = accentColor,
+                        cornerType = DisplayItem.CornerType.BOTTOM
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
 

@@ -46,6 +46,13 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
     var composeXrayFingerprint by mutableStateOf("chrome")
     var composeXrayPortHoppingEnabled by mutableStateOf(false)
     var composeXrayPortHoppingValue by mutableStateOf("")
+    var composeXrayTransport by mutableStateOf("tcp")
+    var composeXrayHost by mutableStateOf("")
+    var composeXrayPath by mutableStateOf("")
+    var composeXrayServiceName by mutableStateOf("")
+    var composeXrayXhttpMode by mutableStateOf("auto")
+    var composeIsXrayTransportExpanded by mutableStateOf(false)
+    var composeIsXrayXhttpModeExpanded by mutableStateOf(false)
     var composeSetupStatus by mutableStateOf("")
     var composeSetupProgress by mutableStateOf(0f)
     var composeSetupError by mutableStateOf<String?>(null)
@@ -179,6 +186,13 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
         composeXrayFingerprint = "chrome"
         composeXrayPortHoppingEnabled = false
         composeXrayPortHoppingValue = ""
+        composeXrayTransport = "tcp"
+        composeXrayHost = ""
+        composeXrayPath = ""
+        composeXrayServiceName = ""
+        composeXrayXhttpMode = "auto"
+        composeIsXrayTransportExpanded = false
+        composeIsXrayXhttpModeExpanded = false
         composeSetupStatus = ""
         composeSetupProgress = 0f
         composeSetupError = null
@@ -389,7 +403,12 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                 sni = primarySni,
                 obfsPassword = composeXrayObfsPassword,
                 fingerprint = composeXrayFingerprint,
-                mport = if (composeXrayPortHoppingEnabled) composeXrayPortHoppingValue.trim() else null
+                mport = if (composeXrayPortHoppingEnabled) composeXrayPortHoppingValue.trim() else null,
+                transport = composeXrayTransport,
+                transportHost = composeXrayHost,
+                transportPath = composeXrayPath,
+                serviceName = composeXrayServiceName,
+                xhttpMode = composeXrayXhttpMode
             )
 
             val vlessUri = creator.setup(config)

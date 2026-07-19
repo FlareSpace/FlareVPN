@@ -1,7 +1,9 @@
 package flare.client.app.ui.components
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,10 +56,12 @@ fun PredictiveBackWrapper(
 
     val animatedProgress by animateFloatAsState(
         targetValue = if (isSwiping) swipeProgress else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "predictive_progress"
     )
     val animatedTouchY by animateFloatAsState(
         targetValue = swipeY,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
         label = "predictive_touch_y"
     )
 
@@ -80,15 +84,5 @@ fun PredictiveBackWrapper(
             }
     ) {
         content()
-        if (animatedProgress > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        (if (isDark) Color.White else Color.Black)
-                            .copy(alpha = 0.15f * animatedProgress)
-                    )
-            )
-        }
     }
 }

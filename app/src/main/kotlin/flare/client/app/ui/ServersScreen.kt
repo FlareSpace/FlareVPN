@@ -111,6 +111,20 @@ fun ServersScreen(
     onPortHoppingEnabledChange: (Boolean) -> Unit,
     portHoppingValue: String,
     onPortHoppingValueChange: (String) -> Unit,
+    xrayTransport: String = "tcp",
+    onXrayTransportChange: (String) -> Unit = {},
+    isXrayTransportExpanded: Boolean = false,
+    onXrayTransportExpandedChange: (Boolean) -> Unit = {},
+    xrayHost: String = "",
+    onXrayHostChange: (String) -> Unit = {},
+    xrayPath: String = "",
+    onXrayPathChange: (String) -> Unit = {},
+    xrayServiceName: String = "",
+    onXrayServiceNameChange: (String) -> Unit = {},
+    xrayXhttpMode: String = "auto",
+    onXrayXhttpModeChange: (String) -> Unit = {},
+    isXrayXhttpModeExpanded: Boolean = false,
+    onXrayXhttpModeExpandedChange: (Boolean) -> Unit = {},
     
     
     setupStatus: String,
@@ -149,6 +163,7 @@ fun ServersScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .imePadding()
                     .background(Color.Transparent)
                     .verticalScroll(scrollState)
                     .statusBarsPadding()
@@ -296,20 +311,35 @@ fun ServersScreen(
                                          accentColor = accentColor
                                      )
                                  } else {
-                                     XrayConfigStep(
-                                         selectedProtocol = selectedProtocol,
-                                         port = xrayPort,
-                                         onPortChange = onXrayPortChange,
-                                         sni = xraySni,
-                                         onSniChange = onXraySniChange,
-                                         obfsPassword = obfsPassword,
-                                         onObfsPasswordChange = onObfsPasswordChange,
-                                         portHoppingEnabled = portHoppingEnabled,
-                                         onPortHoppingEnabledChange = onPortHoppingEnabledChange,
-                                         portHoppingValue = portHoppingValue,
-                                         onPortHoppingValueChange = onPortHoppingValueChange,
-                                         accentColor = accentColor
-                                     )
+                                      XrayConfigStep(
+                                          selectedProtocol = selectedProtocol,
+                                          port = xrayPort,
+                                          onPortChange = onXrayPortChange,
+                                          sni = xraySni,
+                                          onSniChange = onXraySniChange,
+                                          obfsPassword = obfsPassword,
+                                          onObfsPasswordChange = onObfsPasswordChange,
+                                          portHoppingEnabled = portHoppingEnabled,
+                                          onPortHoppingEnabledChange = onPortHoppingEnabledChange,
+                                          portHoppingValue = portHoppingValue,
+                                          onPortHoppingValueChange = onPortHoppingValueChange,
+                                          transport = xrayTransport,
+                                          onTransportChange = onXrayTransportChange,
+                                          isTransportExpanded = isXrayTransportExpanded,
+                                          onTransportExpandedChange = onXrayTransportExpandedChange,
+                                          transportHost = xrayHost,
+                                          onTransportHostChange = onXrayHostChange,
+                                          transportPath = xrayPath,
+                                          onTransportPathChange = onXrayPathChange,
+                                          serviceName = xrayServiceName,
+                                          onServiceNameChange = onXrayServiceNameChange,
+                                          xhttpMode = xrayXhttpMode,
+                                          onXrayXhttpModeChange = onXrayXhttpModeChange,
+                                          isXhttpModeExpanded = isXrayXhttpModeExpanded,
+                                          onXhttpModeExpandedChange = onXrayXhttpModeExpandedChange,
+                                          accentColor = accentColor,
+                                          hazeState = hazeState
+                                      )
                                  }
                              }
                             WizardStep.PROGRESS -> {

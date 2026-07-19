@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.tween
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -604,7 +605,10 @@ fun FlareApp(
                             if (kotlin.math.abs(rootPagerState.currentPage - index) > 1) {
                                 rootPagerState.scrollToPage(index)
                             } else {
-                                rootPagerState.animateScrollToPage(index)
+                                rootPagerState.animateScrollToPage(
+                                    page = index,
+                                    animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION)
+                                )
                             }
                         }
                     },
@@ -635,7 +639,10 @@ fun FlareApp(
                             if (kotlin.math.abs(rootPagerState.currentPage - index) > 1) {
                                 rootPagerState.scrollToPage(index)
                             } else {
-                                rootPagerState.animateScrollToPage(index)
+                                rootPagerState.animateScrollToPage(
+                                    page = index,
+                                    animationSpec = tween(durationMillis = ROOT_TAB_ENTER_DURATION)
+                                )
                             }
                         }
                     },

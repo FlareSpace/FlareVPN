@@ -223,7 +223,7 @@ fun NotificationCard(
                 compositingStrategy = CompositingStrategy.Offscreen
             )
             .fillMaxWidth()
-            .height(72.dp)
+            .defaultMinSize(minHeight = 72.dp)
             .pointerInput(Unit) {
                 val dismissThreshold = 60.dp.toPx()
                 detectVerticalDragGestures(
@@ -290,8 +290,9 @@ fun NotificationCard(
 
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val iconRes = item.data.iconRes ?: when (item.data.type) {

@@ -11,7 +11,12 @@ data class VpnServerConfig(
     val sni: String = "",
     val obfsPassword: String = "",
     val fingerprint: String = "chrome",
-    val mport: String? = null
+    val mport: String? = null,
+    val transport: String = "tcp",
+    val transportHost: String = "",
+    val transportPath: String = "",
+    val serviceName: String = "",
+    val xhttpMode: String = "auto"
 )
 
 interface VpnServerCreator {

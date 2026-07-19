@@ -134,6 +134,8 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+            .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val screenHeight = maxHeight
@@ -152,9 +154,7 @@ fun HomeScreen(
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                                .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it },
+                                .fillMaxSize(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             androidx.compose.animation.AnimatedVisibility(
@@ -430,9 +430,7 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(top = guidelineHeight)
-                        .offset(y = 1.dp)
-                        .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-                        .let { if (flare.client.app.ui.theme.FlareTheme.effects.isBlurEnabled) it.hazeSource(state = hazeState) else it }, 
+                        .offset(y = 1.dp), 
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     AnimatedVisibility(

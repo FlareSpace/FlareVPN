@@ -580,72 +580,17 @@ private fun ComposeLiquidPill(
         
         drawRoundRect(
             brush = Brush.linearGradient(
-                colors = listOf(accentColor, accentEndColor),
+                colors = listOf(
+                    accentColor.copy(alpha = 0.176f),
+                    accentEndColor.copy(alpha = 0.176f)
+                ),
                 start = androidx.compose.ui.geometry.Offset(0f, rect.top),
                 end = androidx.compose.ui.geometry.Offset(0f, rect.bottom)
             ),
             topLeft = androidx.compose.ui.geometry.Offset(rect.left, rect.top),
             size = androidx.compose.ui.geometry.Size(rect.width, rect.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius)
-        )
-
-        
-        val innerB = 1.dp.toPx()
-        val innerGlowRect = androidx.compose.ui.geometry.Rect(
-            left = rect.left + innerB,
-            top = rect.top + innerB,
-            right = rect.right - innerB,
-            bottom = rect.bottom - innerB
-        )
-        val innerRadius = radius - innerB
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color.White.copy(alpha = 0.4f), Color.White.copy(alpha = 0f)),
-                start = androidx.compose.ui.geometry.Offset(0f, rect.top),
-                end = androidx.compose.ui.geometry.Offset(0f, rect.bottom)
-            ),
-            topLeft = androidx.compose.ui.geometry.Offset(innerGlowRect.left, innerGlowRect.top),
-            size = androidx.compose.ui.geometry.Size(innerGlowRect.width, innerGlowRect.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(innerRadius, innerRadius),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = innerB)
-        )
-
-        
-        val b = 0.65f.dp.toPx()
-        val borderRect = androidx.compose.ui.geometry.Rect(
-            left = rect.left + b,
-            top = rect.top + b,
-            right = rect.right - b,
-            bottom = rect.bottom - b
-        )
-        val borderRadius = radius - b
-        val borderBrush = if (isDark) {
-            Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.8f),
-                    Color.White.copy(alpha = 0.16f),
-                    accentEndColor.copy(alpha = 0.32f)
-                ),
-                start = androidx.compose.ui.geometry.Offset(0f, rect.top),
-                end = androidx.compose.ui.geometry.Offset(0f, rect.bottom)
-            )
-        } else {
-            Brush.linearGradient(
-                colors = listOf(
-                    accentColor.copy(alpha = 0.7f),
-                    accentEndColor.copy(alpha = 0.24f),
-                    accentEndColor.copy(alpha = 0.4f)
-                ),
-                start = androidx.compose.ui.geometry.Offset(0f, rect.top),
-                end = androidx.compose.ui.geometry.Offset(0f, rect.bottom)
-            )
-        }
-        drawRoundRect(
-            brush = borderBrush,
-            topLeft = androidx.compose.ui.geometry.Offset(borderRect.left, borderRect.top),
-            size = androidx.compose.ui.geometry.Size(borderRect.width, borderRect.height),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(borderRadius, borderRadius),
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = b)
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
+            blendMode = if (isDark) androidx.compose.ui.graphics.BlendMode.Screen else androidx.compose.ui.graphics.BlendMode.SrcOver
         )
         
         drawContext.canvas.restore()

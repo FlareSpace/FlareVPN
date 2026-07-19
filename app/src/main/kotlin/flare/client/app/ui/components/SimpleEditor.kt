@@ -489,58 +489,6 @@ fun ProfileSimpleEditor(
                                 }
                             }
                             AnimatedVisibility(
-                                visible = transport == "kcp",
-                                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
-                                exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
-                            ) {
-                                Column {
-                                    EditorFieldDivider()
-                                    EditorTextField(
-                                        label = I18n.strings.simple_editor_host,
-                                        value = kcpHost,
-                                        onValueChange = { kcpHost = it },
-                                        keyboardType = KeyboardType.Uri,
-                                        placeholder = "domain.com",
-                                        accentColor = accentColor
-                                    )
-                                    EditorFieldDivider()
-                                    EditorTextField(
-                                        label = I18n.strings.simple_editor_path,
-                                        value = kcpPath,
-                                        onValueChange = { kcpPath = it },
-                                        keyboardType = KeyboardType.Text,
-                                        placeholder = "/",
-                                        accentColor = accentColor
-                                    )
-                                    EditorFieldDivider()
-                                    EditorTextField(
-                                        label = I18n.strings.simple_editor_kcp_seed,
-                                        value = kcpSeed,
-                                        onValueChange = { kcpSeed = it },
-                                        keyboardType = KeyboardType.Text,
-                                        accentColor = accentColor
-                                    )
-                                    EditorFieldDivider()
-                                    EditorTextField(
-                                        label = I18n.strings.simple_editor_mtu,
-                                        value = kcpMtu,
-                                        onValueChange = { kcpMtu = it },
-                                        keyboardType = KeyboardType.Number,
-                                        placeholder = "1350",
-                                        accentColor = accentColor
-                                    )
-                                    EditorFieldDivider()
-                                    EditorTextField(
-                                        label = I18n.strings.simple_editor_tti,
-                                        value = kcpTti,
-                                        onValueChange = { kcpTti = it },
-                                        keyboardType = KeyboardType.Number,
-                                        placeholder = "50",
-                                        accentColor = accentColor
-                                    )
-                                }
-                            }
-                            AnimatedVisibility(
                                 visible = transport == "ws",
                                 enter = fadeIn(tween(200)) + expandVertically(tween(200)),
                                 exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
@@ -680,8 +628,8 @@ fun ProfileSimpleEditor(
                                         value = xhttpMode,
                                         expanded = isXhttpModeMenuExpanded,
                                         onExpandedChange = { isXhttpModeMenuExpanded = it },
-                                        options = listOf("auto", "download", "streaming"),
-                                        optionTitles = listOf("auto", "download", "streaming"),
+                                        options = listOf("auto", "packet-up", "packet-down"),
+                                        optionTitles = listOf("auto", "packet-up", "packet-down"),
                                         onOptionSelected = { xhttpMode = it },
                                         accentColor = accentColor,
                                         hazeState = hazeState

@@ -108,6 +108,7 @@ interface SettingsStrings {
     val settings_label_ping_style: String
     val settings_label_ping_type: String
     val settings_label_remote_dns: String
+    val settings_label_use_doh: String
     val settings_label_rules_method: String
     val settings_header_chain: String
     val settings_label_reset_chain: String
@@ -394,6 +395,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_ping_style : String = "Стиль"
     override val settings_label_ping_type : String = "Тип пинга"
     override val settings_label_remote_dns : String = "Remote DNS"
+    override val settings_label_use_doh : String = "Использовать DoH"
     override val settings_label_rules_method : String = "Способ"
     override val settings_header_chain : String = "Управление цепью"
     override val settings_label_reset_chain : String = "Сбрасывать цепь после отключения"
@@ -678,8 +680,9 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_label_packet_type : String = "Fallback"
     override val settings_label_ping_display : String = "Ping Display"
     override val settings_label_ping_style : String = "Style"
-    override val settings_label_ping_type : String = "Ping type"
+    override val settings_label_ping_type : String = "Ping Type"
     override val settings_label_remote_dns : String = "Remote DNS"
+    override val settings_label_use_doh : String = "Use DoH"
     override val settings_label_rules_method : String = "Method"
     override val settings_header_chain : String = "Chain Management"
     override val settings_label_reset_chain : String = "Reset chain after disconnection"

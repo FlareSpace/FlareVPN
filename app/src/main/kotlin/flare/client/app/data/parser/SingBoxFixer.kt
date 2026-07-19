@@ -157,6 +157,9 @@ object SingBoxFixer {
                 if (server.isNotEmpty() && !server[0].isDigit() && !dnsRulesStr.contains(server)) {
                     proxyDomainsSet.add(server)
                 }
+                if (server.isNotEmpty() && !isIpAddress(server) && !ob.has("domain_resolver")) {
+                    ob.put("domain_resolver", "dns-direct")
+                }
             }
             val proxyDomains = JSONArray()
             proxyDomainsSet.forEach { proxyDomains.put(it) }
@@ -309,5 +312,12 @@ object SingBoxFixer {
             }
             if (changed) rule.put("protocol", fixed)
         }
+    }
+
+    private fun isIpAddress(host: String): Boolean {
+        if (host.isEmpty()) return false
+        if (host.contains(":")) return true
+        val parts = host.split(".")
+        return parts.size == 4 && parts.all { it.toIntOrNull() != null }
     }
 }
