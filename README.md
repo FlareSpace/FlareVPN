@@ -1,4 +1,4 @@
-# 🚀 Flare VPN
+# Flare VPN
 
 [![Telegram Channel](https://img.shields.io/badge/Telegram-Channel-blue?style=for-the-badge&logo=telegram)](https://t.me/FlareApp)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0)
@@ -58,18 +58,9 @@ FlareVPN supports the deployment and management of your own VPN servers based on
 3. Grant the required permissions when the app starts.
 4. **Done!** Let's get started.
 
-### 🗺 Roadmap
-- [x] **UI Improvements:** Making the interface even more modern and intuitive.
-- [x] **Expanded Tunnel Features:** Adding more advanced settings for fine-tuning your connection.
-- [x] **Power Optimization:** Reducing battery consumption for long-term usage. (consumption was reduced from 15% per day to 3-5% per day)
-- [x] **Profile Management:** Improved interaction with single profiles (e.g., adding a delete button and other management features).
-- [x] **JSON Converter:** Potential improvements to the Xray to Sing-box JSON converter.
 
 ### 📢 Telegram Channel
 **[@FlareApp](https://t.me/FlareApp)** - Official Flare VPN news and updates.
-
-### 🧪 Join the test Flare
-We created a channel with beta versions of Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
 
@@ -121,18 +112,8 @@ FlareVPN поддерживает развертывание и управлен
 3. Выдайте необходимые разрешения при первом запуске приложения.
 4. **Готово!** Можно пользоваться.
 
-### 🗺 Планы на будущее
-- [x] **Улучшение UI:** Сделаем интерфейс еще более современным и интуитивно понятным.
-- [x] **Больше функций туннеля:** Добавление продвинутых настроек для тонкой конфигурации соединения.
-- [x] **Оптимизация энергопотребления:** Снижение расхода батареи при длительной работе. (потребление было снижено с 15% в день до 3-5% в день)
-- [x] **Улучшение работы с профилями:** Более удобное взаимодействие с одиночными профилями (кнопка удаления и другие функции управления).
-- [x] **Конвертер JSON:** Возможное улучшение конвертера JSON из формата Xray в Sing-box.
-
 ### 📢 Telegram-канал
 **[@FlareApp](https://t.me/FlareApp)** — официальный Telegram-канал проекта Flare VPN.
-
-###  🧪 Присоединяйтесь к тестированию Flare
-Мы создали канал с бета-версиями Flare: **[@FlareVPNBeta](https://t.me/FlareVPNBeta)**
 
 ---
 
