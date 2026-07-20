@@ -119,7 +119,7 @@ fun ProfileList(
                         SubscriptionCard(
                             name = displayName,
                             description = item.entity.description,
-                            trafficInfo = formatTraffic(used, item.entity.total),
+                            trafficInfo = formatTraffic(item.entity.upload, item.entity.download, item.entity.total),
                             trafficProgress = progress,
                             expire = item.entity.expire,
                             updateInterval = item.entity.updateInterval,
@@ -285,7 +285,11 @@ private fun getProtocolDisplay(entity: ProfileSummary): String {
 }
 
 
-private fun formatTraffic(used: Long, total: Long): String {
+private fun formatTraffic(upload: Long, download: Long, total: Long): String {
+    if (upload == -1L || download == -1L || total == -1L) {
+        return "none / ∞"
+    }
+    val used = upload + download
     if (total == Long.MAX_VALUE || total <= 0) return "${formatBytes(used)} / ∞"
     return "${formatBytes(used)} / ${formatBytes(total)}"
 }

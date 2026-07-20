@@ -53,6 +53,7 @@ fun HomeScreen(
     chainedProfileIds: List<Long> = emptyList(),
     onProfileChainToggle: (ProfileSummary) -> Unit = {},
     isClipboardLoading: Boolean,
+    isGestureNav: Boolean = false,
     isAnySubscriptionExpanded: Boolean,
     accentColor: Int,
     pingStyle: String,
@@ -128,7 +129,11 @@ fun HomeScreen(
     val isLandscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val buttonSize = if (isLandscape) 220.dp else 290.dp
     val buttonOffsetY = if (isLandscape) 10.dp else 40.dp
-    val addProfilesBottomPadding = if (isLandscape) 24.dp else 96.dp
+    val addProfilesBottomPadding = if (isLandscape) {
+        if (isGestureNav) 24.dp else 36.dp
+    } else {
+        if (isGestureNav) 96.dp else 105.dp
+    }
 
     PredictiveBackWrapper(onBack = onBack, enabled = isAnySubscriptionExpanded) {
     Box(
@@ -318,7 +323,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxHeight()
                             .weight(0.9f)
-                            .padding(start = 8.dp, end = 16.dp, top = 20.dp, bottom = 24.dp),
+                            .padding(start = 8.dp, end = 16.dp, top = 20.dp, bottom = addProfilesBottomPadding),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         
@@ -380,7 +385,8 @@ fun HomeScreen(
                                     onImportFileClick = onImportFileClick,
                                     hazeState = hazeState,
                                     accentColor = Color(accentColor),
-                                    isCustomColorEnabled = isCustomColorEnabled
+                                    isCustomColorEnabled = isCustomColorEnabled,
+                                    isGestureNav = isGestureNav
                                 )
                             }
                         }
@@ -556,7 +562,8 @@ fun HomeScreen(
                                 onImportFileClick = onImportFileClick,
                                 hazeState = hazeState,
                                 accentColor = Color(accentColor),
-                                isCustomColorEnabled = isCustomColorEnabled
+                                isCustomColorEnabled = isCustomColorEnabled,
+                                isGestureNav = isGestureNav
                             )
                         }
                     }

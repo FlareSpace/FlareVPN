@@ -240,7 +240,8 @@ fun FlareClipboardButton(
     hazeState: dev.chrisbanes.haze.HazeState? = null,
     modifier: Modifier = Modifier,
     accentColor: Color = Color.White,
-    isCustomColorEnabled: Boolean = false
+    isCustomColorEnabled: Boolean = false,
+    isGestureNav: Boolean = true
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var menuExpanded by remember { mutableStateOf(false) }
@@ -250,12 +251,20 @@ fun FlareClipboardButton(
     val borderAlphaStart = if (isDark) 0.35f else 0.45f
     val borderAlphaEnd = if (isDark) 0.05f else 0.08f
 
+    val scale = if (isGestureNav) 1f else 0.9f
+    val buttonHeight = (48f * scale).dp
+    val minWidth = (120f * scale).dp
+    val cornerRadius = (24f * scale).dp
+    val fontSize = (14f * scale).sp
+    val textPadding = (28f * scale).dp
+    val progressSize = (24f * scale).dp
+
     Box {
         Box(
             modifier = modifier
-                .height(48.dp)
-                .widthIn(min = 120.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .height(buttonHeight)
+                .widthIn(min = minWidth)
+                .clip(RoundedCornerShape(cornerRadius))
                 .background(
                     if (isCustomColorEnabled) {
                         Brush.linearGradient(
@@ -286,7 +295,7 @@ fun FlareClipboardButton(
                             Color.Transparent
                         )
                     ),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = RoundedCornerShape(cornerRadius)
                 )
                 .pointerInput(Unit) {
                     detectTapGestures(
@@ -310,14 +319,14 @@ fun FlareClipboardButton(
                                 Color.Transparent
                             ),
                             startY = 0f,
-                            endY = 40f
+                            endY = (40f * scale)
                         )
                     )
             )
 
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(progressSize),
                     color = accentColor,
                     strokeWidth = 2.dp
                 )
@@ -325,9 +334,9 @@ fun FlareClipboardButton(
                 Text(
                     text = I18n.strings.btn_clipboard,
                     fontFamily = GeologicaMedium,
-                    fontSize = 14.sp,
+                    fontSize = fontSize,
                     color = Color.White,
-                    modifier = Modifier.padding(horizontal = 28.dp)
+                    modifier = Modifier.padding(horizontal = textPadding)
                 )
             }
         }

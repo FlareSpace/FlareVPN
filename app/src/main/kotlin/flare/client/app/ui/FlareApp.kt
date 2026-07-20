@@ -212,11 +212,13 @@ fun FlareApp(
             }
 
             isGestureNav = checkGestureNav()
+            settingsViewModel.isGestureNav = isGestureNav
 
             val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean) {
                     super.onChange(selfChange)
                     isGestureNav = checkGestureNav()
+                    settingsViewModel.isGestureNav = isGestureNav
                 }
             }
 

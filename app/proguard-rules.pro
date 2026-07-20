@@ -1,4 +1,4 @@
-# FlareVPN ProGuard Rules
+# Flare VPN ProGuard Rules
 
 # Attributes
 -keepattributes *Annotation*

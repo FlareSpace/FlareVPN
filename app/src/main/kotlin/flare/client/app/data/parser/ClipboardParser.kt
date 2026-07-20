@@ -214,9 +214,9 @@ object ClipboardParser {
             val webPageUrl = response.header("profile-web-page-url") ?: ""
 
             val description = descParts.joinToString("\n")
-            var upload = 0L
-            var download = 0L
-            var total = 0L
+            var upload = -1L
+            var download = -1L
+            var total = -1L
             var expire = 0L
             if (userInfo != null) {
                 val parts = userInfo.split(";")

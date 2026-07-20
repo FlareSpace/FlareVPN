@@ -301,8 +301,8 @@ class WizardViewModel(application: Application) : AndroidViewModel(application) 
                     val app = getApplication<Application>()
                     val settings = flare.client.app.data.SettingsManager(app)
                     val hwidString = settings.getHardwareId()
-                    val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-                    val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+                    val model = settings.getDeviceModel()
+                    val osVersion = settings.getOsVersion()
                     
                     val parseResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         flare.client.app.data.parser.ClipboardParser.parse(app, subLink, hwidString, model, osVersion, settings.subUserAgent, settings.subUpdateTimeout)

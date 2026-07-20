@@ -52,6 +52,10 @@ fun SubscriptionsScreen(
     onUserAgentClick: (String) -> Unit,
     isHwidEnabled: Boolean,
     onHwidChange: (Boolean) -> Unit,
+    isOsSendEnabled: Boolean,
+    onOsSendChange: (Boolean) -> Unit,
+    isModelSendEnabled: Boolean,
+    onModelSendChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     accentColor: Color = FlareTheme.colors.accent,
     hazeState: HazeState
@@ -191,7 +195,27 @@ fun SubscriptionsScreen(
                         hazeState = hazeState,
                         description = I18n.strings.settings_desc_hwid,
                         accentColor = accentColor,
-                        cornerType = DisplayItem.CornerType.ALL
+                        cornerType = DisplayItem.CornerType.TOP
+                    )
+                    
+                    FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_send_os,
+                        checked = isOsSendEnabled,
+                        onCheckedChange = onOsSendChange,
+                        hazeState = hazeState,
+                        description = I18n.strings.settings_desc_send_device_data,
+                        accentColor = accentColor,
+                        cornerType = DisplayItem.CornerType.NONE
+                    )
+                    
+                    FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_send_model,
+                        checked = isModelSendEnabled,
+                        onCheckedChange = onModelSendChange,
+                        hazeState = hazeState,
+                        description = I18n.strings.settings_desc_send_device_data,
+                        accentColor = accentColor,
+                        cornerType = DisplayItem.CornerType.BOTTOM
                     )
                 }
             }

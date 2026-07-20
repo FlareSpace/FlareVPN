@@ -3,6 +3,11 @@ package flare.client.app.ui.subscription
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,14 +20,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.animation.core.spring
@@ -41,6 +49,8 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.Dp
 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -285,7 +295,7 @@ fun SubscriptionScreen(
                                                 }
                                             }
                                             Text(
-                                                text = "FlareVPN",
+                                                text = "Flare VPN",
                                                 color = Color.Black.copy(alpha = 0.7f),
                                                 fontFamily = GeologicaMedium,
                                                 fontSize = 12.sp
@@ -700,36 +710,107 @@ fun KeyCard(
     var showMenu by remember { mutableStateOf(false) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var isDevicesExpanded by remember { mutableStateOf(false) }
-    
-    val isDark = FlareTheme.colors.isDark
-    val borderColor = if (isDark) FlareTheme.colors.accent.copy(alpha = 0.3f) else FlareTheme.colors.accent.copy(alpha = 0.15f)
-    val bgColor = if (isDark) Color.White.copy(alpha = 0.03f) else FlareTheme.colors.accent.copy(alpha = 0.03f)
 
-    FlareCard(
-        cornerType = DisplayItem.CornerType.ALL,
-        paddingHorizontal = 20.dp,
-        paddingVertical = 20.dp,
-        cornerRadius = 24.dp,
-        backgroundColor = bgColor,
-        borderColor = borderColor,
-        borderWidth = 1.dp,
-        modifier = Modifier.fillMaxWidth()
+    val isActive = keyInfo.status == "active"
+    val isDark = FlareTheme.colors.isDark
+    val accent = FlareTheme.colors.accent
+
+    
+    val statusColor = if (isActive) Color(0xFF34C759) else Color(0xFFFF3B30)
+    val statusBg = statusColor.copy(alpha = if (isDark) 0.18f else 0.10f)
+
+    
+    val cardBrush = Brush.linearGradient(
+        colors = if (isDark) listOf(
+            statusColor.copy(alpha = 0.08f),
+            Color(0xFF1C1C1E).copy(alpha = 0.0f)
+        ) else listOf(
+            statusColor.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.0f)
+        ),
+        start = Offset(0f, 0f),
+        end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+    )
+    val borderColor = statusColor.copy(alpha = if (isDark) 0.25f else 0.18f)
+
+    
+    val addedCount = keyInfo.devices?.size ?: 0
+    val limit = (keyInfo.ip_limit ?: 5).coerceAtLeast(1)
+    val devicesFraction = (addedCount.toFloat() / limit.toFloat()).coerceIn(0f, 1f)
+    val devicesProgressColor = when {
+        devicesFraction >= 0.9f -> Color(0xFFFF3B30)
+        devicesFraction >= 0.6f -> Color(0xFFFF9500)
+        else -> Color(0xFF34C759)
+    }
+
+    
+    val infiniteTransition = rememberInfiniteTransition(label = "keyStatusPulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "keyPulseAlpha"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "keyPulseScale"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(cardBrush)
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 16.dp, y = (-16).dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(statusColor.copy(alpha = if (isDark) 0.12f else 0.07f), Color.Transparent)
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 20.dp)
+        ) {
+
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Text(
                         text = keyInfo.name ?: I18n.strings.sub_key_title.format(index + 1),
                         color = FlareTheme.colors.textPrimary,
                         fontSize = 17.sp,
-                        fontFamily = GeologicaMedium
+                        fontFamily = GeologicaMedium,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.width(1.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Box(
                         modifier = Modifier
                             .size(28.dp)
@@ -740,20 +821,15 @@ fun KeyCard(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_edit),
                             contentDescription = I18n.strings.sub_key_rename,
-                            tint = FlareTheme.colors.textSecondary,
-                            modifier = Modifier.size(16.dp)
+                            tint = FlareTheme.colors.textSecondary.copy(alpha = 0.6f),
+                            modifier = Modifier.size(15.dp)
                         )
-                        
                         FlareGlassMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
                             items = listOf(
-                                GlassUtils.MenuItem(0, I18n.strings.sub_key_rename) {
-                                    showRenameDialog = true
-                                },
-                                GlassUtils.MenuItem(1, I18n.strings.sub_key_delete) {
-                                    onDeleteKey()
-                                }
+                                GlassUtils.MenuItem(0, I18n.strings.sub_key_rename) { showRenameDialog = true },
+                                GlassUtils.MenuItem(1, I18n.strings.sub_key_delete) { onDeleteKey() }
                             ),
                             hazeState = hazeState,
                             alignment = Alignment.TopStart,
@@ -761,15 +837,36 @@ fun KeyCard(
                         )
                     }
                 }
-                val isActive = keyInfo.status == "active"
-                val statusColor = if (isActive) Color(0xFF34C759) else Color(0xFFFF3B30)
-                val statusBg = statusColor.copy(alpha = 0.12f)
-                Box(
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                
+                Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(20.dp))
                         .background(statusBg)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
+                    if (isActive) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .graphicsLayer {
+                                    scaleX = pulseScale
+                                    scaleY = pulseScale
+                                    alpha = pulseAlpha
+                                }
+                                .background(statusColor, CircleShape)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(statusColor, CircleShape)
+                        )
+                    }
                     Text(
                         text = if (isActive) I18n.strings.sub_key_status_active else I18n.strings.sub_key_status_inactive,
                         color = statusColor,
@@ -779,73 +876,198 @@ fun KeyCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             
-            val isActive = keyInfo.status == "active"
-            Text(
-                I18n.strings.sub_key_expires.format(formatIsoDate(keyInfo.expires_at)),
-                color = FlareTheme.colors.textSecondary,
-                fontFamily = GeologicaRegular,
-                fontSize = 13.sp
-            )
-            val addedCount = keyInfo.devices?.size ?: 0
-            val limit = keyInfo.ip_limit ?: 5
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = I18n.strings.sub_devices_limit.format(addedCount, limit),
-                color = FlareTheme.colors.textSecondary,
-                fontFamily = GeologicaRegular,
-                fontSize = 13.sp
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_lightning),
+                    contentDescription = null,
+                    tint = FlareTheme.colors.textSecondary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(13.dp)
+                )
+                Spacer(modifier = Modifier.width(5.dp))
+                Text(
+                    text = I18n.strings.sub_key_expires.format(formatIsoDate(keyInfo.expires_at)),
+                    color = FlareTheme.colors.textSecondary,
+                    fontFamily = GeologicaRegular,
+                    fontSize = 13.sp
+                )
+            }
 
-            
-            Spacer(modifier = Modifier.height(14.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(FlareTheme.colors.dividerColor)
-            )
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                if (keyInfo.sub_link != null) {
-                    val mainBtnBg = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.15f) else Color.Black
-                    KeyActionChip(
-                        icon = R.drawable.ic_copy,
-                        label = I18n.strings.sub_key_copy,
-                        accentColor = mainBtnBg,
-                        contentColor = Color.White,
-                        onClick = { onCopyLink(keyInfo.sub_link) },
-                        modifier = Modifier.weight(1f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_android),
+                        contentDescription = null,
+                        tint = FlareTheme.colors.textSecondary.copy(alpha = 0.6f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = I18n.strings.sub_devices_limit.format(addedCount, limit),
+                        color = FlareTheme.colors.textSecondary,
+                        fontFamily = GeologicaRegular,
+                        fontSize = 13.sp
                     )
                 }
-                KeyActionChip(
-                    icon = R.drawable.ic_refresh,
-                    label = I18n.strings.sub_key_reissue,
-                    accentColor = Color(0xFFFF3B30),
-                    contentColor = Color.White,
-                    onClick = onRevokeKey,
-                    modifier = Modifier.weight(1f)
+                Text(
+                    text = "${(devicesFraction * 100).toInt()}%",
+                    color = devicesProgressColor.copy(alpha = 0.85f),
+                    fontFamily = GeologicaMedium,
+                    fontSize = 12.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(5.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (isDark) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(devicesFraction)
+                        .clip(RoundedCornerShape(50))
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    devicesProgressColor.copy(alpha = 0.7f),
+                                    devicesProgressColor
+                                )
+                            )
+                        )
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-            Column(modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = spring(dampingRatio = 0.9f, stiffness = 1600f))) {
+            Spacer(modifier = Modifier.height(18.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                FlareTheme.colors.dividerColor,
+                                FlareTheme.colors.dividerColor,
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (keyInfo.sub_link != null) {
+                    
+                    val interSource = remember { MutableInteractionSource() }
+                    val isPressed by interSource.collectIsPressedAsState()
+                    val scale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.96f else 1f,
+                        animationSpec = tween(100), label = "copyScale"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(2f)
+                            .height(46.dp)
+                            .graphicsLayer { scaleX = scale; scaleY = scale }
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(accent, accent.copy(alpha = 0.8f))
+                                )
+                            )
+                            .clickable(
+                                interactionSource = interSource,
+                                indication = null,
+                                onClick = { onCopyLink(keyInfo.sub_link) }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_copy),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = I18n.strings.sub_key_copy,
+                                color = Color.White,
+                                fontFamily = GeologicaMedium,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+
+                
+                val reissueSource = remember { MutableInteractionSource() }
+                val reissuePressed by reissueSource.collectIsPressedAsState()
+                val reissueScale by animateFloatAsState(
+                    targetValue = if (reissuePressed) 0.96f else 1f,
+                    animationSpec = tween(100), label = "reissueScale"
+                )
+                val destructiveRed = Color(0xFFFF3B30)
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .graphicsLayer { scaleX = reissueScale; scaleY = reissueScale }
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(destructiveRed.copy(alpha = if (isDark) 0.12f else 0.08f))
+                        .border(1.dp, destructiveRed.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                        .clickable(
+                            interactionSource = reissueSource,
+                            indication = null,
+                            onClick = onRevokeKey
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_refresh),
+                        contentDescription = I18n.strings.sub_key_reissue,
+                        tint = destructiveRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            
+            Column(modifier = Modifier.fillMaxWidth()) {
                 AnimatedVisibility(
                     visible = isDevicesExpanded,
-                    enter = expandVertically(animationSpec = tween(180)) + fadeIn(animationSpec = tween(180)),
-                    exit = shrinkVertically(animationSpec = tween(140)) + fadeOut(animationSpec = tween(100))
+                    enter = expandVertically(animationSpec = tween(220, easing = FastOutSlowInEasing)) + fadeIn(animationSpec = tween(180)),
+                    exit = shrinkVertically(animationSpec = tween(120, easing = FastOutSlowInEasing)) + fadeOut(animationSpec = tween(80))
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         val devices = keyInfo.devices ?: emptyList()
                         if (devices.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
                                     text = I18n.strings.sub_no_devices_text,
                                     color = FlareTheme.colors.textSecondary,
@@ -860,65 +1082,72 @@ fun KeyCard(
                                     keyIndex = index,
                                     onRemove = { onRemoveDevice(device.hwid) }
                                 )
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
 
-                AnimatedContent(
-                    targetState = isDevicesExpanded,
-                    transitionSpec = {
-                        if (targetState) {
-                            fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(120))
-                        } else {
-                            fadeIn(animationSpec = tween(120, delayMillis = 100)) togetherWith fadeOut(animationSpec = tween(60))
-                        }
-                    },
-                    label = "handleToButton"
-                ) { expanded ->
-                    if (expanded) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(24.dp)
-                                .pointerInput(Unit) {
-                                    detectVerticalDragGestures(
-                                        onVerticalDrag = { change, dragAmount ->
-                                            if (dragAmount < -5f) {
-                                                isDevicesExpanded = false
-                                            }
-                                        }
-                                    )
-                                }
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { isDevicesExpanded = false }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
+                
+                val toggleBg = if (isDark) Color.White.copy(alpha = 0.07f) else Color.Black.copy(alpha = 0.04f)
+                val toggleContent = FlareTheme.colors.textSecondary
+                val arrowRotation by animateFloatAsState(
+                    targetValue = if (isDevicesExpanded) 180f else 0f,
+                    animationSpec = tween(250, easing = FastOutSlowInEasing),
+                    label = "arrowRotation"
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(toggleBg)
+                        .clickable(onClick = { isDevicesExpanded = !isDevicesExpanded })
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_android),
+                            contentDescription = null,
+                            tint = toggleContent,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = I18n.strings.sub_devices_section,
+                            color = toggleContent,
+                            fontFamily = GeologicaMedium,
+                            fontSize = 13.sp
+                        )
+                        
+                        if (addedCount > 0) {
                             Box(
                                 modifier = Modifier
-                                    .width(40.dp)
-                                    .height(4.dp)
-                                    .clip(CircleShape)
-                                    .background(FlareTheme.colors.textSecondary.copy(alpha = 0.3f))
-                            )
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(accent.copy(alpha = 0.15f))
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$addedCount",
+                                    color = accent,
+                                    fontFamily = GeologicaMedium,
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
-                    } else {
-                        val btnBg = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.1f) else Color.Black.copy(alpha = 0.05f)
-                        val btnContent = if (FlareTheme.colors.isDark) Color.White else Color.Black
-                        KeyActionChip(
-                            icon = R.drawable.ic_arrow_down,
-                            label = I18n.strings.sub_devices_section,
-                            accentColor = btnBg,
-                            contentColor = btnContent,
-                            onClick = { isDevicesExpanded = true },
-                            modifier = Modifier.fillMaxWidth()
-                        )
                     }
+                    Icon(
+                        painter = painterResource(R.drawable.ic_arrow_down),
+                        contentDescription = null,
+                        tint = toggleContent.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .graphicsLayer { rotationZ = arrowRotation }
+                    )
                 }
             }
         }
@@ -943,7 +1172,7 @@ fun KeyCard(
                     fontSize = 18.sp,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -975,18 +1204,16 @@ fun KeyCard(
                         }
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.height(20.dp))
-                
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
                         .background(FlareTheme.colors.dividerColor)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Row(modifier = Modifier.fillMaxWidth()) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -1020,9 +1247,7 @@ fun KeyCard(
                                 indication = androidx.compose.material3.ripple(bounded = true, color = FlareTheme.colors.accent),
                                 onClick = {
                                     showRenameDialog = false
-                                    if (newName.isNotBlank()) {
-                                        onRenameKey(newName)
-                                    }
+                                    if (newName.isNotBlank()) onRenameKey(newName)
                                 }
                             ),
                         contentAlignment = Alignment.Center
@@ -1096,7 +1321,8 @@ fun DeviceCard(device: Device, keyIndex: Int, onRemove: () -> Unit) {
     ).joinToString(" ").lowercase()
 
     val isAndroid = osSearchString.contains("android")
-    val isIos = osSearchString.contains("ios") || osSearchString.contains("iphone") || osSearchString.contains("ipad") || osSearchString.contains("mac")
+    val isIos = osSearchString.contains("ios") || osSearchString.contains("iphone") ||
+            osSearchString.contains("ipad") || osSearchString.contains("mac")
     val isWindows = osSearchString.contains("windows")
 
     val iconRes = when {
@@ -1108,42 +1334,88 @@ fun DeviceCard(device: Device, keyIndex: Int, onRemove: () -> Unit) {
 
     val iconBgColor = when {
         isAndroid -> Color(0xFF34C759)
-        isIos -> Color(0xFF8E8E93)
-        isWindows -> Color.White
+        isIos -> Color(0xFF636366)
+        isWindows -> Color(0xFF0078D4)
         else -> Color(0xFFFF9500)
     }
 
-    val innerCardBg = if (FlareTheme.colors.isDark) Color(0xFF2C2C2E).copy(alpha = 0.4f) else Color(0xFFF2F2F7).copy(alpha = 0.6f)
-    val innerCardBorder = if (FlareTheme.colors.isDark) Color.White.copy(alpha = 0.05f) else Color.Black.copy(alpha = 0.05f)
+    val isDark = FlareTheme.colors.isDark
+
+    
+    val shortHwid = if (device.hwid.length > 8) "…" + device.hwid.takeLast(8) else device.hwid
+
+    
+    val cardBrush = Brush.linearGradient(
+        colors = if (isDark) listOf(
+            Color.White.copy(alpha = 0.05f),
+            Color.White.copy(alpha = 0.02f)
+        ) else listOf(
+            Color.Black.copy(alpha = 0.03f),
+            Color.Black.copy(alpha = 0.01f)
+        )
+    )
+    val cardBorder = if (isDark) Color.White.copy(alpha = 0.07f) else Color.Black.copy(alpha = 0.06f)
+
+    
+    val removeSource = remember { MutableInteractionSource() }
+    val removePressed by removeSource.collectIsPressedAsState()
+    val removeScale by animateFloatAsState(
+        targetValue = if (removePressed) 0.90f else 1f,
+        animationSpec = tween(80), label = "removeScale"
+    )
+    val destructiveRed = Color(0xFFFF3B30)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(innerCardBg)
-            .border(1.dp, innerCardBorder, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(cardBrush)
+            .border(1.dp, cardBorder, RoundedCornerShape(16.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconBgColor),
+                .size(38.dp)
+                .drawBehind {
+                    
+                    val glowRadius = size.width * 0.72f
+                    drawCircle(
+                        color = iconBgColor.copy(alpha = 0.22f),
+                        radius = glowRadius,
+                        center = center
+                    )
+                }
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            iconBgColor,
+                            iconBgColor.copy(alpha = 0.75f)
+                        )
+                    )
+                ),
             contentAlignment = Alignment.Center
         ) {
-            val tint = if (isWindows) Color.Unspecified else Color.White
-            Icon(painter = painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
+            val iconTint = Color.White
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = iconTint
+            )
         }
-        
+
         Spacer(modifier = Modifier.width(12.dp))
+
         
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = device.name,
                 color = FlareTheme.colors.textPrimary,
                 fontFamily = GeologicaMedium,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
@@ -1152,36 +1424,50 @@ fun DeviceCard(device: Device, keyIndex: Int, onRemove: () -> Unit) {
                 text = device.os_version ?: I18n.strings.label_unknown,
                 color = FlareTheme.colors.textSecondary,
                 fontFamily = GeologicaRegular,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = I18n.strings.sub_device_hwid.format(device.hwid),
-                color = FlareTheme.colors.textSecondary.copy(alpha = 0.5f),
-                fontFamily = GeologicaRegular,
-                fontSize = 11.sp,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
+            Spacer(modifier = Modifier.height(3.dp))
+            
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isDark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "HWID: $shortHwid",
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.5f),
+                    fontFamily = GeologicaRegular,
+                    fontSize = 10.sp,
+                    maxLines = 1
+                )
+            }
         }
-        
-        Spacer(modifier = Modifier.width(8.dp))
+
+        Spacer(modifier = Modifier.width(10.dp))
+
         
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFFF3B30).copy(alpha = 0.1f))
-                .clickable { onRemove() },
+                .graphicsLayer { scaleX = removeScale; scaleY = removeScale }
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(destructiveRed.copy(alpha = if (removePressed) 0.20f else 0.10f))
+                .border(1.dp, destructiveRed.copy(alpha = 0.20f), RoundedCornerShape(10.dp))
+                .clickable(
+                    interactionSource = removeSource,
+                    indication = null,
+                    onClick = onRemove
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_delete),
                 contentDescription = I18n.strings.sub_device_delete_btn,
-                tint = Color(0xFFFF3B30),
-                modifier = Modifier.size(16.dp)
+                tint = destructiveRed,
+                modifier = Modifier.size(15.dp)
             )
         }
     }
@@ -1351,10 +1637,16 @@ fun SubscriptionSkeleton() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         
+        
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
+             Box(modifier = Modifier.width(180.dp).height(34.dp).clip(RoundedCornerShape(8.dp)).background(skeletonBrush))
+        }
+
+        
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
+                .height(380.dp)
                 .clip(RoundedCornerShape(24.dp))
                 .background(skeletonBrush)
         )
@@ -1372,20 +1664,8 @@ fun SubscriptionSkeleton() {
         }
         
         
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(190.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(skeletonBrush)
-        )
-        
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(skeletonBrush))
         Spacer(modifier = Modifier.height(16.dp))
-        
-        
-        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
-            Box(modifier = Modifier.width(140.dp).height(24.dp).clip(RoundedCornerShape(6.dp)).background(skeletonBrush))
-        }
         
         
         Box(
@@ -1393,6 +1673,7 @@ fun SubscriptionSkeleton() {
                 .fillMaxWidth()
                 .height(200.dp)
                 .clip(RoundedCornerShape(24.dp))
+                .background(skeletonBrush)
         )
     }
 }

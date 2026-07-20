@@ -238,6 +238,7 @@ fun HomeBackgroundContent(
         chainedProfileIds = chainedProfileIds,
         onProfileChainToggle = { profile -> vpnViewModel.toggleProfileInChain(profile.id) },
         isClipboardLoading = isClipboardLoading(),
+        isGestureNav = settingsViewModel.isGestureNav,
         isAnySubscriptionExpanded = isAnySubscriptionExpanded(),
         accentColor = accentColor(),
         pingStyle = settingsViewModel.composePingStyle,

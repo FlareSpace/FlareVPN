@@ -143,8 +143,9 @@ class SubscriptionViewModel(
             _actionError.value = null
             try {
                 val hwid = settingsManager.getHardwareId()
-                val name = "${Build.MANUFACTURER} ${Build.MODEL}"
-                val response = FlareBackendApi.addDevice(token, hwid, name, subId)
+                val name = settingsManager.getDeviceModel()
+                val osVersion = settingsManager.getOsVersion()
+                val response = FlareBackendApi.addDevice(token, hwid, name, osVersion, subId)
                 
                 if (response != null && response.sub_link.isNotEmpty()) {
                     onSuccess(response.sub_link)
@@ -171,12 +172,11 @@ class SubscriptionViewModel(
             _isActionLoading.value = true
             _actionError.value = null
             try {
-                val success = FlareBackendApi.removeDevice(token, hwid)
-                if (success) {
-                    refresh()
-                } else {
-                    _actionError.value = I18n.strings.sub_err_remove_device
-                }
+                
+                
+                
+                FlareBackendApi.removeDevice(token, hwid)
+                refresh()
             } catch (e: Exception) {
                 _actionError.value = e.message ?: I18n.strings.sub_err_remove_device_unknown
             } finally {

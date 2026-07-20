@@ -18,7 +18,7 @@ import android.net.Uri
 
 object VersionManager {
     private const val TAG = "VersionManager"
-    private const val GITHUB_API_URL = "https://api.github.com/repos/gitwelk/FlareVPN/tags"
+    private const val GITHUB_API_URL = "https://api.github.com/repos/FlareSpace/FlareVPN/tags"
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
@@ -52,7 +52,7 @@ object VersionManager {
 
                     if (isNewer(latestVersion, currentVersion)) {
                         val message = I18n.strings.update_available_title.format(latestVersion)
-                        val downloadUrl = "https://github.com/gitwelk/FlareVPN/releases/download/$latestTag/Flare-$latestTag.apk"
+                        val downloadUrl = "https://github.com/FlareSpace/FlareVPN/releases/download/$latestTag/Flare-$latestTag.apk"
                         val appContext = context.applicationContext
                         
                         AppNotificationManager.showNotification(

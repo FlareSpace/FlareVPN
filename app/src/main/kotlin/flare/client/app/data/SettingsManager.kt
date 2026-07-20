@@ -259,8 +259,16 @@ class SettingsManager(private val context: Context) {
         set(value) = prefs.edit().putString("font_family", value).apply()
 
     var isHwidEnabled: Boolean
-        get() = prefs.getBoolean("hwid_enabled", true)
+        get() = prefs.getBoolean("hwid_enabled", false)
         set(value) = prefs.edit().putBoolean("hwid_enabled", value).apply()
+
+    var isOsSendEnabled: Boolean
+        get() = prefs.getBoolean("os_send_enabled", false)
+        set(value) = prefs.edit().putBoolean("os_send_enabled", value).apply()
+
+    var isModelSendEnabled: Boolean
+        get() = prefs.getBoolean("model_send_enabled", false)
+        set(value) = prefs.edit().putBoolean("model_send_enabled", value).apply()
 
     val anonymousHwid: String
         get() {
@@ -280,6 +288,22 @@ class SettingsManager(private val context: Context) {
             ) ?: "unknown_hwid"
         } else {
             anonymousHwid
+        }
+    }
+
+    fun getDeviceModel(): String {
+        return if (isModelSendEnabled) {
+            "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+        } else {
+            "FlareVPN Client"
+        }
+    }
+
+    fun getOsVersion(): String {
+        return if (isOsSendEnabled) {
+            "Android ${android.os.Build.VERSION.RELEASE}"
+        } else {
+            "FlareVPN OS"
         }
     }
 

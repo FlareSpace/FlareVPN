@@ -121,6 +121,9 @@ interface SettingsStrings {
     val settings_item_tls_fingerprint: String
     val settings_desc_fingerprint: String
     val settings_label_send_hwid: String
+    val settings_label_send_os: String
+    val settings_label_send_model: String
+    val settings_desc_send_device_data: String
     val settings_label_split_tunneling: String
     val settings_label_stack: String
     val settings_label_stack_title: String
@@ -338,7 +341,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_header_appearance : String = "Оформление"
     override val settings_header_autostart : String = "Автозапуск"
     override val settings_header_best_profile : String = "Управление профилями"
-    override val settings_header_hwid : String = "Управление HWID"
+    override val settings_header_hwid : String = "Управление данными"
     override val settings_header_logging : String = "Логирование"
     override val settings_header_notifications : String = "Уведомления"
     override val settings_header_rules : String = "Правила"
@@ -407,7 +410,10 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_fingerprint : String = "Отпечаток"
     override val settings_item_tls_fingerprint : String = "TLS Отпечаток"
     override val settings_desc_fingerprint : String = "Маскирует ваш TLS трафик под выбранный браузер/клиент. Если выбрано Auto, отпечаток будет взят из конфигурации."
-    override val settings_label_send_hwid : String = "Передавать HWID"
+    override val settings_label_send_hwid : String = "Отправка HWID"
+    override val settings_label_send_os : String = "Отправка ос"
+    override val settings_label_send_model : String = "Отправка модели"
+    override val settings_desc_send_device_data : String = "Если опция включена, отправляются реальные данные об устройстве, иначе заглушка."
     override val settings_label_split_tunneling : String = "Раздельное туннелирование"
     override val settings_label_stack : String = "%s"
     override val settings_label_stack_title : String = "Использовать"
@@ -458,7 +464,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_desc_data_mgmt : String = "Вы можете сохранить все настройки, профили, подписки приложения"
     override val settings_btn_data_mgmt : String = "Перенести"
     override val sub_auth_title : String = "Авторизация"
-    override val sub_auth_desc : String = "Для управления ключами FlareVPN необходимо войти через Telegram."
+    override val sub_auth_desc : String = "Для управления ключами Flare VPN необходимо войти через Telegram."
     override val sub_auth_waiting : String = "Ожидание входа в Telegram..."
     override val sub_auth_login_btn : String = "Войти через Telegram"
     override val sub_auth_timeout : String = "Время ожидания истекло"
@@ -625,7 +631,7 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_header_appearance : String = "Appearance"
     override val settings_header_autostart : String = "Autostart"
     override val settings_header_best_profile : String = "Profile management"
-    override val settings_header_hwid : String = "HWID Management"
+    override val settings_header_hwid : String = "Data management"
     override val settings_header_logging : String = "Logging"
     override val settings_header_notifications : String = "Notifications"
     override val settings_header_rules : String = "Rules"
@@ -695,6 +701,9 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_item_tls_fingerprint : String = "TLS Fingerprint"
     override val settings_desc_fingerprint : String = "Masks your TLS traffic as a selected browser/client. If Auto is selected, the fingerprint will be taken from the configuration."
     override val settings_label_send_hwid : String = "Send HWID"
+    override val settings_label_send_os : String = "Send OS"
+    override val settings_label_send_model : String = "Send Model"
+    override val settings_desc_send_device_data : String = "If enabled, real device data is sent, otherwise a placeholder is used."
     override val settings_label_split_tunneling : String = "Split Tunneling"
     override val settings_label_stack : String = "%s"
     override val settings_label_stack_title : String = "Use"

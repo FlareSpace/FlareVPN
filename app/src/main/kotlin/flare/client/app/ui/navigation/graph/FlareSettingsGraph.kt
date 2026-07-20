@@ -399,6 +399,16 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                     settings.isHwidEnabled = it
                     settingsViewModel.composeIsHwidEnabled = it
                 },
+                isOsSendEnabled = settingsViewModel.composeIsOsSendEnabled,
+                onOsSendChange = {
+                    settings.isOsSendEnabled = it
+                    settingsViewModel.composeIsOsSendEnabled = it
+                },
+                isModelSendEnabled = settingsViewModel.composeIsModelSendEnabled,
+                onModelSendChange = {
+                    settings.isModelSendEnabled = it
+                    settingsViewModel.composeIsModelSendEnabled = it
+                },
                 onBack = { navController.popBackStack() },
                 accentColor = Color(accentColor()),
                 hazeState = localHazeState

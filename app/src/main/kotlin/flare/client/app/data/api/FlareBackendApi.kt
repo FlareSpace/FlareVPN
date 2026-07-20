@@ -11,7 +11,7 @@ import java.io.IOException
 
 object FlareBackendApi {
     const val BOT_USERNAME = "flarevbot" 
-    private const val BASE_URL = "https://api.flarev.net/api" 
+    private const val BASE_URL = "https://api.flarev.net/v1" 
     private val client = OkHttpClient()
     private val gson = Gson()
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -76,12 +76,12 @@ object FlareBackendApi {
         return@withContext null
     }
 
-    suspend fun addDevice(token: String, hwid: String, name: String, subId: Int? = null): AddDeviceResponse? = withContext(Dispatchers.IO) {
+    suspend fun addDevice(token: String, hwid: String, name: String, osVersion: String, subId: Int? = null): AddDeviceResponse? = withContext(Dispatchers.IO) {
         val reqBody = AddDeviceRequest(hwid, name, subId)
         val request = Request.Builder()
             .url("$BASE_URL/sub/device")
             .header("Authorization", "Bearer $token")
-            .header("x-ver-os", android.os.Build.VERSION.RELEASE)
+            .header("x-ver-os", osVersion)
             .header("User-Agent", "Flare/1.3.5")
             .post(gson.toJson(reqBody).toRequestBody(JSON))
             .build()

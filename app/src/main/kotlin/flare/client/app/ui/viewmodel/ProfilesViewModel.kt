@@ -377,8 +377,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         val app = getApplication<Application>()
         val settings = SettingsManager(app)
         val hwid = settings.getHardwareId()
-        val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-        val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+        val model = settings.getDeviceModel()
+        val osVersion = settings.getOsVersion()
         
         coroutineScope {
             val deferreds = subsToUpdate.map { sub ->
@@ -443,8 +443,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
         val app = getApplication<Application>()
         val settings = SettingsManager(app)
         val hwid = settings.getHardwareId()
-        val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-        val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+        val model = settings.getDeviceModel()
+        val osVersion = settings.getOsVersion()
         
         coroutineScope {
             val deferreds = subs.map { sub ->
@@ -515,8 +515,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
             val app = getApplication<Application>()
             val settings = SettingsManager(app)
             val hwid = settings.getHardwareId()
-            val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-            val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+            val model = settings.getDeviceModel()
+            val osVersion = settings.getOsVersion()
             try {
                 val selectedBefore = repository.getSelectedProfile()
                 val result = withTimeoutOrNull(settings.subUpdateTimeout * 1000L + 2000L) {
@@ -797,8 +797,8 @@ class ProfilesViewModel(application: Application) : AndroidViewModel(application
                 val app = getApplication<Application>()
                 val settings = SettingsManager(app)
                 val hwid = settings.getHardwareId()
-                val model = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
-                val osVersion = "Android ${android.os.Build.VERSION.RELEASE}"
+                val model = settings.getDeviceModel()
+                val osVersion = settings.getOsVersion()
                 
                 kotlinx.coroutines.withTimeout(settings.subUpdateTimeout * 1000L + 2000L) {
                     when (val result = ClipboardParser.parse(app, text, hwid, model, osVersion, settings.subUserAgent, settings.subUpdateTimeout)) {

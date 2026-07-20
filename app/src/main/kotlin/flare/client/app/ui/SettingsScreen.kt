@@ -141,7 +141,7 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                FlareSectionHeader(text = "FlareVPN")
+                FlareSectionHeader(text = "Flare VPN")
                 
                 FlareSettingsItem(
                     title = strings.sub_manage_title,

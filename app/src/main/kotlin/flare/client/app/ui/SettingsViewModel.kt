@@ -21,6 +21,7 @@ class SettingsViewModel : ViewModel() {
     var composeBottomNavIsVisible by mutableStateOf(true)
     var composeAppLanguage by mutableStateOf("auto")
     var composeIsSwipeDismissing by mutableStateOf(false)
+    var isGestureNav by mutableStateOf(false)
 
     fun startSwipeDismiss() {
         composeIsSwipeDismissing = true
@@ -57,7 +58,9 @@ class SettingsViewModel : ViewModel() {
     var composeIsStatusNotificationEnabled by mutableStateOf(false)
     var composeIsNotificationSpeedEnabled by mutableStateOf(true)
     var composeIsBestProfileNotifEnabled by mutableStateOf(false)
-    var composeIsHwidEnabled by mutableStateOf(true)
+    var composeIsHwidEnabled by mutableStateOf(false)
+    var composeIsOsSendEnabled by mutableStateOf(false)
+    var composeIsModelSendEnabled by mutableStateOf(false)
     var composeIsCoreLogEnabled by mutableStateOf(false)
     var composeCoreLogLevel by mutableStateOf("warn")
     var composeIsBestProfileEnabled by mutableStateOf(false)
@@ -116,6 +119,8 @@ class SettingsViewModel : ViewModel() {
         composeIsNotificationSpeedEnabled = settings.isNotificationSpeedEnabled
         composeIsBestProfileNotifEnabled = settings.isBestProfileNotificationEnabled
         composeIsHwidEnabled = settings.isHwidEnabled
+        composeIsOsSendEnabled = settings.isOsSendEnabled
+        composeIsModelSendEnabled = settings.isModelSendEnabled
         composeIsCoreLogEnabled = settings.isCoreLogEnabled
         composeCoreLogLevel = settings.coreLogLevel
         composeIsBestProfileEnabled = settings.isBestProfileEnabled
