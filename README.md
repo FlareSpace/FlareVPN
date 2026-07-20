@@ -3,7 +3,9 @@
 [![Telegram Channel](https://img.shields.io/badge/Telegram-Channel-blue?style=for-the-badge&logo=telegram)](https://t.me/FlareApp)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=for-the-badge)](https://www.gnu.org/licenses/gpl-3.0)
 
-Flare is a powerful open-source VPN client designed for flexibility, security, and performance. Built on top of the robust `sing-box` core, it provides a modern interface for managing your secure tunnels.
+Next-level security and privacy.
+Flare is a powerful open-source VPN client designed for flexibility, security, and high performance. Powered by the sing-box core, Flare provides a modern interface for managing your secure tunnels.
+
 
 ---
 
@@ -70,6 +72,7 @@ FlareVPN supports the deployment and management of your own VPN servers based on
   <img src=".github/assets/home_ru.png" width="450" alt="Главный экран Flare VPN">
 </p>
 
+Новый уровень защиты и конфиденциальности.
 Flare — это мощный VPN-клиент с открытым исходным кодом, созданный для обеспечения гибкости, безопасности и высокой производительности. Flare предоставляет современный интерфейс для управления вашими защищенными туннелями на базе ядра `sing-box`.
 
 ### 🛠 Поддерживаемые протоколы
