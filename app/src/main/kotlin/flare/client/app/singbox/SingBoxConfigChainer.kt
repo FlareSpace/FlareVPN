@@ -15,6 +15,27 @@ object SingBoxConfigChainer {
     private const val TAG = "SingBoxConfigChainer"
 
     fun findPrimaryProxyTag(outbounds: JSONArray): String {
+        val generalTags = listOf("proxy", "auto", "default", "main", "select", "selector", "urltest")
+        
+        for (i in 0 until outbounds.length()) {
+            val ob = outbounds.optJSONObject(i) ?: continue
+            val type = ob.optString("type", "")
+            if (type == "urltest" || type == "selector") {
+                val tag = ob.optString("tag", "")
+                if (tag.isNotEmpty() && generalTags.any { tag.equals(it, ignoreCase = true) }) {
+                    return tag
+                }
+            }
+        }
+        
+        for (i in 0 until outbounds.length()) {
+            val ob = outbounds.optJSONObject(i) ?: continue
+            val tag = ob.optString("tag", "")
+            if (tag.equals("proxy", ignoreCase = true)) {
+                return tag
+            }
+        }
+        
         for (i in 0 until outbounds.length()) {
             val ob = outbounds.optJSONObject(i) ?: continue
             val type = ob.optString("type", "")
@@ -102,6 +123,11 @@ object SingBoxConfigChainer {
                 )
                 
                 for (ob in hopOutbounds) {
+                    val type = ob.optString("type", "")
+                    val tag = ob.optString("tag", "")
+                    if (type == "direct" || type == "block" || type == "dns" || type == "dns-out" || tag == "dns-out" || tag == "dns-direct") {
+                        continue
+                    }
                     newOutboundsList.put(ob)
                 }
             }

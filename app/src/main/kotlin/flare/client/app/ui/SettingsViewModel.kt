@@ -81,6 +81,7 @@ class SettingsViewModel : ViewModel() {
     var composeRemoteDnsUrl by mutableStateOf("")
     var composeRemoteDnsMode by mutableStateOf("auto")
     var composeIsRemoteDnsDohEnabled by mutableStateOf(true)
+    var composeIsRemoteDnsStrictlyTun by mutableStateOf(false)
     var composeIsFakeIpEnabled by mutableStateOf(false)
     var composeMtu by mutableStateOf("1500")
     var composeTunStack by mutableStateOf("system")
@@ -143,6 +144,7 @@ class SettingsViewModel : ViewModel() {
         composeRemoteDnsUrl = settings.remoteDnsUrl
         composeRemoteDnsMode = settings.remoteDnsMode
         composeIsRemoteDnsDohEnabled = settings.isRemoteDnsDohEnabled
+        composeIsRemoteDnsStrictlyTun = settings.isRemoteDnsStrictlyTun
         composeIsFakeIpEnabled = settings.isFakeIpEnabled
         composeMtu = settings.mtu
         composeTunStack = settings.tunStack

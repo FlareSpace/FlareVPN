@@ -387,6 +387,30 @@ object SingBoxConfigPatcher {
                 }
             }
 
+            val isStrictlyTun = settings.isRemoteDnsStrictlyTun
+            val dnsObj = obj.optJSONObject("dns")
+            if (dnsObj != null) {
+                val servers = dnsObj.optJSONArray("servers")
+                if (servers != null) {
+                    for (i in 0 until servers.length()) {
+                        val server = servers.optJSONObject(i) ?: continue
+                        if (server.optString("tag") == "dns-remote") {
+                            server.put("domain_resolver", "dns-direct")
+                            break
+                        }
+                    }
+                }
+                val route = obj.optJSONObject("route")
+                if (route != null) {
+                    route.put("default_domain_resolver", "dns-direct")
+                }
+
+                if (isStrictlyTun) {
+                    dnsObj.put("final", "dns-remote")
+                    Log.i(TAG, "injectAdvancedSettings: applied strictly TUN mode for DNS (final = dns-remote)")
+                }
+            }
+
             val mtuValue = settings.mtu.toIntOrNull() ?: 1500
             val stackValue = settings.tunStack
             val fakeIpEnabled = settings.isFakeIpEnabled

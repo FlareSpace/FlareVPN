@@ -76,6 +76,9 @@ fun AdvancedSettingsScreen(
     isRemoteDnsDohEnabled: Boolean,
     onRemoteDnsDohChange: (Boolean) -> Unit,
 
+    isRemoteDnsStrictlyTun: Boolean,
+    onRemoteDnsStrictlyTunChange: (Boolean) -> Unit,
+
     
     isFakeIpEnabled: Boolean,
     onFakeIpChange: (Boolean) -> Unit,
@@ -384,6 +387,15 @@ fun AdvancedSettingsScreen(
                         title = I18n.strings.settings_label_use_doh,
                         checked = isRemoteDnsDohEnabled,
                         onCheckedChange = onRemoteDnsDohChange,
+                        hazeState = hazeState,
+                        accentColor = accentColor,
+                        cornerType = DisplayItem.CornerType.NONE
+                    )
+
+                    FlareSettingsToggleItem(
+                        title = I18n.strings.settings_label_dns_strictly_tun,
+                        checked = isRemoteDnsStrictlyTun,
+                        onCheckedChange = onRemoteDnsStrictlyTunChange,
                         hazeState = hazeState,
                         accentColor = accentColor,
                         cornerType = DisplayItem.CornerType.BOTTOM

@@ -1,6 +1,7 @@
 package flare.client.app.data.parser
 
 import flare.client.app.ui.i18n.I18n
+import flare.client.app.BuildConfig
 
 import android.content.Context
 import android.util.Base64
@@ -106,7 +107,7 @@ object ClipboardParser {
         return try {
             val ua = when (userAgent) {
                 null -> "Happ/3.21.1"
-                "custom" -> "Flare/1.2.0"
+                "custom" -> "FlareVPN/${BuildConfig.VERSION_NAME}"
                 else -> userAgent
             }
             var finalUrl = url

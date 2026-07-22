@@ -1,5 +1,6 @@
 package flare.client.app.data.api
 
+import flare.client.app.BuildConfig
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -82,7 +83,7 @@ object FlareBackendApi {
             .url("$BASE_URL/sub/device")
             .header("Authorization", "Bearer $token")
             .header("x-ver-os", osVersion)
-            .header("User-Agent", "Flare/1.3.5")
+            .header("User-Agent", "FlareVPN/${BuildConfig.VERSION_NAME}")
             .post(gson.toJson(reqBody).toRequestBody(JSON))
             .build()
         try {

@@ -109,6 +109,7 @@ interface SettingsStrings {
     val settings_label_ping_type: String
     val settings_label_remote_dns: String
     val settings_label_use_doh: String
+    val settings_label_dns_strictly_tun: String
     val settings_label_rules_method: String
     val settings_header_chain: String
     val settings_label_reset_chain: String
@@ -288,6 +289,7 @@ interface SettingsStrings {
     val auth_key_placeholder: String
     val auth_invalid_key_err: String
     val auth_login_btn: String
+    val settings_app_version: String
 }
 
 object RuSettingsStrings : SettingsStrings {
@@ -399,6 +401,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_label_ping_type : String = "Тип пинга"
     override val settings_label_remote_dns : String = "Remote DNS"
     override val settings_label_use_doh : String = "Использовать DoH"
+    override val settings_label_dns_strictly_tun : String = "DNS только через туннель"
     override val settings_label_rules_method : String = "Способ"
     override val settings_header_chain : String = "Управление цепью"
     override val settings_label_reset_chain : String = "Сбрасывать цепь после отключения"
@@ -578,6 +581,7 @@ object RuSettingsStrings : SettingsStrings {
     override val auth_key_placeholder: String = "XXXX-XXXX-XXXX-XXXX"
     override val auth_invalid_key_err: String = "Неверный ключ"
     override val auth_login_btn: String = "Войти"
+    override val settings_app_version: String = "Flare VPN для Android %s"
 }
 
 object EnSettingsStrings : SettingsStrings {
@@ -689,6 +693,7 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_label_ping_type : String = "Ping Type"
     override val settings_label_remote_dns : String = "Remote DNS"
     override val settings_label_use_doh : String = "Use DoH"
+    override val settings_label_dns_strictly_tun : String = "DNS strictly via tunnel"
     override val settings_label_rules_method : String = "Method"
     override val settings_header_chain : String = "Chain Management"
     override val settings_label_reset_chain : String = "Reset chain after disconnection"
@@ -868,4 +873,5 @@ object EnSettingsStrings : SettingsStrings {
     override val auth_key_placeholder: String = "XXXX-XXXX-XXXX-XXXX"
     override val auth_invalid_key_err: String = "Invalid key"
     override val auth_login_btn: String = "Log In"
+    override val settings_app_version: String = "Flare VPN for Android %s"
 }

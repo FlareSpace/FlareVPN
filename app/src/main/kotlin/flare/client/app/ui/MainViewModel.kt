@@ -114,7 +114,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
             .build()
 
-        val url = "https://raw.githubusercontent.com/gitwelk/flareVPN/refs/heads/main/notice/notice.json"
+        val url = "https://raw.githubusercontent.com/FlareSpace/flareVPN/refs/heads/main/notice/notice.json"
         val requestBuilder = okhttp3.Request.Builder().url(url)
 
         try {

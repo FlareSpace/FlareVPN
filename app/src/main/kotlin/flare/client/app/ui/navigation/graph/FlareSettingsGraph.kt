@@ -231,6 +231,12 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                     settingsViewModel.composeIsRemoteDnsDohEnabled = it
                     onRestartRequired()
                 },
+                isRemoteDnsStrictlyTun = settingsViewModel.composeIsRemoteDnsStrictlyTun,
+                onRemoteDnsStrictlyTunChange = {
+                    settings.isRemoteDnsStrictlyTun = it
+                    settingsViewModel.composeIsRemoteDnsStrictlyTun = it
+                    onRestartRequired()
+                },
                 isFakeIpEnabled = settingsViewModel.composeIsFakeIpEnabled,
                 onFakeIpChange = {
                     settings.isFakeIpEnabled = it

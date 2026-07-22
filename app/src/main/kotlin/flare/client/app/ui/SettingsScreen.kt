@@ -150,6 +150,18 @@ fun SettingsScreen(
                     onClick = onVpnSubscriptionClick,
                     iconBgColor = Color(0xFF5856D6)
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = strings.settings_app_version.format(flare.client.app.BuildConfig.VERSION_NAME),
+                    color = FlareTheme.colors.textSecondary,
+                    fontFamily = GeologicaRegular,
+                    fontSize = 14.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
 

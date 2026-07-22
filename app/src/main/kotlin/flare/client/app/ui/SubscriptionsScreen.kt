@@ -1,6 +1,7 @@
 package flare.client.app.ui
 
 import flare.client.app.ui.i18n.I18n
+import flare.client.app.BuildConfig
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
@@ -62,7 +63,7 @@ fun SubscriptionsScreen(
 ) {
     val isDark = FlareTheme.colors.isDark
 
-    val standardUserAgents = listOf("Happ/3.21.1", "FlareVPN/1.2.0", "v2rayNG/2.1.5", "v2rayTUN/5.23.73", "sing-box")
+    val standardUserAgents = listOf("Happ/3.21.1", "FlareVPN/${BuildConfig.VERSION_NAME}", "v2rayNG/2.1.5", "v2rayTUN/5.23.73", "sing-box")
 
     val scrollState = rememberScrollState()
 
@@ -176,7 +177,7 @@ fun SubscriptionsScreen(
                             onValueChange = { newValue ->
                                 onUserAgentClick(newValue.ifEmpty { "custom" })
                             },
-                            hint = "Flare/1.2.0",
+                            hint = "FlareVPN/${BuildConfig.VERSION_NAME}",
                             hazeState = hazeState,
                             accentColor = accentColor,
                             cornerType = DisplayItem.CornerType.BOTTOM

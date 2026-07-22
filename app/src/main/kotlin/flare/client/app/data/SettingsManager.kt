@@ -133,6 +133,10 @@ class SettingsManager(private val context: Context) {
         get() = prefs.getBoolean("dns_doh_enabled", true)
         set(value) = prefs.edit().putBoolean("dns_doh_enabled", value).apply()
 
+    var isRemoteDnsStrictlyTun: Boolean
+        get() = prefs.getBoolean("dns_strictly_tun", false)
+        set(value) = prefs.edit().putBoolean("dns_strictly_tun", value).apply()
+
     var lastWidgetPing: String
         get() = prefs.getString("last_widget_ping", "--") ?: "--"
         set(value) = prefs.edit().putString("last_widget_ping", value).apply()
