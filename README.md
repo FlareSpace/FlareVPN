@@ -9,7 +9,7 @@ Flare is a powerful open-source VPN client designed for flexibility, security, a
 
 ---
 
-## 🌍 Languages / Языки
+## Languages / Языки
 - [English](#english-version)
 - [Русский](#русская-версия)
 
@@ -21,28 +21,29 @@ Flare is a powerful open-source VPN client designed for flexibility, security, a
   <img src=".github/assets/home_eu.png" width="450" alt="Flare VPN Main Screen">
 </p>
 
-### 🛠 Supported Protocols
+### Supported Protocols
 Flare supports a wide range of modern protocols, including:
-- **VLESS** (Reality)
+- **VLESS** (Reality, xhttp)
 - **Shadowsocks**
 - **Hysteria 2**
 - And many others!
 
-### ✨ Advanced Features
+### Advanced Features
 Flare offers professional-grade tunnel settings to bypass censorship and optimize your connection:
 - **Fragmentation:** Split packets to evade detection.
 - **Mux:** Multiple streams over a single connection for better efficiency.
 - **Fake IP:** Enhance DNS performance and privacy.
+- **Proxy Chaining:** Route your traffic through multi-hop proxy chains.
 - And much more to explore!
 
 <p align="center">
   <img src=".github/assets/advanced_eu.png" width="450" alt="Advanced Settings">
 </p>
 
-### 📡 Creating your own servers
+### Creating your own servers
 FlareVPN supports the deployment and management of your own VPN servers based on the most modern and block-resistant protocols:
 
-* **VLESS (with REALITY support)**
+* **VLESS (with REALITY and xhttp support)**
 * **Hysteria 2**
 * **Shadowsocks**
 * **WireGuard**
@@ -54,14 +55,14 @@ FlareVPN supports the deployment and management of your own VPN servers based on
   <img src=".github/assets/protocols_eu.png" width="450" alt="protocols">
 </p>
 
-### 🛠 Installation
+### Installation
 1. Download `Flare.apk` from the [Releases](https://github.com/FlareSpace/FlareVPN/releases) page.
 2. Install the APK on your device.
 3. Grant the required permissions when the app starts.
 4. **Done!** Let's get started.
 
 
-### 📢 Telegram Channel
+### Telegram Channel
 **[@FlareApp](https://t.me/FlareApp)** - Official Flare VPN news and updates.
 
 ---
@@ -75,29 +76,30 @@ FlareVPN supports the deployment and management of your own VPN servers based on
 Новый уровень защиты и конфиденциальности.
 Flare — это мощный VPN-клиент с открытым исходным кодом, созданный для обеспечения гибкости, безопасности и высокой производительности. Flare предоставляет современный интерфейс для управления вашими защищенными туннелями на базе ядра `sing-box`.
 
-### 🛠 Поддерживаемые протоколы
+### Поддерживаемые протоколы
 Flare поддерживает широкий спектр современных протоколов:
-- **VLESS** (Reality)
+- **VLESS** (Reality, xhttp)
 - **Shadowsocks**
 - **Hysteria 2**
 - И многие другие!
 
-### ✨ Продвинутые функции
+### Продвинутые функции
 В Flare доступны профессиональные настройки туннелей для обхода цензуры и оптимизации соединения:
 - **Фрагментация:** Разделение пакетов для обхода средств обнаружения.
 - **Mux:** Мультиплексирование потоков для повышения эффективности.
 - **Fake IP:** Улучшение производительности DNS и конфиденциальности.
+- **Proxy Chaining:** Маршрутизация трафика через цепочки прокси (multi-hop).
 - И еще немало других полезных опций!
 
 <p align="center">
   <img src=".github/assets/advanced_ru.png" width="450" alt="Продвинутые настройки">
 </p>
 
-### 📡 Создание своих серверов
+### Создание своих серверов
 
 FlareVPN поддерживает развертывание и управление собственными VPN-серверами на базе самых современных и устойчивых к блокировкам протоколов:
 
-* **VLESS (с поддержкой REALITY)**
+* **VLESS (с поддержкой REALITY и xhttp)**
 * **Hysteria 2**
 * **Shadowsocks**
 * **WireGuard**
@@ -109,13 +111,13 @@ FlareVPN поддерживает развертывание и управлен
   <img src=".github/assets/protocols_ru.png" width="450" alt="Протоколы">
 </p>
 
-### 🛠 Установка
+### Установка
 1. Скачайте `Flare.apk` со страницы [Релизов](https://github.com/FlareSpace/FlareVPN/releases).
 2. Установите APK на ваше устройство.
 3. Выдайте необходимые разрешения при первом запуске приложения.
 4. **Готово!** Можно пользоваться.
 
-### 📢 Telegram-канал
+### Telegram-канал
 **[@FlareApp](https://t.me/FlareApp)** — официальный Telegram-канал проекта Flare VPN.
 
 ---
