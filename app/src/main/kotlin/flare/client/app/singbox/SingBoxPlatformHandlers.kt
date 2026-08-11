@@ -33,8 +33,6 @@ internal class FlareCommandServerHandler(
     override fun writeDebugMessage(message: String?) {
         if (!message.isNullOrBlank()) Log.i(TAG, "[sb] $message")
     }
-    override fun triggerNativeCrash() {}
-    override fun connectSSHAgent(): Int = 0
 }
 
 internal class FlarePlatformInterface : PlatformInterface {
@@ -121,13 +119,13 @@ internal class FlarePlatformInterface : PlatformInterface {
 
                 if (opts.autoRoute) {
                     try {
-                        val dnsServers = opts.dnsServerAddress
-                        if (dnsServers != null && dnsServers.hasNext()) {
-                            while (dnsServers.hasNext()) {
-                                val dnsAddr = dnsServers.next()
-                                if (!dnsAddr.isNullOrBlank()) {
-                                    builder.addDnsServer(dnsAddr as String)
-                                    Log.d(TAG, "openTun: added DNS server $dnsAddr")
+                        val dnsVal = opts.dnsServerAddress?.value
+                        if (!dnsVal.isNullOrBlank()) {
+                            for (dnsAddr in dnsVal.split(Regex("[,\\s]+"))) {
+                                val trimmed = dnsAddr.trim()
+                                if (trimmed.isNotEmpty()) {
+                                    builder.addDnsServer(trimmed)
+                                    Log.d(TAG, "openTun: added DNS server $trimmed")
                                 }
                             }
                         } else {
@@ -215,25 +213,6 @@ internal class FlarePlatformInterface : PlatformInterface {
             return -1
         }
     }
-
-    override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
-    override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
-    override fun registerMyInterface(name: String?) {}
-    override fun usePlatformShell(): Boolean = false
-    override fun checkPlatformShell() {}
-    override fun openShellSession(
-        user: PlatformUser?,
-        command: String?,
-        environ: StringIterator?,
-        term: String?,
-        rows: Int,
-        cols: Int
-    ): ShellSession? = null
-
-    override fun lookupUser(username: String?): PlatformUser? = null
-    override fun lookupSFTPServer(): String? = null
-    override fun readSystemSSHHostKey(): String? = null
-    override fun tailscaleHostname(): String = ""
 
     override fun readWIFIState(): WIFIState? = null
     override fun sendNotification(notification: Notification?) {}

@@ -62,7 +62,6 @@ object SingBoxManager {
                         tempPath = context.cacheDir.absolutePath
                         fixAndroidStack = true
                         logMaxLines = 500
-                        crashReportSource = "core"
                     }
             Libbox.setup(options)
 

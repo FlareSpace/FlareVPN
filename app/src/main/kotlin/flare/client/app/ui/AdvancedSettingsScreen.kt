@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import android.content.Context
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -280,12 +281,17 @@ fun AdvancedSettingsScreen(
                     modifier = Modifier.padding(top = 8.dp, bottom = 24.dp, start = 4.dp)
                 )
 
-                FlareSectionHeader(I18n.strings.settings_label_tls_spoof)
-                Column(modifier = Modifier.clip(RoundedCornerShape(20.dp))) {
+                FlareSectionHeader(I18n.strings.settings_label_tls_spoof + " (sing-box 1.14.0+)")
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .alpha(0.45f)
+                ) {
                     FlareSettingsToggleItem(
                         title = I18n.strings.settings_label_tls_spoof,
                         checked = isTlsSpoofEnabled,
-                        onCheckedChange = onTlsSpoofChange,
+                        onCheckedChange = { /* Disabled */ },
+                        enabled = false,
                         hazeState = hazeState,
                         accentColor = accentColor,
                         cornerType = if (isTlsSpoofEnabled) DisplayItem.CornerType.TOP else DisplayItem.CornerType.ALL
@@ -296,7 +302,8 @@ fun AdvancedSettingsScreen(
                             FlareSettingsInputItem(
                                 title = I18n.strings.settings_label_tls_spoof_domain,
                                 value = tlsSpoofDomain,
-                                onValueChange = onTlsSpoofDomainChange,
+                                onValueChange = { /* Disabled */ },
+                                enabled = false,
                                 hazeState = hazeState,
                                 accentColor = accentColor,
                                 cornerType = DisplayItem.CornerType.NONE
@@ -305,11 +312,8 @@ fun AdvancedSettingsScreen(
                             FlareSettingsValueItem(
                                 title = I18n.strings.settings_label_tls_spoof_method,
                                 value = tlsSpoofMethod,
-                                menuItems = tlsSpoofMethodOptions.mapIndexed { i, opt ->
-                                    flare.client.app.util.GlassUtils.MenuItem(i, opt) {
-                                        onTlsSpoofMethodClick(opt)
-                                    }
-                                },
+                                enabled = false,
+                                menuItems = emptyList(),
                                 hazeState = hazeState,
                                 accentColor = accentColor,
                                 cornerType = DisplayItem.CornerType.BOTTOM
@@ -318,10 +322,10 @@ fun AdvancedSettingsScreen(
                     }
                 }
                 Text(
-                    text = I18n.strings.settings_desc_tls_spoof,
+                    text = I18n.strings.settings_desc_tls_spoof + " " + I18n.strings.settings_tls_spoof_unavailable,
                     fontFamily = flare.client.app.ui.components.GeologicaRegular,
                     fontSize = 12.sp,
-                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.7f),
+                    color = FlareTheme.colors.textSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 8.dp, bottom = 24.dp, start = 4.dp)
                 )
 

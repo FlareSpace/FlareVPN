@@ -263,6 +263,7 @@ fun FlareSettingsToggleItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     hazeState: HazeState? = null,
     icon: Int = 0,
     description: String? = null,
@@ -365,7 +366,8 @@ fun FlareSettingsToggleItem(
                 FlareGlassSwitch(
                     checked = checked,
                     onCheckedChange = onCheckedChange,
-                    accentColor = accentColor
+                    accentColor = accentColor,
+                    enabled = enabled
                 )
             }
         }
@@ -389,6 +391,7 @@ fun FlareSettingsValueItem(
     onClick: (() -> Unit)? = null,
     menuItems: List<flare.client.app.util.GlassUtils.MenuItem>? = null,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     hazeState: HazeState? = null,
     icon: Int = 0,
     description: String? = null,
@@ -410,10 +413,12 @@ fun FlareSettingsValueItem(
             paddingHorizontal = 16.dp,
             paddingVertical = 0.dp,
             onClick = {
-                if (menuItems != null) {
-                    menuExpanded = true
-                } else {
-                    onClick?.invoke()
+                if (enabled) {
+                    if (menuItems != null) {
+                        menuExpanded = true
+                    } else {
+                        onClick?.invoke()
+                    }
                 }
             },
             cornerRadius = 20.dp,
@@ -543,6 +548,7 @@ fun FlareSettingsInputItem(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     hazeState: HazeState? = null,
     icon: Int = 0,
     description: String? = null,
@@ -596,7 +602,7 @@ fun FlareSettingsInputItem(
             borderWidth = currentBorderWidth,
             backgroundColor = cardBgColor,
             cornerRadius = 20.dp,
-            onClick = { focusRequester.requestFocus() }
+            onClick = { if (enabled) focusRequester.requestFocus() }
         ) {
             Row(
                 modifier = Modifier.fillMaxSize(),
@@ -705,6 +711,7 @@ fun FlareSettingsInputItem(
                             color = accentColor,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End
                         ),
+                        enabled = enabled,
                         modifier = Modifier
                             .focusRequester(focusRequester)
                             .onFocusChanged { isFocused = it.isFocused }

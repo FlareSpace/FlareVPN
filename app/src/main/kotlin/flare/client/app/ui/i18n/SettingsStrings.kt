@@ -116,6 +116,7 @@ interface SettingsStrings {
     val settings_desc_reset_chain: String
     val settings_label_tls_spoof: String
     val settings_desc_tls_spoof: String
+    val settings_tls_spoof_unavailable: String
     val settings_label_tls_spoof_domain: String
     val settings_label_tls_spoof_method: String
     val settings_label_fingerprint: String
@@ -408,6 +409,7 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_desc_reset_chain : String = "Автоматически очищать цепочку прокси после остановки VPN."
     override val settings_label_tls_spoof : String = "TLS Spoof"
     override val settings_desc_tls_spoof : String = "Подмена SNI для обхода блокировок. Отправляет поддельный ClientHello с белым доменом перед настоящим."
+    override val settings_tls_spoof_unavailable : String = "(Временно недоступно до выхода ядра sing-box 1.14.0)"
     override val settings_label_tls_spoof_domain : String = "Домен"
     override val settings_label_tls_spoof_method : String = "Метод"
     override val settings_label_fingerprint : String = "Отпечаток"
@@ -700,6 +702,7 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_desc_reset_chain : String = "Automatically clear the proxy chain after stopping the VPN."
     override val settings_label_tls_spoof : String = "TLS Spoof"
     override val settings_desc_tls_spoof : String = "SNI spoofing to bypass blocks. Sends a forged ClientHello with a whitelisted domain before the real one."
+    override val settings_tls_spoof_unavailable : String = "(Temporarily unavailable until sing-box 1.14.0 core release)"
     override val settings_label_tls_spoof_domain : String = "Domain"
     override val settings_label_tls_spoof_method : String = "Method"
     override val settings_label_fingerprint : String = "Fingerprint"

@@ -261,6 +261,7 @@ object SingBoxConfigPatcher {
                 }
             }
 
+            /* TLS Spoof disabled until sing-box 1.14.0 core upgrade
             if (settings.isTlsSpoofEnabled) {
                 val domain = settings.tlsSpoofDomain.trim()
                 val method = settings.tlsSpoofMethod.trim()
@@ -287,6 +288,7 @@ object SingBoxConfigPatcher {
                     }
                 }
             }
+            */
 
             val fingerprint = settings.fingerprint
             if (fingerprint != "auto") {

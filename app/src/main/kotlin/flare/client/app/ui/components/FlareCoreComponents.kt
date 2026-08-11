@@ -609,7 +609,8 @@ fun FlareDivider(
 fun FlareGlassSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    accentColor: Color = FlareTheme.colors.accent
+    accentColor: Color = FlareTheme.colors.accent,
+    enabled: Boolean = true
 ) {
     val thumbOffset by animateDpAsState(
         targetValue = if (checked) 20.dp else 0.dp,
@@ -621,17 +622,17 @@ fun FlareGlassSwitch(
     )
 
     val trackColor by animateColorAsState(
-        targetValue = if (checked) accentColor else Color.Gray.copy(alpha = 0.2f),
+        targetValue = if (!enabled) Color.Gray.copy(alpha = 0.15f) else if (checked) accentColor else Color.Gray.copy(alpha = 0.2f),
         label = "trackColor"
     )
 
     val glowAlpha by animateFloatAsState(
-        targetValue = if (checked) 1f else 0f,
+        targetValue = if (enabled && checked) 1f else 0f,
         animationSpec = tween(durationMillis = 250),
         label = "switchGlowAlpha"
     )
 
-    val thumbColor = Color.White
+    val thumbColor = if (!enabled) Color.Gray.copy(alpha = 0.4f) else Color.White
 
     Box(
         modifier = Modifier
@@ -698,6 +699,7 @@ fun FlareGlassSwitch(
             .clip(RoundedCornerShape(14.dp))
             .background(trackColor)
             .clickable(
+                enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = { onCheckedChange(!checked) }

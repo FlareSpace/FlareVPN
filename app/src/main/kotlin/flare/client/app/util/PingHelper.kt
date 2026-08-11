@@ -205,8 +205,6 @@ object PingHelper {
             override fun getSystemProxyStatus() = SystemProxyStatus()
             override fun setSystemProxyEnabled(enabled: Boolean) {}
             override fun writeDebugMessage(message: String?) {}
-            override fun triggerNativeCrash() {}
-            override fun connectSSHAgent(): Int = 0
         }
 
         val platform = object : PlatformInterface {
@@ -227,24 +225,6 @@ object PingHelper {
             override fun underNetworkExtension(): Boolean = false
             override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
             override fun useProcFS(): Boolean = true
-
-            override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
-            override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
-            override fun registerMyInterface(name: String?) {}
-            override fun usePlatformShell(): Boolean = false
-            override fun checkPlatformShell() {}
-            override fun openShellSession(
-                user: PlatformUser?,
-                command: String?,
-                environ: StringIterator?,
-                term: String?,
-                rows: Int,
-                cols: Int
-            ): ShellSession? = null
-            override fun lookupUser(username: String?): PlatformUser? = null
-            override fun lookupSFTPServer(): String? = null
-            override fun readSystemSSHHostKey(): String? = null
-            override fun tailscaleHostname(): String = ""
         }
 
         val boxService = Libbox.newCommandServer(handler, platform)
