@@ -7,6 +7,8 @@ import flare.client.app.data.parser.V2RayConfigConverter
 import android.net.ConnectivityManager
 import android.net.Network
 import io.nekohasekai.libbox.*
+import java.io.File
+import flare.client.app.singbox.NetworkInterfaceHelper
 import flare.client.app.singbox.LocalResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
@@ -205,6 +207,8 @@ object PingHelper {
             override fun getSystemProxyStatus() = SystemProxyStatus()
             override fun setSystemProxyEnabled(enabled: Boolean) {}
             override fun writeDebugMessage(message: String?) {}
+            override fun connectSSHAgent(): Int = -1
+            override fun triggerNativeCrash() {}
         }
 
         val platform = object : PlatformInterface {
@@ -213,29 +217,50 @@ object PingHelper {
             override fun closeDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
             override fun findConnectionOwner(
                 p0: Int, p1: String?, p2: Int, p3: String?, p4: Int
-            ): ConnectionOwner? = null
-            override fun getInterfaces(): NetworkInterfaceIterator? = null
+            ): ConnectionOwner? = throw java.util.NoSuchElementException("owner not found")
+            override fun getInterfaces(): NetworkInterfaceIterator? =
+                NetworkInterfaceHelper.getInterfaces(context)
             override fun includeAllNetworks(): Boolean = false
             override fun localDNSTransport(): LocalDNSTransport? = LocalResolver
             override fun openTun(o: TunOptions?): Int = -1
             override fun readWIFIState(): WIFIState? = null
             override fun sendNotification(n: Notification?) {}
             override fun startDefaultInterfaceMonitor(l: InterfaceUpdateListener?) {}
-            override fun systemCertificates(): StringIterator? = null
+            override fun cancelNotification(identifier: String?, typeID: Int) {}
+            override fun checkPlatformShell() {}
+            override fun closeNeighborMonitor(l: NeighborUpdateListener?) {}
+            override fun createBridge(o: BridgeOptions?): BridgeSession? = null
+            override fun lookupSFTPServer(): String = ""
+            override fun lookupUser(username: String?): PlatformUser? = null
+            override fun openShellSession(
+                u: PlatformUser?,
+                c: String?,
+                e: StringIterator?,
+                t: String?,
+                r: Int,
+                cols: Int
+            ): ShellSession? = null
+            override fun readSystemSSHHostKey(): String = ""
+            override fun registerMyInterface(name: String?) {}
+            override fun startNeighborMonitor(l: NeighborUpdateListener?) {}
+            override fun tailscaleHostname(): String = ""
             override fun underNetworkExtension(): Boolean = false
             override fun usePlatformAutoDetectInterfaceControl(): Boolean = false
-            override fun useProcFS(): Boolean = true
+            override fun usePlatformBridge(): Boolean = false
+            override fun usePlatformShell(): Boolean = false
+            override fun useProcFS(): Boolean = false
         }
 
         val boxService = Libbox.newCommandServer(handler, platform)
         val clashPort = findAvailablePort()
         val clashSecret = java.util.UUID.randomUUID().toString()
+        val pingCacheFile = File(context.cacheDir, "ping_cache_${System.currentTimeMillis()}_$clashPort.db")
         val excludedIndices = HashSet<Int>()
         try {
             var serviceStarted = false
             var retryCount = 0
             val maxRetries = 15
-            var batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
+            var batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, pingCacheFile, excludedIndices, onResult)
 
             while (!serviceStarted && retryCount < maxRetries) {
                 if (batchResult == null || excludedIndices.size >= profiles.size) {
@@ -301,7 +326,7 @@ object PingHelper {
                     }
 
                     retryCount++
-                    batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, excludedIndices, onResult)
+                    batchResult = buildBatchConfig(context, profiles, testUrl, clashPort, clashSecret, pingCacheFile, excludedIndices, onResult)
                 }
             }
 
@@ -389,6 +414,9 @@ object PingHelper {
                 boxService.closeService()
                 boxService.close()
             } catch (_: Exception) {}
+            try {
+                if (pingCacheFile.exists()) pingCacheFile.delete()
+            } catch (_: Exception) {}
         }
     }
 
@@ -398,6 +426,7 @@ object PingHelper {
         testUrl: String,
         clashPort: Int,
         clashSecret: String,
+        pingCacheFile: File,
         excludedIndices: MutableSet<Int>,
         onResult: suspend (Long, Long, String?) -> Unit
     ): Pair<JSONObject, Map<Int, Int>>? {
@@ -557,10 +586,15 @@ object PingHelper {
                         put("external_controller", "127.0.0.1:$clashPort")
                         put("secret", clashSecret)
                     })
+                    put("cache_file", JSONObject().apply {
+                        put("enabled", true)
+                        put("path", pingCacheFile.absolutePath)
+                        put("store_dns", true)
+                    })
                 })
                 put("log", JSONObject().apply { put("level", "error") })
                 put("dns", JSONObject().apply {
-                    put("independent_cache", true)
+                    put("optimistic", true)
                     put("servers", JSONArray().apply {
                         put(dnsDirectObj)
                         put(JSONObject().apply {

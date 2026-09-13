@@ -41,6 +41,8 @@ class SimpleEditorState(
     var pin by mutableStateOf("")
     var obfsType by mutableStateOf("")
     var obfsPassword by mutableStateOf("")
+    var obfsMinPacketSize by mutableStateOf("")
+    var obfsMaxPacketSize by mutableStateOf("")
     var hopInterval by mutableStateOf("")
 
     var transport by mutableStateOf("tcp")
@@ -223,11 +225,15 @@ class SimpleEditorState(
                     if (scheme == "hysteria2" || scheme == "hy2") {
                         obfsType = queryParams["obfs"] ?: queryParams["obfs-type"] ?: ""
                         obfsPassword = queryParams["obfs-password"] ?: queryParams["obfspassword"] ?: ""
+                        obfsMinPacketSize = queryParams["obfs-min-packet-size"] ?: queryParams["min_packet_size"] ?: queryParams["min-packet-size"] ?: ""
+                        obfsMaxPacketSize = queryParams["obfs-max-packet-size"] ?: queryParams["max_packet_size"] ?: queryParams["max-packet-size"] ?: ""
                         mport = queryParams["mport"] ?: ""
                         hopInterval = queryParams["hop_interval"] ?: queryParams["hop-interval"] ?: queryParams["hopInterval"] ?: ""
                     } else {
                         obfsType = queryParams["obfs"] ?: ""
                         obfsPassword = ""
+                        obfsMinPacketSize = ""
+                        obfsMaxPacketSize = ""
                         mport = queryParams["mport"] ?: ""
                         hopInterval = ""
                     }
@@ -415,6 +421,14 @@ class SimpleEditorState(
                             query.add("obfs=${encode(obfsType.trim())}")
                             if (obfsPassword.trim().isNotEmpty()) {
                                 query.add("obfs-password=${encode(obfsPassword.trim())}")
+                            }
+                            if (obfsType.trim() == "gecko") {
+                                if (obfsMinPacketSize.trim().isNotEmpty()) {
+                                    query.add("obfs-min-packet-size=${encode(obfsMinPacketSize.trim())}")
+                                }
+                                if (obfsMaxPacketSize.trim().isNotEmpty()) {
+                                    query.add("obfs-max-packet-size=${encode(obfsMaxPacketSize.trim())}")
+                                }
                             }
                         }
                         if (hopInterval.trim().isNotEmpty()) {

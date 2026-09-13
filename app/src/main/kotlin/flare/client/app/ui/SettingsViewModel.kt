@@ -90,6 +90,7 @@ class SettingsViewModel : ViewModel() {
     var composeTlsSpoofDomain by mutableStateOf("google.com")
     var composeTlsSpoofMethod by mutableStateOf("wrong-ack")
     var composeFingerprint by mutableStateOf("auto")
+    var composeIsChromeParrotEnabled by mutableStateOf(true)
 
     
     var composePingType by mutableStateOf("via proxy GET")
@@ -153,6 +154,7 @@ class SettingsViewModel : ViewModel() {
         composeTlsSpoofDomain = settings.tlsSpoofDomain
         composeTlsSpoofMethod = settings.tlsSpoofMethod
         composeFingerprint = settings.fingerprint
+        composeIsChromeParrotEnabled = settings.isChromeParrotEnabled
     }
 
     fun syncPing(settings: SettingsManager) {

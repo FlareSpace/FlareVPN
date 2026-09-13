@@ -12,7 +12,10 @@ import com.google.zxing.qrcode.QRCodeWriter
 object QrUtils {
     fun generateQrCodeBitmap(content: String, sizePx: Int = 900): Bitmap? {
         return try {
-            val hints = mapOf(EncodeHintType.MARGIN to 0)
+            val hints = mapOf(
+                EncodeHintType.MARGIN to 0,
+                EncodeHintType.CHARACTER_SET to "UTF-8"
+            )
             val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, 0, 0, hints)
             val width = matrix.width
             val height = matrix.height

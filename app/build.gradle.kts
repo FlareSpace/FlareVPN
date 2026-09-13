@@ -21,8 +21,8 @@ android {
         applicationId = "flare.client.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 31
-        versionName = "1.3.6"
+        versionCode = 37
+        versionName = "1.3.11"
 
         ndk {
             abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
@@ -93,6 +93,10 @@ android {
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -134,4 +138,6 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

@@ -507,7 +507,7 @@ object ClipboardParser {
             })
             put("final", "dns-remote")
             put("strategy", "prefer_ipv4")
-            put("independent_cache", true)
+            put("optimistic", true)
         })
 
         sb.put("inbounds", JSONArray().apply {
@@ -521,7 +521,7 @@ object ClipboardParser {
                 put("mtu", 1500)
                 put("auto_route", true)
                 put("strict_route", true)
-                put("stack", "mixed")
+                put("stack", "gvisor")
             })
         })
 
@@ -623,7 +623,7 @@ object ClipboardParser {
                 put("mtu", 1500)
                 put("auto_route", true)
                 put("strict_route", true)
-                put("stack", "mixed")
+                put("stack", "gvisor")
             })
         })
 
@@ -940,6 +940,8 @@ object ClipboardParser {
         val downMbps = firstNonBlankParam(params, "downmbps", "down-mbps", "down")?.toIntOrNull()
         val obfsType = firstNonBlankParam(params, "obfs", "obfs-type")
         val obfsPassword = firstNonBlankParam(params, "obfs-password", "obfspassword")
+        val obfsMinPacketSize = firstNonBlankParam(params, "obfs-min-packet-size", "min_packet_size", "min-packet-size")?.toIntOrNull()
+        val obfsMaxPacketSize = firstNonBlankParam(params, "obfs-max-packet-size", "max_packet_size", "max-packet-size")?.toIntOrNull()
         val sni = firstNonBlankParam(params, "sni", "peer") ?: parsed.host ?: ""
         val insecure = parseFlexibleBoolean(
             firstNonBlankParam(params, "insecure", "allowInsecure", "skip-cert-verify")
@@ -965,6 +967,8 @@ object ClipboardParser {
                 put("obfs", JSONObject().apply {
                     put("type", obfsType)
                     if (!obfsPassword.isNullOrBlank()) put("password", obfsPassword)
+                    if (obfsMinPacketSize != null && obfsMinPacketSize > 0) put("min_packet_size", obfsMinPacketSize)
+                    if (obfsMaxPacketSize != null && obfsMaxPacketSize > 0) put("max_packet_size", obfsMaxPacketSize)
                 })
             }
         })

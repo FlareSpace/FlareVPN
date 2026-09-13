@@ -6,7 +6,7 @@ import org.json.JSONObject
 object InboundConverter {
     fun createTunInbound(xray: JSONObject): JSONObject {
         var mtu = 1500
-        var stack = "mixed"
+        var stack = "gvisor"
         var ipv4Addr = "172.19.0.1/30"
         var ipv6Addr = "fdfe:dcba:9876::1/126"
         var sniffingEnabled = true

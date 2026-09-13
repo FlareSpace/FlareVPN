@@ -46,6 +46,11 @@ object SingBoxFixer {
                     
                     remove("sniff")
                     remove("sniff_override_destination")
+                    val mapping = optString("udp_mapping")
+                    if (mapping.isNotEmpty() && mapping != "endpoint_independent" && mapping != "address_dependent" && mapping != "address_and_port_dependent") {
+                        remove("udp_mapping")
+                    }
+                    remove("udp_nat_max")
                 }
             }
         }
@@ -116,6 +121,8 @@ object SingBoxFixer {
         if (!dns.has("strategy")) {
             dns.put("strategy", "prefer_ipv4")
         }
+        dns.remove("independent_cache")
+        dns.put("optimistic", true)
 
         val dnsRules = dns.optJSONArray("rules") ?: JSONArray().also { dns.put("rules", it) }
         if (rcodeServersMap.isNotEmpty()) {

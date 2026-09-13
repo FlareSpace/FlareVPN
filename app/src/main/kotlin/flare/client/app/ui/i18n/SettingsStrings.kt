@@ -116,12 +116,13 @@ interface SettingsStrings {
     val settings_desc_reset_chain: String
     val settings_label_tls_spoof: String
     val settings_desc_tls_spoof: String
-    val settings_tls_spoof_unavailable: String
     val settings_label_tls_spoof_domain: String
     val settings_label_tls_spoof_method: String
     val settings_label_fingerprint: String
     val settings_item_tls_fingerprint: String
     val settings_desc_fingerprint: String
+    val settings_label_chrome_parrot: String
+    val settings_desc_chrome_parrot: String
     val settings_label_send_hwid: String
     val settings_label_send_os: String
     val settings_label_send_model: String
@@ -409,12 +410,13 @@ object RuSettingsStrings : SettingsStrings {
     override val settings_desc_reset_chain : String = "Автоматически очищать цепочку прокси после остановки VPN."
     override val settings_label_tls_spoof : String = "TLS Spoof"
     override val settings_desc_tls_spoof : String = "Подмена SNI для обхода блокировок. Отправляет поддельный ClientHello с белым доменом перед настоящим."
-    override val settings_tls_spoof_unavailable : String = "(Временно недоступно до выхода ядра sing-box 1.14.0)"
     override val settings_label_tls_spoof_domain : String = "Домен"
     override val settings_label_tls_spoof_method : String = "Метод"
     override val settings_label_fingerprint : String = "Отпечаток"
     override val settings_item_tls_fingerprint : String = "TLS Отпечаток"
     override val settings_desc_fingerprint : String = "Маскирует ваш TLS трафик под выбранный браузер/клиент. Если выбрано Auto, отпечаток будет взят из конфигурации."
+    override val settings_label_chrome_parrot : String = "Chrome Parrot"
+    override val settings_desc_chrome_parrot : String = "Маскирует QUIC-трафик Hysteria 2 под браузер Chrome для защиты от блокировок. Отключите при ошибках подключения к серверам с сертификатом Ed25519."
     override val settings_label_send_hwid : String = "Отправка HWID"
     override val settings_label_send_os : String = "Отправка ос"
     override val settings_label_send_model : String = "Отправка модели"
@@ -702,12 +704,13 @@ object EnSettingsStrings : SettingsStrings {
     override val settings_desc_reset_chain : String = "Automatically clear the proxy chain after stopping the VPN."
     override val settings_label_tls_spoof : String = "TLS Spoof"
     override val settings_desc_tls_spoof : String = "SNI spoofing to bypass blocks. Sends a forged ClientHello with a whitelisted domain before the real one."
-    override val settings_tls_spoof_unavailable : String = "(Temporarily unavailable until sing-box 1.14.0 core release)"
     override val settings_label_tls_spoof_domain : String = "Domain"
     override val settings_label_tls_spoof_method : String = "Method"
     override val settings_label_fingerprint : String = "Fingerprint"
     override val settings_item_tls_fingerprint : String = "TLS Fingerprint"
     override val settings_desc_fingerprint : String = "Masks your TLS traffic as a selected browser/client. If Auto is selected, the fingerprint will be taken from the configuration."
+    override val settings_label_chrome_parrot : String = "Chrome Parrot"
+    override val settings_desc_chrome_parrot : String = "Impersonates Chrome's QUIC traffic for Hysteria 2 to bypass DPI filters. Disable if connection fails on servers with an Ed25519 certificate."
     override val settings_label_send_hwid : String = "Send HWID"
     override val settings_label_send_os : String = "Send OS"
     override val settings_label_send_model : String = "Send Model"

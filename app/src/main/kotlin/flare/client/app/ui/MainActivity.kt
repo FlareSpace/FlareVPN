@@ -465,7 +465,11 @@ class MainActivity : AppCompatActivity() {
                                 if (link != null) {
                                     lastQrIsSubscription = false
                                     profileQrBitmap = QrUtils.generateQrCodeBitmap(link)
-                                    showProfileQrDialogState = true
+                                    if (profileQrBitmap != null) {
+                                        showProfileQrDialogState = true
+                                    } else {
+                                        showToast(I18n.strings.error_profile_qr_generation)
+                                    }
                                 } else {
                                     showToast(I18n.strings.error_link_generation)
                                 }

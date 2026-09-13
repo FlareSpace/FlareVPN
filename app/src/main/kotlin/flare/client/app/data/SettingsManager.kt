@@ -74,8 +74,23 @@ class SettingsManager(private val context: Context) {
         set(value) = prefs.edit().putString("split_tunneling_mode_sites", value).apply()
 
     var tunStack: String
-        get() = prefs.getString("tun_stack", "mixed") ?: "mixed"
-        set(value) = prefs.edit().putString("tun_stack", value).apply()
+        get() {
+            if (!prefs.getBoolean("tun_stack_migrated_1_14", false)) {
+                val current = prefs.getString("tun_stack", null)
+                if (current == null || current == "mixed" || current == "system") {
+                    prefs.edit().putString("tun_stack", "gvisor").putBoolean("tun_stack_migrated_1_14", true).apply()
+                    return "gvisor"
+                }
+                prefs.edit().putBoolean("tun_stack_migrated_1_14", true).apply()
+            }
+            return prefs.getString("tun_stack", "gvisor") ?: "gvisor"
+        }
+        set(value) {
+            prefs.edit()
+                .putString("tun_stack", value)
+                .putBoolean("tun_stack_migrated_1_14", true)
+                .apply()
+        }
 
     var isAutostartEnabled: Boolean
         get() = prefs.getBoolean("autostart_enabled", false)
@@ -461,6 +476,10 @@ class SettingsManager(private val context: Context) {
     var fingerprint: String
         get() = prefs.getString("fingerprint", "auto") ?: "auto"
         set(value) = prefs.edit().putString("fingerprint", value).apply()
+
+    var isChromeParrotEnabled: Boolean
+        get() = prefs.getBoolean("chrome_parrot_enabled", true)
+        set(value) = prefs.edit().putBoolean("chrome_parrot_enabled", value).apply()
 
     var isVirtualSubscriptionPinned: Boolean
         get() = prefs.getBoolean("virtual_sub_pinned", false)

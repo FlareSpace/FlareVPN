@@ -406,7 +406,7 @@ object V2RayConfigConverter {
             put("rules", sbDnsRules)
             put("final", "dns-remote")
             put("strategy", strategy)
-            put("independent_cache", true)
+            put("optimistic", true)
         }
         sb.put("dns", sbDns)
 

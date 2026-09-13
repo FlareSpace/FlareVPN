@@ -280,6 +280,12 @@ internal fun NavGraphBuilder.flareSettingsGraph(
                     settingsViewModel.composeFingerprint = it
                     onRestartRequired()
                 },
+                isChromeParrotEnabled = settingsViewModel.composeIsChromeParrotEnabled,
+                onChromeParrotChange = {
+                    settings.isChromeParrotEnabled = it
+                    settingsViewModel.composeIsChromeParrotEnabled = it
+                    onRestartRequired()
+                },
                 accentColor = settingsViewModel.composeAccentColor,
                 onBack = { navController.popBackStack() },
                 hazeState = localHazeState

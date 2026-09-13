@@ -735,14 +735,14 @@ fun ProfileSimpleEditor(
                                         value = if (obfsType.isEmpty()) "None" else obfsType,
                                         expanded = isObfsMenuExpanded,
                                         onExpandedChange = { isObfsMenuExpanded = it },
-                                        options = listOf("", "salamander"),
-                                        optionTitles = listOf("None", "salamander"),
+                                        options = listOf("", "salamander", "gecko"),
+                                        optionTitles = listOf("None", "salamander", "gecko"),
                                         onOptionSelected = { obfsType = it },
                                         accentColor = accentColor,
                                         hazeState = hazeState
                                     )
                                     AnimatedVisibility(
-                                        visible = obfsType == "salamander",
+                                        visible = obfsType == "salamander" || obfsType == "gecko",
                                         enter = fadeIn(tween(200)) + expandVertically(tween(200)),
                                         exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
                                     ) {
@@ -755,6 +755,32 @@ fun ProfileSimpleEditor(
                                                 keyboardType = KeyboardType.Text,
                                                 accentColor = accentColor
                                             )
+                                            AnimatedVisibility(
+                                                visible = obfsType == "gecko",
+                                                enter = fadeIn(tween(200)) + expandVertically(tween(200)),
+                                                exit = fadeOut(tween(150)) + shrinkVertically(tween(150))
+                                            ) {
+                                                Column {
+                                                    EditorFieldDivider()
+                                                    EditorTextField(
+                                                        label = I18n.strings.simple_editor_obfs_min_packet_size,
+                                                        value = obfsMinPacketSize,
+                                                        onValueChange = { obfsMinPacketSize = it },
+                                                        keyboardType = KeyboardType.Number,
+                                                        placeholder = "e.g. 64",
+                                                        accentColor = accentColor
+                                                    )
+                                                    EditorFieldDivider()
+                                                    EditorTextField(
+                                                        label = I18n.strings.simple_editor_obfs_max_packet_size,
+                                                        value = obfsMaxPacketSize,
+                                                        onValueChange = { obfsMaxPacketSize = it },
+                                                        keyboardType = KeyboardType.Number,
+                                                        placeholder = "e.g. 1400",
+                                                        accentColor = accentColor
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                     

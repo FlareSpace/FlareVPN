@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Flare"
+rootProject.name = "Flare VPN"
 include(":app")

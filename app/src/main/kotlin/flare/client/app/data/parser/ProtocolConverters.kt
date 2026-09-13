@@ -420,6 +420,10 @@ object ProtocolConverters {
                     put("type", obfsType)
                     val password = o.optString("password", "")
                     if (password.isNotEmpty()) put("password", password)
+                    val minSize = o.optInt("min_packet_size", 0)
+                    if (minSize > 0) put("min_packet_size", minSize)
+                    val maxSize = o.optInt("max_packet_size", 0)
+                    if (maxSize > 0) put("max_packet_size", maxSize)
                 })
             }
         }

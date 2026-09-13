@@ -59,6 +59,8 @@ interface ServerStrings {
     val simple_editor_method: String
     val simple_editor_obfs: String
     val simple_editor_obfs_pass: String
+    val simple_editor_obfs_min_packet_size: String
+    val simple_editor_obfs_max_packet_size: String
     val simple_editor_pbk: String
     val simple_editor_port: String
     val simple_editor_reality: String
@@ -233,6 +235,8 @@ object RuServerStrings : ServerStrings {
     override val simple_editor_method : String = "Метод шифрования"
     override val simple_editor_obfs : String = "Obfs"
     override val simple_editor_obfs_pass : String = "Obfs Пароль"
+    override val simple_editor_obfs_min_packet_size : String = "Минимальный размер пакета"
+    override val simple_editor_obfs_max_packet_size : String = "Максимальный размер пакета"
     override val simple_editor_pbk : String = "Public Key"
     override val simple_editor_port : String = "Порт"
     override val simple_editor_reality : String = "Настройки Reality"
@@ -407,6 +411,8 @@ object EnServerStrings : ServerStrings {
     override val simple_editor_method : String = "Encryption method"
     override val simple_editor_obfs : String = "Obfs"
     override val simple_editor_obfs_pass : String = "Obfs Password"
+    override val simple_editor_obfs_min_packet_size : String = "Min packet size"
+    override val simple_editor_obfs_max_packet_size : String = "Max packet size"
     override val simple_editor_pbk : String = "Public Key"
     override val simple_editor_port : String = "Port"
     override val simple_editor_reality : String = "Reality Settings"

@@ -23,6 +23,8 @@ object SingBoxManager {
     internal var currentVpnService: VpnService? = null
     internal var networkCallback: ConnectivityManager.NetworkCallback? = null
     internal var lastPermissionError: Boolean = false
+    internal var tunInterfaceName: String? = null
+    internal var appContext: Context? = null
 
     @Volatile
     var isRunning: Boolean = false
@@ -44,6 +46,7 @@ object SingBoxManager {
     private var logFile: File? = null
 
     internal fun ensureSetup(context: Context) {
+        appContext = context.applicationContext
         if (setupDone) return
         try {
             val settings = SettingsManager(context)
@@ -168,6 +171,7 @@ object SingBoxManager {
                     Log.e(TAG, "Error closing tunPfd: ${e.message}")
                 }
                 tunPfd = null
+                tunInterfaceName = null
 
                 Log.i(TAG, "sing-box engine stopped successfully")
             } catch (e: Exception) {

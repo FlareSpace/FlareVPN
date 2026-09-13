@@ -68,6 +68,18 @@ object SingBoxConfigPatcher {
                         if (path.isNotEmpty() && !path.startsWith("/") && !path.startsWith("http")) {
                             rs.put("path", "$filesDir/$path")
                         }
+                        if (rs.optString("type") == "remote") {
+                            val initialPath = rs.optString("initial_path", "")
+                            if (initialPath.isEmpty()) {
+                                val tag = rs.optString("tag", "")
+                                val fallbackFile = java.io.File(filesDir, "$tag.srs")
+                                if (fallbackFile.exists()) {
+                                    rs.put("initial_path", fallbackFile.absolutePath)
+                                }
+                            } else if (!initialPath.startsWith("/")) {
+                                rs.put("initial_path", "$filesDir/$initialPath")
+                            }
+                        }
                     }
                 }
             }
@@ -78,12 +90,22 @@ object SingBoxConfigPatcher {
             if (clashSecret.isNotEmpty()) {
                 clashApi.put("secret", clashSecret)
             }
+            val cacheFile = experimental.optJSONObject("cache_file") ?: JSONObject().also { experimental.put("cache_file", it) }
+            cacheFile.put("enabled", true)
+            if (!cacheFile.has("path") || cacheFile.optString("path").isBlank()) {
+                cacheFile.put("path", java.io.File(context.filesDir, "sing_box_cache.db").absolutePath)
+            }
+            cacheFile.put("store_dns", true)
 
             val outboundsArr = obj.optJSONArray("outbounds") ?: JSONArray()
             val primaryProxyTag = SingBoxConfigChainer.findPrimaryProxyTag(outboundsArr)
 
             run {
                 val dns = obj.optJSONObject("dns")
+                if (dns != null) {
+                    dns.remove("independent_cache")
+                    dns.put("optimistic", true)
+                }
                 val servers = dns?.optJSONArray("servers")
                 val outbounds = obj.optJSONArray("outbounds")
                 if (dns != null && servers != null && outbounds != null) {
@@ -261,7 +283,6 @@ object SingBoxConfigPatcher {
                 }
             }
 
-            /* TLS Spoof disabled until sing-box 1.14.0 core upgrade
             if (settings.isTlsSpoofEnabled) {
                 val domain = settings.tlsSpoofDomain.trim()
                 val method = settings.tlsSpoofMethod.trim()
@@ -288,7 +309,6 @@ object SingBoxConfigPatcher {
                     }
                 }
             }
-            */
 
             val fingerprint = settings.fingerprint
             if (fingerprint != "auto") {
@@ -414,7 +434,7 @@ object SingBoxConfigPatcher {
             }
 
             val mtuValue = settings.mtu.toIntOrNull() ?: 1500
-            val stackValue = settings.tunStack
+            val stackValue = settings.tunStack.ifBlank { "gvisor" }
             val fakeIpEnabled = settings.isFakeIpEnabled
             val inbounds = obj.optJSONArray("inbounds")
             if (inbounds != null) {
@@ -423,6 +443,11 @@ object SingBoxConfigPatcher {
                     if (inb.optString("type") == "tun") {
                         inb.put("mtu", mtuValue)
                         inb.put("stack", stackValue)
+                        val mapping = inb.optString("udp_mapping")
+                        if (mapping.isNotEmpty() && mapping != "endpoint_independent" && mapping != "address_dependent" && mapping != "address_and_port_dependent") {
+                            inb.remove("udp_mapping")
+                        }
+                        inb.remove("udp_nat_max")
                         Log.i(
                                 TAG,
                                 "injectAdvancedSettings: set TUN mtu=$mtuValue, stack=$stackValue"
@@ -490,9 +515,18 @@ object SingBoxConfigPatcher {
             val outbounds =
                     obj.optJSONArray("outbounds") ?: return obj.toString().replace("\\/", "/")
 
+            val isChromeParrotEnabled = settings.isChromeParrotEnabled
             for (i in 0 until outbounds.length()) {
                 val ob = outbounds.optJSONObject(i) ?: continue
                 val type = ob.optString("type")
+                if (type == "hysteria2") {
+                    if (!isChromeParrotEnabled || ob.optBoolean("disable_chrome_parrot", false)) {
+                        ob.put("disable_chrome_parrot", true)
+                        Log.i(TAG, "injectAdvancedSettings: set disable_chrome_parrot for '${ob.optString("tag")}'")
+                    } else {
+                        ob.remove("disable_chrome_parrot")
+                    }
+                }
                 if (type != "urltest" && type != "selector" && type != "direct" && type != "block" && type != "dns") {
                     if (!ob.has("connect_timeout")) {
                         ob.put("connect_timeout", "5s")
